@@ -81,6 +81,8 @@ class Backend(PluginObject):
 
     def close(self):
         if self._socket:
+            while self._socket.getState() == Arcus.SocketState.Opening:
+                sleep(0.1)
             self._socket.close()
 
     def _backendLog(self, line):
@@ -190,25 +192,27 @@ class Backend(PluginObject):
             self._port += 1
             Logger.log("d", "Socket was unable to bind to port, increasing port number to %s", self._port)
         elif error.getErrorCode() == Arcus.ErrorCode.ConnectionResetError:
-            Logger.log("i", "Backend crashed or closed. Restarting...")
+            Logger.log("i", "Backend crashed or closed.")
         elif error.getErrorCode() == Arcus.ErrorCode.Debug:
             Logger.log("d", "Socket debug: %s", str(error))
             return
         else:
             Logger.log("w", "Unhandled socket error %s", str(error))
 
-        #sleep(0.1)  # Hack: Without a sleep this can deadlock the application spamming error messages.
+        sleep(0.1)  # Hack: Without a sleep this can deadlock the application spamming error messages.
         self._createSocket()
 
     ##  Creates a socket and attaches listeners.
     def _createSocket(self, protocol_file):
-        Logger.log("d", "Attempting to create new socket")  # temp debug logging
         if self._socket:
             Logger.log("d", "Previous socket existed. Closing that first.") # temp debug logging
             self._socket.stateChanged.disconnect(self._onSocketStateChanged)
             self._socket.messageReceived.disconnect(self._onMessageReceived)
             self._socket.error.disconnect(self._onSocketError)
-            # If the error occured due to parsing, both connections believe that connection is okay.
+            # Hack for (at least) Linux. If the socket is connecting, the close will deadlock.
+            while self._socket.getState() == Arcus.SocketState.Opening:
+                sleep(0.1)
+            # If the error occurred due to parsing, both connections believe that connection is okay.
             # So we need to force a close.
             self._socket.close()
 
