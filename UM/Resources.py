@@ -253,33 +253,35 @@ class Resources:
 
     @classmethod
     def __initializeStoragePaths(cls):
+        subname = "2_lulzbot"
+        appid = cls.ApplicationIdentifier + subname
         if platform.system() == "Windows":
-            cls.__config_storage_path = os.path.join(os.path.expanduser("~/AppData/Local/"), cls.ApplicationIdentifier)
+            cls.__config_storage_path = os.path.join(os.path.expanduser("~/AppData/Local/"), appid)
         elif platform.system() == "Darwin":
-            cls.__config_storage_path = os.path.join(os.path.expanduser("~/Library/Application Support"), cls.ApplicationIdentifier)
+            cls.__config_storage_path = os.path.join(os.path.expanduser("~/Library/Application Support"), appid)
             # For backward compatibility, support loading files from the old storage location
-            cls.addSearchPath(os.path.expanduser("~/.{0}".format(cls.ApplicationIdentifier)))
+            cls.addSearchPath(os.path.expanduser("~/.{0}".format(appid)))
         elif platform.system() == "Linux":
             xdg_config_home = ""
             try:
                 xdg_config_home = os.environ["XDG_CONFIG_HOME"]
             except KeyError:
                 xdg_config_home = os.path.expanduser("~/.config")
-            cls.__config_storage_path = os.path.join(xdg_config_home, cls.ApplicationIdentifier)
+            cls.__config_storage_path = os.path.join(xdg_config_home, appid)
 
             xdg_data_home = ""
             try:
                 xdg_data_home = os.environ["XDG_DATA_HOME"]
             except KeyError:
                 xdg_data_home = os.path.expanduser("~/.local/share")
-            cls.__data_storage_path = os.path.join(xdg_data_home, cls.ApplicationIdentifier)
+            cls.__data_storage_path = os.path.join(xdg_data_home, appid)
 
             xdg_cache_home = ""
             try:
                 xdg_cache_home = os.environ["XDG_CACHE_HOME"]
             except KeyError:
                 xdg_cache_home = os.path.expanduser("~/.cache")
-            cls.__cache_storage_path = os.path.join(xdg_cache_home, cls.ApplicationIdentifier)
+            cls.__cache_storage_path = os.path.join(xdg_cache_home, appid)
         else:
             cls.__config_storage_path = "."
 
