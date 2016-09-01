@@ -253,7 +253,7 @@ class Resources:
 
     @classmethod
     def __initializeStoragePaths(cls):
-        subname = "_2"
+        subname = "2_lulzbot"
         appid = cls.ApplicationIdentifier + subname
         if platform.system() == "Windows":
             cls.__config_storage_path = os.path.join(os.path.expanduser("~/AppData/Local/"), appid)
