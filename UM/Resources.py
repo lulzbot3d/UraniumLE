@@ -39,6 +39,8 @@ class Resources:
     ## Location of cached data
     Cache = 11
 
+    GCodes = 127
+
     ## Any custom resource types should be greater than this to prevent collisions with standard types.
     UserType = 128
 
@@ -308,6 +310,7 @@ class Resources:
         DefinitionContainers: "definitions",
         InstanceContainers: "instances",
         ContainerStacks: "stacks",
+        GCodes: "gcodes",
     }
     __types_storage = {
         Resources: "",

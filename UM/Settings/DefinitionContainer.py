@@ -148,6 +148,10 @@ class DefinitionContainer(ContainerInterface.ContainerInterface, PluginObject):
             value = getattr(definition, property_name)
             if value is None and property_name == "value":
                 value = getattr(definition, "default_value")
+                if (key == "machine_start_gcode" or key == "machine_end_gcode") and getattr(definition, "default_file") != 0:
+                    path = Resources.getPath(Resources.GCodes, getattr(definition, "default_file") + ".gcode")
+                    with open(path, encoding = "utf-8") as f:
+                        return f.read()
             return value
         except AttributeError:
             return None
