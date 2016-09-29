@@ -36,6 +36,20 @@ Item
         return output;
     }
 
+    function inc_dec(prop, event)
+    {
+        if (event.key == Qt.Key_Up) {
+            var t = parseFloat(UM.ActiveTool.properties.getValue(prop)) + 1.0;
+            UM.ActiveTool.setProperty(prop, t);
+            event.accepted = true;
+        }
+        if (event.key == Qt.Key_Down) {
+            var t = parseFloat(UM.ActiveTool.properties.getValue(prop)) - 1.0;
+            UM.ActiveTool.setProperty(prop, t);
+            event.accepted = true;
+        }
+    }
+
     Button
     {
         id: resetPositionButton
@@ -125,6 +139,11 @@ Item
                 var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
                 UM.ActiveTool.setProperty("X", modified_text);
             }
+
+            Keys.onPressed:
+            {
+                base.inc_dec("X", event);
+            }
         }
         TextField
         {
@@ -144,6 +163,11 @@ Item
                 var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
                 UM.ActiveTool.setProperty("Y", modified_text);
             }
+
+            Keys.onPressed:
+            {
+                base.inc_dec("Y", event);
+            }
         }
         TextField
         {
@@ -162,6 +186,11 @@ Item
             {
                 var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
                 UM.ActiveTool.setProperty("Z", modified_text);
+            }
+
+            Keys.onPressed:
+            {
+                base.inc_dec("Z", event);
             }
         }
     }

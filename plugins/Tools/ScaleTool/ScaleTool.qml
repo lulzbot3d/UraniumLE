@@ -41,6 +41,22 @@ Item
         return input.toFixed(decimals).replace(/\.?0*$/, ""); //Match on periods, if any ( \.? ), followed by any number of zeros ( 0* ), then the end of string ( $ ).
     }
 
+    function inc_dec(prop, event, unit)
+    {
+        if (event.key == Qt.Key_Up) {
+            var t = parseFloat(UM.ActiveTool.properties.getValue(prop)) + unit;
+            if(t <= 0){t=UM.ActiveTool.properties.getValue(prop)}
+            UM.ActiveTool.setProperty(prop, t);
+            event.accepted = true;
+        }
+        if (event.key == Qt.Key_Down) {
+            var t = parseFloat(UM.ActiveTool.properties.getValue(prop)) - unit;
+            if(t <= 0){t=UM.ActiveTool.properties.getValue(prop)}
+            UM.ActiveTool.setProperty(prop, t);
+            event.accepted = true;
+        }
+    }
+
     Button
     {
         id: resetScaleButton
@@ -173,6 +189,11 @@ Item
                 var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
                 UM.ActiveTool.setProperty("ObjectWidth", modified_text);
             }
+
+            Keys.onPressed:
+            {
+                base.inc_dec("ObjectWidth", event, 1.0);
+            }
         }
         TextField
         {
@@ -194,6 +215,11 @@ Item
                 var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
                 UM.ActiveTool.setProperty("ObjectDepth", modified_text);
             }
+
+            Keys.onPressed:
+            {
+                base.inc_dec("ObjectDepth", event, 1.0);
+            }
         }
         TextField
         {
@@ -214,6 +240,11 @@ Item
             {
                 var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
                 UM.ActiveTool.setProperty("ObjectHeight", modified_text);
+            }
+
+            Keys.onPressed:
+            {
+                base.inc_dec("ObjectHeight", event, 1.0);
             }
         }
 
@@ -238,6 +269,11 @@ Item
                 var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
                 UM.ActiveTool.setProperty("ScaleX", parseFloat(modified_text) / 100);
             }
+
+            Keys.onPressed:
+            {
+                base.inc_dec("ScaleX", event, 0.01);
+            }
         }
         TextField
         {
@@ -259,6 +295,11 @@ Item
             {
                 var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
                 UM.ActiveTool.setProperty("ScaleZ", parseFloat(modified_text) / 100);
+            }
+
+            Keys.onPressed:
+            {
+                base.inc_dec("ScaleZ", event, 0.01);
             }
         }
         TextField
@@ -282,6 +323,11 @@ Item
             {
                 var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
                 UM.ActiveTool.setProperty("ScaleY", parseFloat(modified_text) / 100);
+            }
+
+            Keys.onPressed:
+            {
+                base.inc_dec("ScaleY", event, 0.01);
             }
 
         }
