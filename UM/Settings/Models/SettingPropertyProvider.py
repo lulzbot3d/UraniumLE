@@ -29,6 +29,7 @@ class SettingPropertyProvider(QObject):
         self._value_used = None
         self._stack_levels = []
         self._remove_unused_value = True
+        self._validator = None
 
     ##  Set the containerStackId property.
     def setContainerStackId(self, stack_id):
@@ -54,7 +55,7 @@ class SettingPropertyProvider(QObject):
                 self._stack.containersChanged.connect(self._update)
         else:
             self._stack = None
-
+        self._validator = None
         self._update()
         self.containerStackIdChanged.emit()
 
@@ -93,6 +94,7 @@ class SettingPropertyProvider(QObject):
     def setKey(self, key):
         if key != self._key:
             self._key = key
+            self._validator = None
             self._update()
             self.keyChanged.emit()
 
@@ -107,6 +109,11 @@ class SettingPropertyProvider(QObject):
     @pyqtProperty("QVariantMap", notify = propertiesChanged)
     def properties(self):
         return self._property_values
+
+    @pyqtSlot()
+    def forcePropertiesChanged(self):
+        for watched_property in self._watched_properties:
+            self._onPropertyChanged(self._key, watched_property)
 
     def setStoreIndex(self, index):
         if index != self._store_index:
@@ -160,18 +167,19 @@ class SettingPropertyProvider(QObject):
             Logger.log("w", "Tried to set a property that is not being watched")
             return
 
-        if self._property_values[property_name] == property_value:
-            return
-
         container = self._stack.getContainer(self._store_index)
         if isinstance(container, UM.Settings.DefinitionContainer):
             return
 
+        # In some cases we clean some stuff and the result is as when nothing as been changed manually.
         if property_name == "value" and self._remove_unused_value:
             for index in self._stack_levels:
                 if index > self._store_index:
                     old_value = self.getPropertyValue(property_name, index)
+
                     key_state = str(self._stack.getContainer(self._store_index).getProperty(self._key, "state"))
+                    # sometimes: old value is int, property_value is float
+                    # (and the container is not removed, so the revert button appears)
                     if str(old_value) == str(property_value) and key_state != "InstanceState.Calculated":
                         # If we change the setting so that it would be the same as a deeper setting, we can just remove
                         # the value. Note that we only do this when this is not caused by the calculated state
@@ -180,6 +188,12 @@ class SettingPropertyProvider(QObject):
                         return
                     else:  # First value that we encountered was different, stop looking & continue as normal.
                         break
+
+        # _remove_unused_value is used when the stack value differs from the effective value
+        # i.e. there is a resolve function
+        if self._property_values[property_name] == property_value and self._remove_unused_value:
+            return
+
         container.setProperty(self._key, property_name, property_value, self._stack)
 
     ##  Manually request the value of a property.
@@ -280,6 +294,7 @@ class SettingPropertyProvider(QObject):
         if self._property_values[property_name] != value:
             self._property_values[property_name] = value
             self.propertiesChanged.emit()
+
         self._updateStackLevels()
 
     def _update(self, container = None):
@@ -309,6 +324,18 @@ class SettingPropertyProvider(QObject):
             property_value = property_value(self._stack)
 
         if property_name == "value":
-            property_value = UM.Settings.SettingDefinition.settingValueToString(self._stack.getProperty(self._key, "type"), property_value)
-
+            property_value = UM.Settings.SettingDefinition.settingValueToString(
+                self._stack.getProperty(self._key, "type"), property_value)
+        elif property_name == "validationState":
+            # Setting is not validated. This can happen if there is only a setting definition.
+            # We do need to validate it, because a setting defintions value can be set by a function, which could
+            # be an invalid setting.
+            if property_value is None:
+                if not self._validator:
+                    definition = self._stack.getSettingDefinition(self._key)
+                    validator_type = UM.Settings.SettingDefinition.getValidatorForType(definition.type)
+                    if validator_type:
+                        self._validator = validator_type(self._key)
+                if self._validator:
+                    property_value = self._validator(self._stack)
         return str(property_value)
