@@ -37,7 +37,7 @@ class Theme(QObject):
 
         self._initializeDefaults()
 
-        Preferences.getInstance().addPreference("general/theme", Application.getInstance().getApplicationName())
+        Preferences.getInstance().addPreference("general/theme", "lulzbot")
         try:
             theme_path = Resources.getPath(Resources.Themes, Preferences.getInstance().getValue("general/theme"))
             self.load(theme_path)
