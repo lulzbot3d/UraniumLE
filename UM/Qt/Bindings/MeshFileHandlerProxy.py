@@ -69,7 +69,7 @@ class MeshFileHandlerProxy(QObject):
             return
 
         for node in DepthFirstIterator(self._scene.getRoot()):
-            if hasattr(node, "gcode") and getattr(node, "gcode") is True:
+            if node.callDecoration("shouldBlockSlicing"):
                 application.deleteAll()
                 break
 
@@ -95,6 +95,8 @@ class MeshFileHandlerProxy(QObject):
                 return
 
         self._loading_files.append(f)
+        if extension in self._non_sliceable_extensions:
+            application.deleteAll()
 
         job = ReadMeshJob(f)
         job.finished.connect(self._readMeshFinished)

@@ -7,6 +7,7 @@ from UM.Mesh.MeshBuilder import MeshBuilder
 from UM.Logger import Logger
 from UM.Scene.SceneNode import SceneNode
 from UM.Job import Job
+from UM.Scene.SliceableObjectDecorator import SliceableObjectDecorator
 
 import os
 import struct
@@ -57,6 +58,9 @@ class STLReader(MeshReader):
         mesh = mesh_builder.build()
         Logger.log("d", "Loaded a mesh with %s vertices", mesh_builder.getVertexCount())
         scene_node.setMeshData(mesh)
+
+        sliceable_decorator = SliceableObjectDecorator()
+        scene_node.addDecorator(sliceable_decorator)
         return scene_node
 
     def _swapColumns(self, array, frm, to):
