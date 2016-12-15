@@ -68,7 +68,7 @@ class MeshFileHandlerProxy(QObject):
 
     def _readMeshFinished(self, job):
         node = job.getResult()
-        if node != None:  
+        if node != None:
             node.setSelectable(True)
             node.setName(os.path.basename(job.getFileName()))
 
