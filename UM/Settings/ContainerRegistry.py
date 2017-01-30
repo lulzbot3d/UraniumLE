@@ -6,18 +6,25 @@ import re #For finding containers with asterisks in the constraints.
 import urllib #For ensuring container file names are proper file names
 import pickle #For serializing/deserializing Python classes to binary files
 
+from contextlib import contextmanager
+
 from UM.PluginRegistry import PluginRegistry
 from UM.Resources import Resources, UnsupportedStorageTypeError
 from UM.MimeTypeDatabase import MimeType, MimeTypeDatabase
 from UM.Logger import Logger
 from UM.SaveFile import SaveFile
 from UM.Signal import Signal, signalemitter
+from UM.LockFile import LockFile
 
 import UM.Dictionary
 
 from . import DefinitionContainer
 from . import InstanceContainer
 from . import ContainerStack
+
+
+CONFIG_LOCK_FILENAME = "uranium.lock"
+
 
 ##  Central class to manage all Setting containers.
 #
@@ -82,7 +89,12 @@ class ContainerRegistry:
             # If we are just searching for a single container by ID, look it up from the container cache
             container = self._id_container_cache.get(kwargs.get("id"))
             if container:
-                return [ container ]
+                # Add an extra check to make sure the found container matches the requested container type.
+                # This should never occur but has happened with broken configurations.
+                if not container_type:
+                    return [ container ]
+                elif isinstance(container, container_type):
+                    return [ container ]
 
         for container in self._containers:
             if container_type and not isinstance(container, container_type):
@@ -215,7 +227,7 @@ class ContainerRegistry:
                 # Since we have the mime type and resource type here, process these two properties so we do not
                 # need to look up mime types etc. again.
                 container_id = urllib.parse.unquote_plus(mime.stripExtension(os.path.basename(path)))
-                read_only = os.path.dirname(path) != resource_storage_path
+                read_only = os.path.realpath(os.path.dirname(path)) != os.path.realpath(resource_storage_path)
 
                 files.append((type_priority, container_id, path, read_only, container_type))
 
@@ -224,6 +236,8 @@ class ContainerRegistry:
 
         for _, container_id, file_path, read_only, container_type in files:
             if container_id in self._id_container_cache:
+                Logger.log("c", "Found a container with a duplicate ID: %s", container_id)
+                Logger.log("c", "Existing container is %s, trying to load %s from %s", self._id_container_cache[container_id], container_type, file_path)
                 continue
 
             try:
@@ -313,7 +327,7 @@ class ContainerRegistry:
             mime_type = self.getMimeTypeForContainer(type(instance))
             file_name = urllib.parse.quote_plus(instance.getId()) + "." + mime_type.preferredSuffix
             path = Resources.getStoragePath(Resources.InstanceContainers, file_name)
-            with SaveFile(path, "wt", -1, "utf-8") as f:
+            with SaveFile(path, "wt") as f:
                 f.write(data)
 
         for stack in self.findContainerStacks():
@@ -332,7 +346,7 @@ class ContainerRegistry:
             mime_type = self.getMimeTypeForContainer(type(stack))
             file_name = urllib.parse.quote_plus(stack.getId()) + "." + mime_type.preferredSuffix
             path = Resources.getStoragePath(Resources.ContainerStacks, file_name)
-            with SaveFile(path, "wt", -1, "utf-8") as f:
+            with SaveFile(path, "wt") as f:
                 f.write(data)
 
         for definition in self.findDefinitionContainers():
@@ -348,7 +362,7 @@ class ContainerRegistry:
             mime_type = self.getMimeTypeForContainer(type(definition))
             file_name = urllib.parse.quote_plus(definition.getId()) + "." + mime_type.preferredSuffix
             path = Resources.getStoragePath(Resources.DefinitionContainers, file_name)
-            with SaveFile(path, "wt", -1, "utf-8") as f:
+            with SaveFile(path, "wt") as f:
                 f.write(data)
 
     ##  Creates a new unique name for a container that doesn't exist yet.
@@ -447,7 +461,7 @@ class ContainerRegistry:
     # Load a binary cached version of a DefinitionContainer
     def _loadCachedDefinition(self, definition_id, path):
         try:
-            cache_path = Resources.getPath(Resources.Cache, "definitions", definition_id)
+            cache_path = Resources.getPath(Resources.Cache, "definitions", self.getApplication().getVersion(), definition_id)
 
             cache_mtime = os.path.getmtime(cache_path)
             definition_mtime = os.path.getmtime(path)
@@ -476,13 +490,26 @@ class ContainerRegistry:
 
     # Store a cached version of a DefinitionContainer
     def _saveCachedDefinition(self, definition):
-        cache_path = Resources.getStoragePath(Resources.Cache, "definitions", definition.id)
+        cache_path = Resources.getStoragePath(Resources.Cache, "definitions", self.getApplication().getVersion(), definition.id)
 
         # Ensure the cache path exists
         os.makedirs(os.path.dirname(cache_path), exist_ok=True)
 
         with open(cache_path, "wb") as f:
             pickle.dump(definition, f)
+
+    ##  Get the lock filename including full path
+    #   Dependent on when you call this function, Resources.getConfigStoragePath may return different paths
+    def getLockFilename(self):
+        return Resources.getStoragePath(Resources.Resources, CONFIG_LOCK_FILENAME)
+
+    ##  Contextmanager to create a lock file and remove it afterwards.
+    def lockFile(self):
+        return LockFile(
+            self.getLockFilename(),
+            timeout = 10,
+            wait_msg = "Waiting for lock file in local config dir to disappear..."
+            )
 
     ##  Get the singleton instance for this class.
     @classmethod
@@ -492,6 +519,15 @@ class ContainerRegistry:
             ContainerRegistry.__instance = cls()
         return ContainerRegistry.__instance
 
+    @classmethod
+    def setApplication(cls, application):
+        cls.__application = application
+
+    @classmethod
+    def getApplication(cls):
+        return cls.__application
+
+    __application = None
     __instance = None
 
     __container_types = {
@@ -504,6 +540,7 @@ class ContainerRegistry:
         "application/x-uranium-definitioncontainer": DefinitionContainer.DefinitionContainer,
         "application/x-uranium-instancecontainer": InstanceContainer.InstanceContainer,
         "application/x-uranium-containerstack": ContainerStack.ContainerStack,
+        "application/x-uranium-extruderstack": ContainerStack.ContainerStack,
     }
 
 PluginRegistry.addType("settings_container", ContainerRegistry.addContainerType)
