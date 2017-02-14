@@ -10,7 +10,12 @@ include(UraniumTranslationTools)
 
 include(GNUInstallDirs)
 
-find_package(PythonInterp 3.5.0 REQUIRED)
+if (NOT MINIMUM_PYTHON_VERSION)
+    set(MINIMUM_PYTHON_VERSION 3.5.0)
+endif()
+
+set(MINIMUM_PYTHON_VERSION ${MINIMUM_PYTHON_VERSION} CACHE STRING "Minimum Python Version")
+find_package(PythonInterp ${MINIMUM_PYTHON_VERSION} REQUIRED)
 
 # # Checks using pylint
 # Note that we use exit 0 here to not mark the build as a failure on check failure
