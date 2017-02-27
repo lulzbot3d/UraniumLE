@@ -9,8 +9,8 @@ import UM 1.1 as UM
 Item
 {
     id: base
-    width: Math.max(23 * UM.Theme.getSize("line").width, childrenRect.width);
-    height: Math.max(9.5 * UM.Theme.getSize("line").height, childrenRect.height);
+    width: childrenRect.width
+    height: childrenRect.height
     UM.I18nCatalog { id: catalog; name:"uranium"}
 
     // We use properties for the text as doing the bindings indirectly doesn't cause any breaks
@@ -60,9 +60,10 @@ Item
     Button
     {
         id: resetScaleButton
-
-        anchors.top: scaleToMaxButton.bottom;
+        anchors.top: textfields.bottom
         anchors.topMargin: UM.Theme.getSize("default_margin").height;
+        anchors.left: textfields.left
+        anchors.leftMargin: UM.Theme.getSize("default_margin").width;
         z: 1
 
         //: Reset scale tool button
@@ -74,20 +75,6 @@ Item
         onClicked: UM.ActiveTool.triggerAction("resetScale");
     }
 
-    Button
-    {
-        id: scaleToMaxButton
-
-        //: Scale to max tool button
-        text: catalog.i18nc("@action:button","Scale to Max");
-        iconSource: UM.Theme.getIcon("scale_max");
-
-        anchors.top: parent.top;
-        z: 1
-
-        style: UM.Theme.styles.tool_button;
-        onClicked: UM.ActiveTool.triggerAction("scaleToMax")
-    }
 
     Flow {
         id: checkboxes;
@@ -95,8 +82,7 @@ Item
         anchors.left: resetScaleButton.right;
         anchors.leftMargin: UM.Theme.getSize("default_margin").width;
         anchors.right: parent.right;
-        anchors.top: textfields.bottom;
-        anchors.topMargin: UM.Theme.getSize("default_margin").height;
+        anchors.top: resetScaleButton.top;
 
         spacing: UM.Theme.getSize("default_margin").height;
 
@@ -134,8 +120,6 @@ Item
     {
         id: textfields;
 
-        anchors.left: resetScaleButton.right;
-        anchors.leftMargin: UM.Theme.getSize("default_margin").width;
         anchors.top: parent.top;
 
         columns: 3;

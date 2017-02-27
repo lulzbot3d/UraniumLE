@@ -9,8 +9,8 @@ import UM 1.1 as UM
 Item
 {
     id: base
-    width: Math.max(14 * UM.Theme.getSize("line").width, childrenRect.width);
-    height: Math.max(4.5 * UM.Theme.getSize("line").height, childrenRect.height);
+    width: childrenRect.width
+    height: childrenRect.height
     UM.I18nCatalog { id: catalog; name:"uranium"}
 
     property string xText
@@ -83,7 +83,6 @@ Item
         onClicked: UM.ActiveTool.triggerAction("dropToBuildplate")
         visible: false
     }
-
     Grid
     {
         id: textfields;
