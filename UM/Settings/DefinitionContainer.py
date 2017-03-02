@@ -195,7 +195,11 @@ class DefinitionContainer(ContainerInterface.ContainerInterface, PluginObject):
     #
     #   Reimplemented from ContainerInterface
     def deserialize(self, serialized):
-        parsed = json.loads(serialized, object_pairs_hook=collections.OrderedDict)
+        try:
+            parsed = json.loads(serialized, object_pairs_hook=collections.OrderedDict)
+        except json.JSONDecodeError as e:
+            Logger.log("e", "Error while deserializing container %s %s:%s %s" % (self._name, e.lineno, e.colno, e.msg))
+            parsed = {}
 
         self._verifyJson(parsed)
 
@@ -254,7 +258,10 @@ class DefinitionContainer(ContainerInterface.ContainerInterface, PluginObject):
         path = Resources.getPath(Resources.DefinitionContainers, file_name + ".def.json")
         contents = {}
         with open(path, encoding = "utf-8") as f:
-            contents = json.load(f, object_pairs_hook=collections.OrderedDict)
+            try:
+                contents = json.load(f, object_pairs_hook=collections.OrderedDict)
+            except json.JSONDecodeError as e:
+                Logger.log("e", "Error while loading file %s %s:%s %s" % (file_name, e.lineno, e.colno, e.msg))
 
         self._inherited_files.append(path)
         return contents

@@ -124,7 +124,10 @@ class Theme(QObject):
 
         with open(os.path.join(self._path, "theme.json")) as f:
             Logger.log("d", "Loading theme file: %s", os.path.join(self._path, "theme.json"))
-            data = json.load(f)
+            try:
+                data = json.load(f)
+            except json.JSONDecodeError as e:
+                Logger.log("e", "Error while loading theme %s %s:%s %s" % (os.path.join(self._path, "theme.json"), e.lineno, e.colno, e.msg))
 
         self._initializeDefaults()
 
