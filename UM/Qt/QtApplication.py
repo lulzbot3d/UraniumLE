@@ -57,6 +57,8 @@ class QtApplication(QApplication, Application):
         os.environ["QSG_RENDER_LOOP"] = "basic"
         super().__init__(sys.argv, **kwargs)
 
+        self.setStyle("fusion")
+
         self._plugins_loaded = False #Used to determine when it's safe to use the plug-ins.
         self._main_qml = "main.qml"
         self._engine = None
