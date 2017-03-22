@@ -64,7 +64,7 @@ Item
         anchors.topMargin: UM.Theme.getSize("default_margin").height;
         anchors.left: textfields.left
         anchors.leftMargin: UM.Theme.getSize("default_margin").width;
-        z: 1
+        z: 2
 
         //: Reset scale tool button
         text: catalog.i18nc("@action:button","Reset")
@@ -75,11 +75,28 @@ Item
         onClicked: UM.ActiveTool.triggerAction("resetScale");
     }
 
+    Button
+    {
+        id: scaleToMaxButton
+
+        //: Scale to max tool button
+        text: catalog.i18nc("@action:button","Scale to Max");
+        iconSource: UM.Theme.getIcon("scale_max");
+
+        anchors.top: resetScaleButton.top;
+        anchors.left: resetScaleButton.right;
+        anchors.leftMargin: UM.Theme.getSize("default_margin").width;
+        z: 1
+
+        style: UM.Theme.styles.tool_button;
+        onClicked: UM.ActiveTool.triggerAction("scaleToMax")
+    }
+
 
     Flow {
         id: checkboxes;
 
-        anchors.left: resetScaleButton.right;
+        anchors.left: scaleToMaxButton.right;
         anchors.leftMargin: UM.Theme.getSize("default_margin").width;
         anchors.right: parent.right;
         anchors.top: resetScaleButton.top;
