@@ -19,6 +19,7 @@ from UM.Mesh.MeshFileHandler import MeshFileHandler
 from UM.Workspace.WorkspaceFileHandler import WorkspaceFileHandler
 from . import PreferencesProxy
 from . import Theme
+from . import OpenGLContextProxy
 from . import AngledCornerRectangle
 from . import PointingRectangle
 from . import ActiveToolProxy
@@ -33,7 +34,14 @@ from . import VisibleMessagesModel
 
 from . import MeshListModel
 
-import UM.Settings.Models
+from UM.Settings.Models.SettingDefinitionsModel import SettingDefinitionsModel
+from UM.Settings.Models.DefinitionContainersModel import DefinitionContainersModel
+from UM.Settings.Models.InstanceContainersModel import InstanceContainersModel
+from UM.Settings.Models.ContainerStacksModel import ContainerStacksModel
+from UM.Settings.Models.SettingPropertyProvider import SettingPropertyProvider
+from UM.Settings.Models.SettingPreferenceVisibilityHandler import SettingPreferenceVisibilityHandler
+from UM.Settings.Models.ContainerPropertyProvider import ContainerPropertyProvider
+
 
 class Bindings:
     @classmethod
@@ -59,6 +67,10 @@ class Bindings:
     @classmethod
     def createOperationStackProxy(cls, engine, script_engine):
         return OperationStackProxy.OperationStackProxy()
+
+    @classmethod
+    def createOpenGLContextProxy(cls, engine, script_engine):
+        return OpenGLContextProxy.OpenGLContextProxy()
 
     @classmethod
     def register(self):
@@ -96,14 +108,15 @@ class Bindings:
         qmlRegisterSingletonType(OutputDeviceManagerProxy.OutputDeviceManagerProxy, "UM", 1, 1, "OutputDeviceManager", OutputDeviceManagerProxy.createOutputDeviceManagerProxy)
 
         # Additions after 2.1. Uses API version 1.2
-        qmlRegisterType(UM.Settings.Models.SettingDefinitionsModel, "UM", 1, 2, "SettingDefinitionsModel")
-        qmlRegisterType(UM.Settings.Models.DefinitionContainersModel, "UM", 1, 2, "DefinitionContainersModel")
-        qmlRegisterType(UM.Settings.Models.InstanceContainersModel, "UM", 1, 2, "InstanceContainersModel")
-        qmlRegisterType(UM.Settings.Models.ContainerStacksModel, "UM", 1, 2, "ContainerStacksModel")
-        qmlRegisterType(UM.Settings.Models.SettingPropertyProvider, "UM", 1, 2, "SettingPropertyProvider")
-        qmlRegisterType(UM.Settings.Models.SettingPreferenceVisibilityHandler, "UM", 1, 2, "SettingPreferenceVisibilityHandler")
-        qmlRegisterType(UM.Settings.Models.ContainerPropertyProvider, "UM", 1, 2, "ContainerPropertyProvider")
+        qmlRegisterType(SettingDefinitionsModel, "UM", 1, 2, "SettingDefinitionsModel")
+        qmlRegisterType(DefinitionContainersModel, "UM", 1, 2, "DefinitionContainersModel")
+        qmlRegisterType(InstanceContainersModel, "UM", 1, 2, "InstanceContainersModel")
+        qmlRegisterType(ContainerStacksModel, "UM", 1, 2, "ContainerStacksModel")
+        qmlRegisterType(SettingPropertyProvider, "UM", 1, 2, "SettingPropertyProvider")
+        qmlRegisterType(SettingPreferenceVisibilityHandler, "UM", 1, 2, "SettingPreferenceVisibilityHandler")
+        qmlRegisterType(ContainerPropertyProvider, "UM", 1, 2, "ContainerPropertyProvider")
         qmlRegisterType(MeshListModel.MeshListModel, "UM", 1, 2, "MeshListModel")
 
         # Additions after 2.3;
         qmlRegisterSingletonType(WorkspaceFileHandler, "UM", 1, 3, "WorkspaceFileHandler", WorkspaceFileHandler.getInstance)
+        qmlRegisterSingletonType(OpenGLContextProxy.OpenGLContextProxy, "UM", 1, 3, "OpenGLContextProxy", Bindings.createOpenGLContextProxy)

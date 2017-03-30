@@ -1,10 +1,10 @@
 # Copyright (c) 2015 Ultimaker B.V.
 # Uranium is released under the terms of the AGPLv3 or higher.
 
-from PyQt5.QtCore import QObject, pyqtSlot, pyqtProperty, pyqtSignal, QCoreApplication, QUrl, QSizeF
+from PyQt5.QtCore import QObject, pyqtProperty, pyqtSignal, QCoreApplication, QUrl, QSizeF
 from PyQt5.QtGui import QColor, QFont, QFontMetrics, QFontDatabase, QFontInfo
 from PyQt5.QtQml import QQmlComponent, QQmlContext
-
+from UM.FlameProfiler import pyqtSlot
 import json
 import os
 import os.path
@@ -205,6 +205,16 @@ class Theme(QObject):
             "line": QSizeF(self._em_width, self._em_height)
         }
 
-def createTheme(engine, script_engine):
-    return Theme(engine)
+    ##  Get the singleton instance for this class.
+    @classmethod
+    def getInstance(cls, engine = None):
+        # Note: Explicit use of class name to prevent issues with inheritance.
+        if Theme.__instance is None:
+            Theme.__instance = cls(engine)
+        return Theme.__instance
+
+    __instance = None   # type: 'Theme'
+
+def createTheme(engine, script_engine = None):
+    return Theme.getInstance(engine)
 

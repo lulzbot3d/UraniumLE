@@ -12,7 +12,10 @@ from UM.Mesh.MeshFileHandler import MeshFileHandler
 from UM.Resources import Resources
 from UM.Operations.OperationStack import OperationStack
 from UM.Event import CallFunctionEvent
-from UM.Signal import Signal, signalemitter
+from UM.Settings.ContainerRegistry import ContainerRegistry
+import UM.Settings.ContainerStack
+import UM.Settings.InstanceContainer
+from UM.Signal import Signal, signalemitter, SignalQueue
 from UM.Logger import Logger
 from UM.Preferences import Preferences
 from UM.OutputDevice.OutputDeviceManager import OutputDeviceManager
@@ -47,8 +50,8 @@ class Application():
         os.putenv("UBUNTU_MENUPROXY", "0")  # For Ubuntu Unity this makes Qt use its own menu bar rather than pass it on to Unity.
 
         Signal._app = self
+        Signal._signalQueue = self
         Resources.ApplicationIdentifier = name
-        i18nCatalog.setApplication(self)
 
         Resources.addSearchPath(os.path.join(os.path.dirname(sys.executable), "resources"))
         Resources.addSearchPath(os.path.join(Application.getInstallPrefix(), "share", "uranium", "resources"))
@@ -60,6 +63,7 @@ class Application():
         self._main_thread = threading.current_thread()
 
         super().__init__()  # Call super to make multiple inheritance work.
+        i18nCatalog.setApplication(self)
 
         self._renderer = None
 
@@ -87,7 +91,7 @@ class Application():
 
         self._required_plugins = []
 
-        self._operation_stack = OperationStack()
+        self._operation_stack = OperationStack(self.getController())
 
         self._plugin_registry = PluginRegistry.getInstance()
 
@@ -109,7 +113,9 @@ class Application():
 
         self._plugin_registry.setApplication(self)
 
-        UM.Settings.ContainerRegistry.setApplication(self)
+        ContainerRegistry.setApplication(self)
+        UM.Settings.InstanceContainer.setContainerRegistry(self.getContainerRegistry())
+        UM.Settings.ContainerStack.setContainerRegistry(self.getContainerRegistry())
 
         self._parsed_command_line = None
         self.parseCommandLine()
@@ -121,6 +127,8 @@ class Application():
 
         self._global_container_stack = None
 
+    def getContainerRegistry(self):
+        return ContainerRegistry.getInstance()
 
     ##  Emitted when the application window was closed and we need to shut down the application
     applicationShuttingDown = Signal()
@@ -148,6 +156,10 @@ class Application():
     #   \returns version \type{string}
     def getVersion(self):
         return self._version
+
+    @classmethod
+    def getStaticVersion(cls):
+        return "unknown"
 
     ##  Get the buildtype of the application
     #   \returns version \type{string}
@@ -181,6 +193,12 @@ class Application():
     ##  Hide message by ID (as provided by built-in id function)
     #   \param message_id \type{long}
     def hideMessageById(self, message_id):
+        # If a user and Cura tries to close same message dialog simultaneously, message_id could become an empty
+        # string, and then Cura will raise an error when trying to do "int(message_id)".
+        # So we check the message_id here.
+        if not message_id:
+            return
+
         found_message = None
         with self._message_lock:
             for message in self._visible_messages:
@@ -212,11 +230,6 @@ class Application():
     #   \returns application_name \type{string}
     def getApplicationName(self):
         return self._application_name
-
-    ##  Set name of the application.
-    #   \param application_name \type{string}
-    def setApplicationName(self, application_name):
-        self._application_name = application_name
 
     def getApplicationLanguage(self):
         override_lang = os.getenv("URANIUM_LANGUAGE")
@@ -320,11 +333,6 @@ class Application():
 
     def parseCommandLine(self):
         parser = argparse.ArgumentParser(prog = self.getApplicationName()) #pylint: disable=bad-whitespace
-        parser.add_argument("--version", action="version", version="%(prog)s {0}".format(self.getVersion()))
-        parser.add_argument("--external-backend",
-                            dest="external-backend",
-                            action="store_true", default=False,
-                            help="Use an externally started backend instead of starting it automatically.")
         self.addCommandLineOptions(parser)
 
         self._parsed_command_line = vars(parser.parse_args())
@@ -332,8 +340,13 @@ class Application():
     ##  Can be overridden to add additional command line options to the parser.
     #
     #   \param parser \type{argparse.ArgumentParser} The parser that will parse the command line.
-    def addCommandLineOptions(self, parser):
-        pass
+    @classmethod
+    def addCommandLineOptions(cls, parser):
+        parser.add_argument("--version", action="version", version="%(prog)s {0}".format(cls.getStaticVersion()))
+        parser.add_argument("--external-backend",
+                            dest="external-backend",
+                            action="store_true", default=False,
+                            help="Use an externally started backend instead of starting it automatically. This is a debug feature to make it possible to run the engine with debug options enabled.")
 
     def addExtension(self, extension):
         self._extensions.append(extension)
@@ -348,4 +361,5 @@ class Application():
         else:
             return os.path.abspath(os.path.join(os.path.dirname(sys.executable), ".."))
 
-    _instance = None
+    _instance = None    # type: Application
+

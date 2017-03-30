@@ -148,7 +148,7 @@ Item
             height: UM.Theme.getSize("setting_control").height;
             text: "X";
             font: UM.Theme.getFont("default");
-            color: "red"
+            color: UM.Theme.getColor("x_axis");
             verticalAlignment: Text.AlignVCenter;
         }
 
@@ -157,7 +157,7 @@ Item
             height: UM.Theme.getSize("setting_control").height;
             text: "Y";
             font: UM.Theme.getFont("default");
-            color: "green"
+            color: UM.Theme.getColor("z_axis"); // This is intentional. The internal axis are switched.
             verticalAlignment: Text.AlignVCenter;
         }
 
@@ -166,7 +166,7 @@ Item
             height: UM.Theme.getSize("setting_control").height;
             text: "Z";
             font: UM.Theme.getFont("default");
-            color: "blue"
+            color: UM.Theme.getColor("y_axis"); // This is intentional. The internal axis are switched.
             verticalAlignment: Text.AlignVCenter;
         }
 

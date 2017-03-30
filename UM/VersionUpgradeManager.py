@@ -5,10 +5,10 @@ import collections #For deque, for breadth-first search and to track tasks, and 
 import os #To get the configuration file names and to rename files.
 import traceback
 
+from UM.Application import Application
 from UM.Logger import Logger
 from UM.PluginRegistry import PluginRegistry #To find plug-ins.
 from UM.Resources import Resources #To load old versions from.
-import UM.Application #To get the name of the application for a message.
 import UM.i18n #To translate the "upgrade succeeded" message.
 import UM.Message #To show the "upgrade succeeded" message.
 import UM.MimeTypeDatabase #To know how to save the resulting files.
@@ -45,7 +45,7 @@ UpgradeTask = collections.namedtuple("UpgradeTask", ["storage_path", "file_name"
 #   the user manually retrieves the files.
 class VersionUpgradeManager:
     ##  The singleton instance of this class.
-    __instance = None
+    __instance = None   # type: VersionUpgradeManager
 
     ##  Gets the instance of the VersionUpgradeManager, or creates one.
     @classmethod
@@ -107,7 +107,7 @@ class VersionUpgradeManager:
             self._upgradeFile(upgrade_task.storage_path, upgrade_task.file_name, upgrade_task.configuration_type) #Upgrade this file.
 
         if upgraded:
-            message = UM.Message(text=catalogue.i18nc("@info:version-upgrade", "A configuration from an older version of {0} was imported.", UM.Application.getInstance().getApplicationName()))
+            message = UM.Message.Message(text=catalogue.i18nc("@info:version-upgrade", "A configuration from an older version of {0} was imported.", Application.getInstance().getApplicationName()))
             message.show()
         return upgraded
 
@@ -201,28 +201,25 @@ class VersionUpgradeManager:
     #   \param directory The directory to read the files from.
     #   \return The filename of each file relative to the specified directory.
     def _getFilesInDirectory(self, directory):
-        result = []
-        for (path, directory_names, filenames) in os.walk(directory, topdown=True):
+        for (path, directory_names, filenames) in os.walk(directory, topdown = True):
             directory_names[:] = [] # Only go to one level.
             for filename in filenames:
                 relative_path = os.path.relpath(path, directory)
-                result.append(os.path.join(relative_path, filename))
-        return result
+                yield os.path.join(relative_path, filename)
 
     ##  Gets all files that need to be upgraded.
     #
-    #   \return A list of UpgradeTasks of files to upgrade.
+    #   \return A sequence of UpgradeTasks of files to upgrade.
     def _getUpgradeTasks(self):
-        result = []
         storage_path_prefixes = set()
         storage_path_prefixes.add(Resources.getConfigStoragePath())
+        storage_path_prefixes.add(Resources.getDataStoragePath())
         for old_configuration_type, storage_paths in self._storage_paths.items():
             for prefix in storage_path_prefixes:
                 for storage_path in storage_paths:
                     path = os.path.join(prefix, storage_path)
                     for configuration_file in self._getFilesInDirectory(path):
-                        result.append(UpgradeTask(storage_path = path, file_name = configuration_file, configuration_type = old_configuration_type))
-        return result
+                        yield UpgradeTask(storage_path = path, file_name = configuration_file, configuration_type = old_configuration_type)
 
     ##  Stores an old version of a configuration file away.
     #
@@ -291,7 +288,7 @@ class VersionUpgradeManager:
         configuration_type = old_configuration_type
 
         try:
-            mime_type = UM.MimeTypeDatabase.getMimeTypeForFile(configuration_file)  # Get the actual MIME type object, from the name.
+            mime_type = UM.MimeTypeDatabase.MimeTypeDatabase.getMimeTypeForFile(configuration_file)  # Get the actual MIME type object, from the name.
         except UM.MimeTypeDatabase.MimeTypeNotFoundError:
             return False
 
@@ -307,13 +304,15 @@ class VersionUpgradeManager:
             new_files_data = []
             for file_idx, file_data in enumerate(files_data):
                 try:
-                    this_filenames_without_extension, this_files_data = upgrade_step(file_data, filenames_without_extension[file_idx])
+                    upgrade_step_result = upgrade_step(file_data, filenames_without_extension[file_idx])
                 except Exception as e: #Upgrade failed due to a coding error in the plug-in.
                     Logger.logException("w", "Exception in %s upgrade with %s: %s", old_configuration_type,
                                         upgrade_step.__module__, traceback.format_exc() )
                     return False
-                if not this_files_data: #Upgrade failed.
-                    Logger.log("w", "Unable to upgrade the file %s. Skipping it.", filenames_without_extension[file_idx])
+                if upgrade_step_result:
+                    this_filenames_without_extension, this_files_data = upgrade_step_result
+                else: #Upgrade failed.
+                    Logger.log("w", "Unable to upgrade the file %s with %s.%s. Skipping it.", filenames_without_extension[file_idx], upgrade_step.__module__, upgrade_step.__name__)
                     return False
                 new_filenames_without_extension += this_filenames_without_extension
                 new_files_data += this_files_data
@@ -329,7 +328,7 @@ class VersionUpgradeManager:
             #Finding out where to store these files.
             resource_type, mime_type = self._current_versions[(configuration_type, version)]
             storage_path = Resources.getStoragePathForType(resource_type)
-            mime_type = UM.MimeTypeDatabase.getMimeType(mime_type) #Get the actual MIME type object, from the name.
+            mime_type = UM.MimeTypeDatabase.MimeTypeDatabase.getMimeType(mime_type) #Get the actual MIME type object, from the name.
             if mime_type.preferredSuffix:
                 extension = "." + mime_type.preferredSuffix
             elif mime_type.suffixes:

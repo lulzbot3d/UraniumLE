@@ -7,6 +7,8 @@ from UM.Application import Application
 from UM.Scene.Selection import Selection
 from UM.Message import Message
 from UM.OutputDevice import OutputDeviceError
+from UM.Logger import Logger
+
 
 class OutputDeviceManagerProxy(QObject):
     def __init__(self, parent = None):
@@ -120,6 +122,8 @@ class OutputDeviceManagerProxy(QObject):
         except OutputDeviceError.WriteRequestFailedError as e:
             message = Message(str(e))
             message.show()
+        except Exception as e:
+            Logger.logException("e", "Unable to write to file %s: %s", file_name, e)
 
 
 def createOutputDeviceManagerProxy(engine, script_engine):
