@@ -15,7 +15,10 @@ if (NOT MINIMUM_PYTHON_VERSION)
 endif()
 
 set(MINIMUM_PYTHON_VERSION ${MINIMUM_PYTHON_VERSION} CACHE STRING "Minimum Python Version")
-find_package(PythonInterp ${MINIMUM_PYTHON_VERSION} REQUIRED)
+
+if (NOT BUILD_PYTHON)
+    find_package(PythonInterp ${MINIMUM_PYTHON_VERSION} REQUIRED)
+endif()
 
 # # Checks using pylint
 # Note that we use exit 0 here to not mark the build as a failure on check failure
