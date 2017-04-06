@@ -1,9 +1,10 @@
-# Copyright (c) 2015 Ultimaker B.V.
+# Copyright (c) 2016 Ultimaker B.V.
 # Uranium is released under the terms of the AGPLv3 or higher.
 
 import sys
 import traceback
 import inspect
+from typing import List
 
 from UM.PluginObject import PluginObject
 
@@ -42,24 +43,32 @@ class Logger:
     def log(cls, log_type, message, *args, **kwargs):
         caller_frame = inspect.currentframe().f_back
         frame_info = inspect.getframeinfo(caller_frame)
+        try:
+            if args or kwargs: # Only format the message if there are args
+                new_message = message.format(*args, **kwargs)
 
-        if args or kwargs: # Only format the message if there are args
-            new_message = message.format(*args, **kwargs)
+                if new_message == message:
+                    new_message = message % args # Replace all the %s with the variables. Python formatting is magic.
 
-            if new_message == message:
-                new_message = message % args # Replace all the %s with the variables. Python formatting is magic.
+                message = new_message
 
-            message = new_message
+            message = "{class_name}.{function} [{line}]: {message}".format(class_name = caller_frame.f_globals["__name__"], function = frame_info.function, line = frame_info.lineno, message = message)
 
-        message = "{class_name}.{function} [{line}]: {message}".format(class_name = caller_frame.f_globals["__name__"], function = frame_info.function, line = frame_info.lineno, message = message)
-
-        for logger in cls.__loggers:
-            logger.log(log_type, message)
+            for logger in cls.__loggers:
+                logger.log(log_type, message)
+        except Exception as e:
+            print("FAILED TO LOG: ", log_type, message, e)
 
         if not cls.__loggers:
             print(message)
 
-    ##
+    ##  Logs that an exception occurs.
+    #
+    #   It'll include the traceback of the exception in the log message. The
+    #   traceback is obtained from the current execution state.
+    #
+    #   \param log_type The importance level of the log (warning, info, etc.).
+    #   \param message The message to go along with the exception.
     @classmethod
     def logException(cls, log_type, message, *args):
         cls.log(log_type, "Exception: " + message, *args)
@@ -68,10 +77,13 @@ class Logger:
         for line in traceback.format_exc().rstrip().split("\n"):
             cls.log(log_type, line)
 
-    __loggers = []
+    __loggers = []  # type: List[Logger]
 
 ##  Abstract base class for log output classes.
 class LogOutput(PluginObject):
+    ##  Create the log output.
+    #
+    #   This is called during the plug-in loading stage.
     def __init__(self):
         super().__init__() # Call super to make multiple inheritance work.
         self._name = type(self).__name__ # Set name of the logger to it's class name

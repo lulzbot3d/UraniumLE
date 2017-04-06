@@ -1,5 +1,7 @@
 # Copyright (c) 2016 Ultimaker B.V.
 # Uranium is released under the terms of the AGPLv3 or higher.
+from typing import List
+
 from UM.Qt.ListModel import ListModel
 
 from PyQt5.QtCore import pyqtProperty, Qt, pyqtSignal, pyqtSlot, QUrl
@@ -9,6 +11,7 @@ from UM.Settings.ContainerRegistry import ContainerRegistry
 from UM.Settings.InstanceContainer import InstanceContainer
 
 import os
+from typing import Dict
 
 from UM.i18n import i18nCatalog
 catalog = i18nCatalog("uranium")
@@ -38,7 +41,8 @@ class InstanceContainersModel(ListModel):
         ContainerRegistry.getInstance().containerAdded.connect(self._onContainerChanged)
         ContainerRegistry.getInstance().containerRemoved.connect(self._onContainerChanged)
 
-        self._filter_dicts = [{}]    # List of fitlers for queries. The result is the union of the each list of results.
+        # List of fitlers for queries. The result is the union of the each list of results.
+        self._filter_dicts = [{}]  # type: List[Dict[str,str]]
         self._update()
 
     ##  Handler for container added / removed events from registry
@@ -104,12 +108,12 @@ class InstanceContainersModel(ListModel):
 
     ##  Set the filter of this model based on a string.
     #   \param filter_dict \type{Dict} Dictionary to do the filtering by.
-    def setFilter(self, filter_dict):
+    def setFilter(self, filter_dict: Dict[str, str]) -> None:
         self.setFilterList([filter_dict])
 
     filterChanged = pyqtSignal()
     @pyqtProperty("QVariantMap", fset = setFilter, notify = filterChanged)
-    def filter(self):
+    def filter(self) -> Dict[str, str]:
         return self._filter_dicts[0] if len(self._filter_dicts) !=0 else None
 
     ##  Set a list of filters to use when fetching containers.

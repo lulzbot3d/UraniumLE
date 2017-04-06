@@ -19,6 +19,8 @@ class AxisAlignedBox:
             swapped_maximum = Vector(max(minimum.x, maximum.x), max(minimum.y, maximum.y), max(minimum.z, maximum.z))
             minimum = swapped_minimum
             maximum = swapped_maximum
+        minimum.setRoundDigits(3)
+        maximum.setRoundDigits(3)
         self._min = minimum
         self._max = maximum
 
@@ -161,5 +163,5 @@ class AxisAlignedBox:
         return "AxisAlignedBox(min = {0}, max = {1})".format(self._min, self._max)
 
     # This field is filled in below. This is needed to help static analysis tools (read: PyCharm)
-    Null = None
+    Null = None # type: AxisAlignedBox
 AxisAlignedBox.Null = AxisAlignedBox()
