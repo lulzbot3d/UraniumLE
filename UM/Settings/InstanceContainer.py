@@ -4,17 +4,20 @@
 import configparser
 import io
 import copy
+from typing import Dict
+from typing import List
 
+from UM.Settings.Interfaces import DefinitionContainerInterface
 from UM.Signal import Signal, signalemitter
 from UM.PluginObject import PluginObject
 from UM.Logger import Logger
 from UM.MimeTypeDatabase import MimeTypeDatabase, MimeType
 
-import UM.Settings.ContainerRegistry
+from UM.Settings.Interfaces import ContainerRegistryInterface
+from UM.Settings.DefinitionContainer import DefinitionContainer
 
-from . import ContainerInterface
-from . import SettingInstance
-from . import SettingRelation
+from UM.Settings.Interfaces import ContainerInterface
+from UM.Settings.SettingInstance import SettingInstance
 
 class InvalidInstanceError(Exception):
     pass
@@ -37,7 +40,7 @@ MimeTypeDatabase.addMimeType(
 #
 #
 @signalemitter
-class InstanceContainer(ContainerInterface.ContainerInterface, PluginObject):
+class InstanceContainer(ContainerInterface, PluginObject):
     Version = 2
 
     ##  Constructor
@@ -46,15 +49,17 @@ class InstanceContainer(ContainerInterface.ContainerInterface, PluginObject):
     def __init__(self, container_id, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._id = str(container_id)
-        self._name = container_id
-        self._definition = None
+        self._id = str(container_id)    # type: str
+        self._name = container_id       # type: str
+        self._definition = None         # type: DefinitionContainerInterface
         self._metadata = {}
-        self._instances = {}
+        self._instances = {}            # type: Dict[str, SettingInstance]
         self._read_only = False
         self._dirty = False
         self._path = ""
         self._postponed_emits = []
+
+        self._cached_values = None
 
     def __hash__(self):
         # We need to re-implement the hash, because we defined the __eq__ operator.
@@ -62,7 +67,20 @@ class InstanceContainer(ContainerInterface.ContainerInterface, PluginObject):
         # the same hash. The way we use it, it is acceptable for objects with the same value to return a different hash.
         return id(self)
 
+    def __deepcopy__(self, memo):
+        new_container = self.__class__(self._id)
+        new_container._name = self._name
+        new_container._definition = self._definition
+        new_container._metadata = copy.deepcopy(self._metadata, memo)
+        new_container._instances = copy.deepcopy(self._instances, memo)
+        new_container._read_only = self._read_only
+        new_container._dirty = self._dirty
+        new_container._path = copy.deepcopy(self._path, memo)
+        new_container._cached_values = copy.deepcopy(self._cached_values, memo)
+        return new_container
+
     def __eq__(self, other):
+        self._instantiateCachedValues()
         if type(self) != type(other):
             return False  # Type mismatch
 
@@ -94,10 +112,16 @@ class InstanceContainer(ContainerInterface.ContainerInterface, PluginObject):
     ##  \copydoc ContainerInterface::getId
     #
     #   Reimplemented from ContainerInterface
-    def getId(self):
+    def getId(self) -> str:
         return self._id
 
     id = property(getId)
+
+    def setCachedValues(self, cached_values):
+        if not self._instances:
+            self._cached_values = cached_values
+        else:
+            Logger.log("w", "Unable set values to be lazy loaded when values are already loaded ")
 
     ##  \copydoc ContainerInterface::getPath.
     #
@@ -114,7 +138,7 @@ class InstanceContainer(ContainerInterface.ContainerInterface, PluginObject):
     ##  \copydoc ContainerInterface::getName
     #
     #   Reimplemented from ContainerInterface
-    def getName(self):
+    def getName(self) -> str:
         return self._name
 
     name = property(getName)
@@ -130,7 +154,7 @@ class InstanceContainer(ContainerInterface.ContainerInterface, PluginObject):
     ##  \copydoc ContainerInterface::isReadOnly
     #
     #   Reimplemented from ContainerInterface
-    def isReadOnly(self):
+    def isReadOnly(self) -> bool:
         return self._read_only
 
     def setReadOnly(self, read_only):
@@ -199,6 +223,7 @@ class InstanceContainer(ContainerInterface.ContainerInterface, PluginObject):
     #
     #   Reimplemented from ContainerInterface
     def getProperty(self, key, property_name):
+        self._instantiateCachedValues()
         if key in self._instances:
             try:
                 return getattr(self._instances[key], property_name)
@@ -211,6 +236,7 @@ class InstanceContainer(ContainerInterface.ContainerInterface, PluginObject):
     #
     #   Reimplemented from ContainerInterface.
     def hasProperty(self, key, property_name):
+        self._instantiateCachedValues()
         return key in self._instances and hasattr(self._instances[key], property_name)
 
     ##  Set the value of a property of a SettingInstance.
@@ -223,10 +249,11 @@ class InstanceContainer(ContainerInterface.ContainerInterface, PluginObject):
     #   \param property_name \type{string} The name of the property to set.
     #   \param property_value The new value of the property.
     #   \param container The container to use for retrieving values when changing the property triggers property updates. Defaults to None, which means use the current container.
+    #   \param set_from_cache Flag to indicate that the property was set from cache. This triggers the behavior that the read_only and setDirty are ignored.
     #
     #   \note If no definition container is set for this container, new instances cannot be created and this method will do nothing.
-    def setProperty(self, key, property_name, property_value, container = None):
-        if self._read_only:
+    def setProperty(self, key, property_name, property_value, container = None, set_from_cache = False):
+        if self._read_only and not set_from_cache:
             Logger.log(
                 "w",
                 "Tried to setProperty [%s] with value [%s] with key [%s] on read-only object [%s]" % (
@@ -242,19 +269,22 @@ class InstanceContainer(ContainerInterface.ContainerInterface, PluginObject):
                 Logger.log("w", "Tried to set value of setting %s that has no instance in container %s or its definition %s", key, self._name, self._definition.getName())
                 return
 
-            instance = SettingInstance.SettingInstance(setting_definition[0], self)
+            instance = SettingInstance(setting_definition[0], self)
             instance.propertyChanged.connect(self.propertyChanged)
             self._instances[instance.definition.key] = instance
 
         self._instances[key].setProperty(property_name, property_value, container)
 
-        self.setDirty(True)
-
+        if not set_from_cache:
+            self.setDirty(True)
 
     propertyChanged = Signal()
 
+    metaDataChanged = Signal()
+
     ##  Remove all instances from this container.
     def clear(self):
+        self._instantiateCachedValues()
         all_keys = self._instances.copy()
         for key in all_keys:
             self.removeInstance(key, postpone_emit=True)
@@ -263,6 +293,9 @@ class InstanceContainer(ContainerInterface.ContainerInterface, PluginObject):
     ##  Get all the keys of the instances of this container
     #   \returns list of keys
     def getAllKeys(self):
+        if self._cached_values:
+            # If we only want the keys and the actual values are still cached, just get the keys from the cache.
+            return self._cached_values.keys()
         return [key for key in self._instances]
 
     ##  Create a new InstanceContainer with the same contents as this container
@@ -271,7 +304,8 @@ class InstanceContainer(ContainerInterface.ContainerInterface, PluginObject):
     #   \param new_name \type{str} The new name of the container. Defaults to None to indicate the name should not change.
     #
     #   \return A new InstanceContainer with the same contents as this container.
-    def duplicate(self, new_id, new_name = None):
+    def duplicate(self, new_id: str, new_name: str = None):
+        self._instantiateCachedValues()
         new_container = self.__class__(new_id)
         if new_name:
             new_container.setName(new_name)
@@ -294,7 +328,8 @@ class InstanceContainer(ContainerInterface.ContainerInterface, PluginObject):
     ##  \copydoc ContainerInterface::serialize
     #
     #   Reimplemented from ContainerInterface
-    def serialize(self):
+    def serialize(self) -> str:
+        self._instantiateCachedValues()
         parser = configparser.ConfigParser(interpolation = None)
 
         if not self._definition:
@@ -324,7 +359,7 @@ class InstanceContainer(ContainerInterface.ContainerInterface, PluginObject):
     ##  \copydoc ContainerInterface::deserialize
     #
     #   Reimplemented from ContainerInterface
-    def deserialize(self, serialized):
+    def deserialize(self, serialized: str) -> None:
         parser = configparser.ConfigParser(interpolation = None)
         parser.read_string(serialized)
 
@@ -342,8 +377,8 @@ class InstanceContainer(ContainerInterface.ContainerInterface, PluginObject):
                 exception_string += " property 'version'"
             raise InvalidInstanceError(exception_string)
 
-        if parser["general"].getint("version") != self.Version:
-            raise IncorrectInstanceVersionError("Reported version {0} but expected version {1}".format(parser["general"].getint("version"), self.Version))
+        if int(parser["general"]["version"]) != self.Version:
+            raise IncorrectInstanceVersionError("Reported version {0} but expected version {1}".format(int(parser["general"]["version"]), self.Version))
 
         # Reset old data
         self._metadata = {}
@@ -352,7 +387,8 @@ class InstanceContainer(ContainerInterface.ContainerInterface, PluginObject):
         self._name = parser["general"].get("name", self._id)
 
         definition_id = parser["general"]["definition"]
-        definitions = UM.Settings.ContainerRegistry.getInstance().findDefinitionContainers(id = definition_id)
+
+        definitions = _containerRegistry.findDefinitionContainers(id = definition_id)
         if not definitions:
             raise DefinitionNotFoundError("Could not find definition {0} required for instance {1}".format(definition_id, self._id))
         self._definition = definitions[0]
@@ -361,15 +397,25 @@ class InstanceContainer(ContainerInterface.ContainerInterface, PluginObject):
             self._metadata = dict(parser["metadata"])
 
         if "values" in parser:
-            for key, value in parser["values"].items():
-                self.setProperty(key, "value", value, self._definition)
+            self._cached_values = dict(parser["values"])
 
         self._dirty = False
+
+    ##  Instance containers are lazy loaded. This function ensures that it happened.
+    def _instantiateCachedValues(self):
+        if not self._cached_values:
+            return
+
+        for key, value in self._cached_values.items():
+            self.setProperty(key, "value", value, self._definition, set_from_cache=True)
+
+        self._cached_values = None
 
     ##  Find instances matching certain criteria.
     #
     #   \param kwargs \type{dict} A dictionary of keyword arguments with key-value pairs that should match properties of the instances.
-    def findInstances(self, **kwargs):
+    def findInstances(self, **kwargs) -> List[SettingInstance]:
+        self._instantiateCachedValues()
         result = []
         for setting_key, instance in self._instances.items():
             for key, value in kwargs.items():
@@ -382,14 +428,16 @@ class InstanceContainer(ContainerInterface.ContainerInterface, PluginObject):
 
     ##  Get an instance by key
     #
-    def getInstance(self, key):
+    def getInstance(self, key: str) -> SettingInstance:
+        self._instantiateCachedValues()
         if key in self._instances:
             return self._instances[key]
 
         return None
 
     ##  Add a new instance to this container.
-    def addInstance(self, instance):
+    def addInstance(self, instance: SettingInstance) -> None:
+        self._instantiateCachedValues()
         key = instance.definition.key
         if key in self._instances:
             return
@@ -400,7 +448,8 @@ class InstanceContainer(ContainerInterface.ContainerInterface, PluginObject):
 
     ##  Remove an instance from this container.
     #   /param postpone_emit postpone emit until calling sendPostponedEmits
-    def removeInstance(self, key, postpone_emit=False):
+    def removeInstance(self, key: str, postpone_emit: bool=False) -> None:
+        self._instantiateCachedValues()
         if key not in self._instances:
             return
 
@@ -428,14 +477,14 @@ class InstanceContainer(ContainerInterface.ContainerInterface, PluginObject):
         instance.updateRelations(self)
 
     ##  Get the DefinitionContainer used for new instance creation.
-    def getDefinition(self):
+    def getDefinition(self) -> DefinitionContainerInterface:
         return self._definition
 
     ##  Set the DefinitionContainer to use for new instance creation.
     #
     #   Since SettingInstance needs a SettingDefinition to work properly, we need some
     #   way of figuring out what SettingDefinition to use when creating a new SettingInstance.
-    def setDefinition(self, definition):
+    def setDefinition(self, definition: DefinitionContainerInterface):
         self._definition = definition
 
     def __lt__(self, other):
@@ -454,3 +503,9 @@ class InstanceContainer(ContainerInterface.ContainerInterface, PluginObject):
         while self._postponed_emits:
             signal, signal_arg = self._postponed_emits.pop(0)
             signal.emit(*signal_arg)
+
+_containerRegistry = None   # type:  ContainerRegistryInterface
+
+def setContainerRegistry(registry: ContainerRegistryInterface) -> None:
+    global _containerRegistry
+    _containerRegistry = registry

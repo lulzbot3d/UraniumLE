@@ -58,7 +58,11 @@ class Platform(SceneNode.SceneNode):
             container = self._global_container_stack.findContainer({ "platform": "*" })
             if container:
                 mesh_file = container.getMetaDataEntry("platform")
-                path = Resources.getPath(Resources.Meshes, mesh_file)
+                try:
+                    path = Resources.getPath(Resources.Meshes, mesh_file)
+                except FileNotFoundError:
+                    Logger.log("w", "Unable to find the platform mesh %s", mesh_file)
+                    path = ""
 
                 if self._load_platform_job:
                     # This prevents a previous load job from triggering texture loads.
@@ -89,14 +93,14 @@ class Platform(SceneNode.SceneNode):
                 handle_size = 3
                 mb = MeshBuilder()
 
-                mb.addCube(line_wid, line_len, line_wid, Vector(-machine_width/2, line_len/2, machine_depth/2), ToolHandle.YAxisColor)
-                mb.addPyramid(handle_size, handle_size, handle_size, center=Vector(-machine_width/2, line_len, machine_depth/2), color=ToolHandle.YAxisColor)
+                mb.addCube(line_wid, line_len, line_wid, Vector(-machine_width/2, line_len/2, machine_depth/2), ToolHandle._y_axis_color)
+                mb.addPyramid(handle_size, handle_size, handle_size, center=Vector(-machine_width/2, line_len, machine_depth/2), color=ToolHandle._y_axis_color)
 
-                mb.addCube(line_len, line_wid, line_wid, Vector(line_len/2-machine_width/2, 0, machine_depth/2), ToolHandle.XAxisColor)
-                mb.addPyramid(handle_size, handle_size, handle_size, center=Vector(line_len-machine_width/2, 0, machine_depth/2), color=ToolHandle.XAxisColor, axis = Vector.Unit_Z, angle = 90)
+                mb.addCube(line_len, line_wid, line_wid, Vector(line_len/2-machine_width/2, 0, machine_depth/2), ToolHandle._x_axis_color)
+                mb.addPyramid(handle_size, handle_size, handle_size, center=Vector(line_len-machine_width/2, 0, machine_depth/2), color=ToolHandle._x_axis_color, axis = Vector.Unit_Z, angle = 90)
 
-                mb.addCube(line_wid, line_wid, line_len, Vector(-machine_width/2, 0, -line_len/2+machine_depth/2), ToolHandle.ZAxisColor)
-                mb.addPyramid(handle_size, handle_size, handle_size, center=Vector(-machine_width/2, 0, -line_len+machine_depth/2), color=ToolHandle.ZAxisColor, axis = Vector.Unit_X, angle = 90)
+                mb.addCube(line_wid, line_wid, line_len, Vector(-machine_width/2, 0, -line_len/2+machine_depth/2), ToolHandle._z_axis_color)
+                mb.addPyramid(handle_size, handle_size, handle_size, center=Vector(-machine_width/2, 0, -line_len+machine_depth/2), color=ToolHandle._z_axis_color, axis = Vector.Unit_X, angle = 90)
 
                 self.setMeshData(mb.build())
                 self.setPosition(Vector(0.0, 0.0, 0.0))

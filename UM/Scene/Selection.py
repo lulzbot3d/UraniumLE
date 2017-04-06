@@ -1,5 +1,6 @@
 # Copyright (c) 2015 Ultimaker B.V.
 # Uranium is released under the terms of the AGPLv3 or higher.
+from typing import List
 
 from UM.Signal import Signal
 from UM.Math.Vector import Vector
@@ -138,5 +139,5 @@ class Selection:
 
         cls.selectionCenterChanged.emit()
 
-    __selection = []
+    __selection = []    # type: List[SceneNode]
     __selection_center = Vector(0, 0, 0)

@@ -4,19 +4,13 @@
 import pytest
 import os
 
-import UM.Settings
-
+import UM.Settings.InstanceContainer
+# import UM.Settings.SettingDefinition
 from UM.Resources import Resources
 Resources.addSearchPath(os.path.dirname(os.path.abspath(__file__)))
 
-@pytest.fixture
-def container_registry():
-    UM.Settings.ContainerRegistry._ContainerRegistry__instance = None
-    UM.Settings.ContainerRegistry.getInstance().load()
-    return UM.Settings.ContainerRegistry.getInstance()
-
 def test_create():
-    container = UM.Settings.InstanceContainer("test")
+    container = UM.Settings.InstanceContainer.InstanceContainer("test")
     assert container.getId() == "test"
 
 ##  Test whether setting a property on an instance correctly updates dependencies.
@@ -25,9 +19,9 @@ def test_create():
 #   from InstanceContainer that is not easily captured in a Mock object. Therefore
 #   it is included here.
 def test_instance_setProperty():
-    instance_container = UM.Settings.InstanceContainer("test")
+    instance_container = UM.Settings.InstanceContainer.InstanceContainer("test")
 
-    definition1 = UM.Settings.SettingDefinition("test_0", None)
+    definition1 = UM.Settings.SettingDefinition.SettingDefinition("test_0", None)
     definition1.deserialize({
         "label": "Test 0",
         "type": "float",
@@ -36,7 +30,7 @@ def test_instance_setProperty():
         "minimum_value": "test_1 / 10",
     })
 
-    definition2 = UM.Settings.SettingDefinition("test_1", None)
+    definition2 = UM.Settings.SettingDefinition.SettingDefinition("test_1", None)
     definition2.deserialize({
         "label": "Test 1",
         "type": "float",
@@ -55,7 +49,7 @@ def test_instance_setProperty():
     definition1.relations.append(UM.Settings.SettingRelation.SettingRelation(owner = definition1, target = definition2, relation_type = UM.Settings.SettingRelation.RelationType.RequiresTarget, role = "minimum_value"))
     definition2.relations.append(UM.Settings.SettingRelation.SettingRelation(owner = definition2, target = definition1, relation_type = UM.Settings.SettingRelation.RelationType.RequiredByTarget, role = "minimum_value"))
 
-    def1_instance = UM.Settings.SettingInstance(definition1, instance_container)
+    def1_instance = UM.Settings.SettingInstance.SettingInstance(definition1, instance_container)
     instance_container.addInstance(def1_instance)
     def1_instance.setProperty("value", 20.0)
 
@@ -75,9 +69,9 @@ test_serialize_data = [
     }}, "setting_values.inst.cfg"),
 ]
 @pytest.mark.parametrize("container_data,equals_file", test_serialize_data)
-def test_serialize(container_data, equals_file, container_registry):
-    instance_container = UM.Settings.InstanceContainer("test")
-    definition = container_registry.findDefinitionContainers(id = container_data["definition"])[0]
+def test_serialize(container_data, equals_file, loaded_container_registry):
+    instance_container = UM.Settings.InstanceContainer.InstanceContainer("test")
+    definition = loaded_container_registry.findDefinitionContainers(id = container_data["definition"])[0]
     instance_container.setDefinition(definition)
 
     instance_container.setName(container_data["name"])
@@ -101,8 +95,8 @@ test_deserialize_data = [
     ("setting_values.inst.cfg", {"name": "Setting Values", "values": { "test_setting_0": 20 } }),
 ]
 @pytest.mark.parametrize("filename,expected", test_deserialize_data)
-def test_deserialize(filename, expected, container_registry):
-    instance_container = UM.Settings.InstanceContainer(filename)
+def test_deserialize(filename, expected, loaded_container_registry):
+    instance_container = UM.Settings.InstanceContainer.InstanceContainer(filename)
 
     path = Resources.getPath(Resources.InstanceContainers, filename)
     with open(path) as data:

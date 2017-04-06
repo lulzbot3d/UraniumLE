@@ -8,8 +8,8 @@ import platform
 
 from PyQt5.QtCore import Qt, QObject, QCoreApplication, QEvent, pyqtSlot, QLocale, QTranslator, QLibraryInfo, QT_VERSION_STR, PYQT_VERSION_STR
 from PyQt5.QtQml import QQmlApplicationEngine, qmlRegisterType, qmlRegisterSingletonType
-from PyQt5.QtWidgets import QApplication, QSplashScreen
-from PyQt5.QtGui import QGuiApplication, QPixmap
+from PyQt5.QtWidgets import QApplication, QSplashScreen, QMessageBox
+from PyQt5.QtGui import QGuiApplication, QPixmap, QSurfaceFormat
 from PyQt5.QtCore import QTimer
 
 from UM.Application import Application
@@ -20,9 +20,13 @@ from UM.Resources import Resources
 from UM.Logger import Logger
 from UM.Preferences import Preferences
 from UM.i18n import i18nCatalog
+from UM.View.GL.OpenGLContext import OpenGLContext
 import UM.Settings.InstanceContainer #For version upgrade to know the version number.
 import UM.Settings.ContainerStack #For version upgrade to know the version number.
 import UM.Preferences #For version upgrade to know the version number.
+import UM.VersionUpgradeManager
+
+import UM.Qt.Bindings.Theme
 
 # Raised when we try to use an unsupported version of a dependency.
 class UnsupportedVersionError(Exception):
@@ -55,22 +59,34 @@ class QtApplication(QApplication, Application):
             QCoreApplication.addLibraryPath(plugin_path)
 
         os.environ["QSG_RENDER_LOOP"] = "basic"
-        super().__init__(sys.argv, **kwargs)
 
+        super().__init__(sys.argv, **kwargs)
         self.setStyle("fusion")
 
-        self._plugins_loaded = False #Used to determine when it's safe to use the plug-ins.
+        self.setAttribute(Qt.AA_UseDesktopOpenGL)
+        major_version, minor_version, profile = OpenGLContext.detectBestOpenGLVersion()
+
+        if major_version is None and minor_version is None and profile is None:
+            Logger.log("e", "Startup failed because OpenGL version probing has failed: tried to create a 2.0 and 4.1 context. Exiting")
+            QMessageBox.critical(None, "Failed to probe OpenGL",
+                "Could not probe OpenGL. This program requires OpenGL 2.0 or higher. Please check your video card drivers.")
+            sys.exit(1)
+        else:
+            Logger.log("d", "Detected most suitable OpenGL context version: %s" % (
+                OpenGLContext.versionAsText(major_version, minor_version, profile)))
+        OpenGLContext.setDefaultFormat(major_version, minor_version, profile = profile)
+
+        self._plugins_loaded = False  # Used to determine when it's safe to use the plug-ins.
         self._main_qml = "main.qml"
         self._engine = None
         self._renderer = None
         self._main_window = None
+        self._theme = None
 
         self._shutting_down = False
         self._qml_import_paths = []
         self._qml_import_paths.append(os.path.join(os.path.dirname(sys.executable), "qml"))
         self._qml_import_paths.append(os.path.join(Application.getInstallPrefix(), "Resources", "qml"))
-
-        self.setAttribute(Qt.AA_UseDesktopOpenGL)
 
         try:
             self._splash = self._createSplashScreen()
@@ -95,13 +111,12 @@ class QtApplication(QApplication, Application):
         self.showSplashMessage(i18n_catalog.i18nc("@info:progress", "Updating configuration..."))
         upgraded = UM.VersionUpgradeManager.VersionUpgradeManager.getInstance().upgrade()
         if upgraded:
-            preferences = UM.Preferences.getInstance() #Preferences might have changed. Load them again.
+            preferences = Preferences.getInstance() #Preferences might have changed. Load them again.
                                                        #Note that the language can't be updated, so that will always revert to English.
             try:
                 preferences.readFromFile(Resources.getPath(Resources.Preferences, self._application_name + ".cfg"))
             except FileNotFoundError:
                 pass
-
 
         self.showSplashMessage(i18n_catalog.i18nc("@info:progress", "Loading preferences..."))
         try:
@@ -163,15 +178,14 @@ class QtApplication(QApplication, Application):
 
         return self._renderer
 
+    @classmethod
     def addCommandLineOptions(self, parser):
+        super().addCommandLineOptions(parser)
         parser.add_argument("--disable-textures",
                             dest="disable-textures",
                             action="store_true", default=False,
                             help="Disable Qt texture loading as a workaround for certain crashes.")
-
-    #   Overridden from QApplication::setApplicationName to call our internal setApplicationName
-    def setApplicationName(self, name):
-        Application.setApplicationName(self, name)
+        parser.add_argument("-qmljsdebugger", help="For Qt's QML debugger compatibility")
 
     mainWindowChanged = Signal()
 
@@ -182,6 +196,15 @@ class QtApplication(QApplication, Application):
         if window != self._main_window:
             self._main_window = window
             self.mainWindowChanged.emit()
+
+    def getTheme(self, *args):
+        if self._theme is None:
+            if self._engine is None:
+                Logger.log("e", "The theme cannot be accessed before the engine is initialised")
+                return None
+
+            self._theme = UM.Qt.Bindings.Theme.Theme.getInstance(self._engine)
+        return self._theme
 
     #   Handle a function that should be called later.
     def functionEvent(self, event):
