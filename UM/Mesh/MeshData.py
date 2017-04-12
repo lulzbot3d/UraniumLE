@@ -351,7 +351,7 @@ def approximateConvexHull(vertex_data, target_count):
     start_time = time()
 
     input_max = target_count * 50   # Maximum number of vertices we want to feed to the convex hull algorithm.
-    unit_size = 0.125               # Initial rounding interval. i.e. round to 0.125.
+    unit_size = 0.01               # Initial rounding interval. i.e. round to 0.01.
 
     # Round off vertices and extract the uniques until the number of vertices is below the input_max.
     while len(vertex_data) > input_max:
