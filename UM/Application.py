@@ -57,7 +57,10 @@ class Application():
         Resources.addSearchPath(os.path.join(Application.getInstallPrefix(), "share", "uranium", "resources"))
         Resources.addSearchPath(os.path.join(Application.getInstallPrefix(), "Resources", "uranium", "resources"))
         Resources.addSearchPath(os.path.join(Application.getInstallPrefix(), "Resources", self.getApplicationName(), "resources"))
-        if not hasattr(sys, "frozen"):
+        if hasattr(sys, "frozen"):
+            # Added for MAC
+            Resources.addSearchPath(os.path.join(Application.getInstallPrefix(),"Resources","cura","resources"))
+        else:
             Resources.addSearchPath(os.path.join(os.path.abspath(os.path.dirname(__file__)), "..", "resources"))
 
         self._main_thread = threading.current_thread()
@@ -74,6 +77,9 @@ class Application():
         preferences = Preferences.getInstance()
         preferences.addPreference("general/language", "en")
         preferences.addPreference("general/visible_settings", "")
+
+        # Let's try to see what are our paths:
+        Logger.log("d", "InstallPrefix: %s, ApplicationName: %s", str(Application.getInstallPrefix()), str(self.getApplicationName()))
 
         try:
             preferences.readFromFile(Resources.getPath(Resources.Preferences, self._application_name + ".cfg"))
@@ -99,6 +105,7 @@ class Application():
         self._plugin_registry.addPluginLocation(os.path.join(os.path.dirname(sys.executable), "plugins"))
         self._plugin_registry.addPluginLocation(os.path.join(Application.getInstallPrefix(), "Resources", "uranium", "plugins"))
         self._plugin_registry.addPluginLocation(os.path.join(Application.getInstallPrefix(), "Resources", self.getApplicationName(), "plugins"))
+
         # Locally installed plugins
         local_path = os.path.join(Resources.getStoragePath(Resources.Resources), "plugins")
         # Ensure the local plugins directory exists
