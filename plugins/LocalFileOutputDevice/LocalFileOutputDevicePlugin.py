@@ -123,6 +123,9 @@ class LocalFileOutputDevice(OutputDevice):
 
         # Get file name from file dialog
         file_name = dialog.selectedFiles()[0]
+        extension = "." + selected_type["extension"]
+        if not file_name.endswith(extension):
+            file_name += extension
         Logger.log("d", "Writing to [%s]..." % file_name)
         # OSX does not handle extensions with multiple periods correctly.
         if Platform.isOSX():
