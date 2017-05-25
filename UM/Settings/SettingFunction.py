@@ -3,7 +3,8 @@
 
 import ast
 import math # Imported here so it can be used easily by the setting functions.
-from typing import Any, Dict
+from typing import Any, Dict, Callable, Set, FrozenSet, NamedTuple
+
 from UM.Settings.Interfaces import ContainerInterface
 from UM.Logger import Logger
 
@@ -14,7 +15,7 @@ if MYPY:
 class IllegalMethodError(Exception):
     pass
 
-def _debug_value(value):
+def _debug_value(value: Any) -> Any:
     Logger.log("d", "Setting Function: %s", value)
     return value
 
@@ -30,14 +31,19 @@ class SettingFunction:
         self._code = code
 
         #  Keys of all settings that are referenced to in this function.
-        self._settings = frozenset()  # type: frozenset[str]
+        self._used_keys = frozenset()  # type: frozenset[str]
+        self._used_values = frozenset()
 
         self._compiled = None
-        self._valid = False
+        self._valid = False  # type: str
 
         try:
             tree = ast.parse(self._code, "eval")
-            self._settings = frozenset(_SettingExpressionVisitor().visit(tree))
+
+            result = _SettingExpressionVisitor().visit(tree)
+            self._used_keys = frozenset(result.keys)
+            self._used_values = frozenset(result.values)
+
             self._compiled = compile(self._code, repr(self), "eval")
             self._valid = True
         except (SyntaxError, TypeError) as e:
@@ -55,8 +61,8 @@ class SettingFunction:
         if not self._valid:
             return None
 
-        locals = { }    # type: Dict[str, Any]
-        for name in self._settings:
+        locals = {} # type: Dict[str, Any]
+        for name in self._used_values:
             value = value_provider.getProperty(name, "value")
             if value is None:
                 continue
@@ -88,8 +94,8 @@ class SettingFunction:
     ##  Retrieve a set of the keys (strings) of all the settings used in this function.
     #
     #   \return A set of the keys (strings) of all the settings used in this functions.
-    def getUsedSettingKeys(self):
-        return self._settings
+    def getUsedSettingKeys(self) -> FrozenSet[str]:
+        return self._used_keys
 
     def __str__(self) -> str:
         return "={0}".format(self._code)
@@ -115,45 +121,55 @@ class SettingFunction:
     #   \param name What identifier to use in the executed code.
     #   \param operator A callable that implements the actual logic to execute.
     @classmethod
-    def registerOperator(cls, name: str, operator) -> None:
+    def registerOperator(cls, name: str, operator: Callable) -> None:
         cls.__operators[name] = operator
-        _SettingExpressionVisitor._knownNames.append(name)
+        _SettingExpressionVisitor._knownNames.add(name)
 
     __operators = {
         "debug": _debug_value
     }
 
-# Helper class used to analyze a parsed function
+
+_VisitResult = NamedTuple("_VisitResult", [("values", Set[str]), ("keys", Set[str])])
+
+# Helper class used to analyze a parsed function.
+#
+# It walks a Python AST generated from a Python expression. It will analyze the AST and
+# produce two sets, one set of "used keys" and one set of "used values". "used keys" are
+# setting keys (strings) that are used by the expression, whereas "used values" are
+# actual variable references that are needed for the function to be executed.
 class _SettingExpressionVisitor(ast.NodeVisitor):
     def __init__(self):
         super().__init__()
-        self.names = []
+        self.values = set()
+        self.keys = set()
 
-    def visit(self, node):
+    def visit(self, node: ast.AST) -> _VisitResult:
         super().visit(node)
-        return self.names
+        return _VisitResult(values = self.values, keys = self.keys)
 
-    def visit_Name(self, node): # [CodeStyle: ast.NodeVisitor requires this function name]
+    def visit_Name(self, node: ast.AST) -> None: # [CodeStyle: ast.NodeVisitor requires this function name]
         if node.id in self._blacklist:
             raise IllegalMethodError(node.id)
 
         if node.id not in self._knownNames and node.id not in __builtins__:
-            self.names.append(node.id)
+            self.values.add(node.id)
+            self.keys.add(node.id)
 
-    def visit_Str(self, node):
+    def visit_Str(self, node: ast.AST) -> None:
         if node.s not in self._knownNames and node.s not in __builtins__:
-            self.names.append(node.s)
+            self.keys.add(node.s)
 
-    _knownNames = [
+    _knownNames = {
         "math",
         "max",
         "min",
         "debug",
         "sum",
         "len"
-    ]
+    }
 
-    _blacklist = [
+    _blacklist = {
         "sys",
         "os",
         "import",
@@ -161,4 +177,4 @@ class _SettingExpressionVisitor(ast.NodeVisitor):
         "eval",
         "exec",
         "subprocess",
-    ]
+    }

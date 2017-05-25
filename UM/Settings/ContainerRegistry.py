@@ -152,19 +152,18 @@ class ContainerRegistry(ContainerRegistryInterface):
             # Pre-process the list of files to insert relevant data
             # Most importantly, we need to ensure the loading order is DefinitionContainer, InstanceContainer, ContainerStack
             for path in resources:
-                mime = MimeTypeDatabase.getMimeTypeForFile(path)
+                try:
+                    mime = MimeTypeDatabase.getMimeTypeForFile(path)
+                except MimeTypeDatabase.MimeTypeNotFoundError:
+                    # No valid mime type found for file, ignore it.
+                    continue
+
                 container_type = self.__mime_type_map.get(mime.name)
                 if not container_type:
                     Logger.log("w", "Could not determine container type for file %s, ignoring", path)
                     continue
 
-                type_priority = 2
-
-                if issubclass(container_type, DefinitionContainer):
-                    type_priority = 0
-
-                if issubclass(container_type, InstanceContainer):
-                    type_priority = 1
+                type_priority = container_type.getLoadingPriority()
 
                 # Since we have the mime type and resource type here, process these two properties so we do not
                 # need to look up mime types etc. again.
@@ -226,7 +225,8 @@ class ContainerRegistry(ContainerRegistryInterface):
             container = containers[0]
 
             self._containers.remove(container)
-            del self._id_container_cache[container.getId()]
+            if container.getId() in self._id_container_cache:
+                del self._id_container_cache[container.getId()]
             self._deleteFiles(container)
 
             if hasattr(container, "metaDataChanged"):
@@ -282,10 +282,11 @@ class ContainerRegistry(ContainerRegistryInterface):
                 continue
 
             mime_type = self.getMimeTypeForContainer(type(instance))
-            file_name = urllib.parse.quote_plus(instance.getId()) + "." + mime_type.preferredSuffix
-            path = Resources.getStoragePath(Resources.InstanceContainers, file_name)
-            with SaveFile(path, "wt") as f:
-                f.write(data)
+            if mime_type is not None:
+                file_name = urllib.parse.quote_plus(instance.getId()) + "." + mime_type.preferredSuffix
+                path = Resources.getStoragePath(Resources.InstanceContainers, file_name)
+                with SaveFile(path, "wt") as f:
+                    f.write(data)
 
         for stack in self.findContainerStacks():
             if not stack.isDirty():
@@ -301,10 +302,11 @@ class ContainerRegistry(ContainerRegistryInterface):
                 continue
 
             mime_type = self.getMimeTypeForContainer(type(stack))
-            file_name = urllib.parse.quote_plus(stack.getId()) + "." + mime_type.preferredSuffix
-            path = Resources.getStoragePath(Resources.ContainerStacks, file_name)
-            with SaveFile(path, "wt") as f:
-                f.write(data)
+            if mime_type is not None:
+                file_name = urllib.parse.quote_plus(stack.getId()) + "." + mime_type.preferredSuffix
+                path = Resources.getStoragePath(Resources.ContainerStacks, file_name)
+                with SaveFile(path, "wt") as f:
+                    f.write(data)
 
         for definition in self.findDefinitionContainers():
             try:
@@ -317,10 +319,11 @@ class ContainerRegistry(ContainerRegistryInterface):
                 continue
 
             mime_type = self.getMimeTypeForContainer(type(definition))
-            file_name = urllib.parse.quote_plus(definition.getId()) + "." + mime_type.preferredSuffix
-            path = Resources.getStoragePath(Resources.DefinitionContainers, file_name)
-            with SaveFile(path, "wt") as f:
-                f.write(data)
+            if mime_type is not None:
+                file_name = urllib.parse.quote_plus(definition.getId()) + "." + mime_type.preferredSuffix
+                path = Resources.getStoragePath(Resources.DefinitionContainers, file_name)
+                with SaveFile(path, "wt") as f:
+                    f.write(data)
 
     ##  Creates a new unique name for a container that doesn't exist yet.
     #
@@ -355,10 +358,19 @@ class ContainerRegistry(ContainerRegistryInterface):
     @classmethod
     def addContainerType(cls, container):
         plugin_id = container.getPluginId()
-        cls.__container_types[plugin_id] = container.__class__
-
         metadata = PluginRegistry.getInstance().getMetaData(plugin_id)
-        cls.__mime_type_map[metadata["settings_container"]["mimetype"]] = container.__class__
+        if "settings_container" not in metadata or "mimetype" not in metadata["settings_container"]:
+            raise Exception("Plugin {plugin} has incorrect metadata: Expected a 'settings_container' block with a 'mimetype' entry".format(plugin = plugin_id))
+        cls.addContainerTypeByName(container.__class__, plugin_id, metadata["settings_container"]["mimetype"])
+
+    ##  Used to associate mime types with object to be created
+    #   \param container_type  ContainerStack or derivative
+    #   \param type_name
+    #   \param mime_type
+    @classmethod
+    def addContainerTypeByName(cls, container_type, type_name, mime_type):
+        cls.__container_types[type_name] = container_type
+        cls.__mime_type_map[mime_type] = container_type
 
     ##  Retrieve the mime type corresponding to a certain container type
     #
@@ -367,10 +379,12 @@ class ContainerRegistry(ContainerRegistryInterface):
     #   \return A MimeType object that matches the mime type of the container or None if not found.
     @classmethod
     def getMimeTypeForContainer(cls, container_type):
-        mime_type_name = UM.Dictionary.findKey(cls.__mime_type_map, container_type)
-        if mime_type_name:
-            return MimeTypeDatabase.getMimeType(mime_type_name)
-
+        try:
+            mime_type_name = UM.Dictionary.findKey(cls.__mime_type_map, container_type)
+            if mime_type_name:
+                return MimeTypeDatabase.getMimeType(mime_type_name)
+        except ValueError:
+            Logger.log("w", "Unable to find mimetype for container %s", container_type)
         return None
 
     ##  Get the container type corresponding to a certain mime type.
@@ -474,9 +488,9 @@ class ContainerRegistry(ContainerRegistryInterface):
 
     ##  Get the singleton instance for this class.
     @classmethod
-    def getInstance(cls):
+    def getInstance(cls) -> "ContainerRegistry":
         # Note: Explicit use of class name to prevent issues with inheritance.
-        if ContainerRegistry.__instance is None:
+        if not ContainerRegistry.__instance:
             ContainerRegistry.__instance = cls()
         return ContainerRegistry.__instance
 
@@ -506,6 +520,7 @@ class ContainerRegistry(ContainerRegistryInterface):
 
 PluginRegistry.addType("settings_container", ContainerRegistry.addContainerType)
 
+
 class _EmptyInstanceContainer(InstanceContainer):
     def isDirty(self) -> bool:
         return False
@@ -520,6 +535,8 @@ class _EmptyInstanceContainer(InstanceContainer):
         Logger.log("e", "Setting property %s of container %s which should remain empty", key, self.getName())
         return
 
+    def getConfigurationType(self) -> str:
+        return ""  # FIXME: not sure if this is correct
+
     def serialize(self) -> str:
         return "[general]\n version = 2\n name = empty\n definition = fdmprinter\n"
-
