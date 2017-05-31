@@ -6,6 +6,8 @@ set(CPACK_PACKAGE_VERSION_MINOR 05)
 set(CPACK_PACKAGE_VERSION_PATCH 93)
 set(CPACK_GENERATOR "DEB;RPM")
 
+set(DEB_PACKAGE_TARGET_PLATFORM "debian-stretch" CACHE STRING "Target Debian/Ubuntu platform")
+
 set(RPM_REQUIRES
     "python3 >= 3.5.0"
     "python3-qt5 >= 5.6.0"
@@ -14,8 +16,14 @@ set(RPM_REQUIRES
 )
 string(REPLACE ";" "," RPM_REQUIRES "${RPM_REQUIRES}")
 set(CPACK_RPM_PACKAGE_REQUIRES ${RPM_REQUIRES})
-
-set(DEB_DEPENDS
+if(DEB_PACKAGE_TARGET_PLATFORM STREQUAL "ubuntu-xenial")
+  set(DEB_DEPENDS
+    "python3 (>= 3.5.0)"
+    "cura2-python3.5-deps (>=0.1.0)"
+    "arcus (>= 15.05.90)"
+  )
+else()
+  set(DEB_DEPENDS
     "python3 (>= 3.5.0)"
     "python3-pyqt5 (>= 5.6.0)"
     "python3-pyqt5.qtopengl (>= 5.6.0)"
@@ -27,7 +35,8 @@ set(DEB_DEPENDS
     "qml-module-qtquick-dialogs (>= 5.6.0)"
     "qml-module-qtquick-controls (>= 5.6.0)"
     "arcus (>= 15.05.90)"
-)
+  )
+endif()
 string(REPLACE ";" "," DEB_DEPENDS "${DEB_DEPENDS}")
 set(CPACK_DEBIAN_PACKAGE_DEPENDS ${DEB_DEPENDS})
 
