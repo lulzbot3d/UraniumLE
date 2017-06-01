@@ -100,22 +100,21 @@ class OpenGLContext(object):
     #   the GPU supports. If creating a context fails at all, (None, None, None) is returned
     @classmethod
     def detectBestOpenGLVersion(cls):
-        # Currently OpenGL4 doesn't work for Linux or MAC, so disabling it for now...
-        #Logger.log("d", "Trying OpenGL context 4.1...")
-        #ctx = cls.setContext(4, 1, core = True)
-        #if ctx is not None:
-        #    fmt = ctx.format()
-        #    profile = fmt.profile()
-        #
-        #    # First test: we hope for this
-        #    if ((fmt.majorVersion() == 4 and fmt.minorVersion() >= 1) or (fmt.majorVersion() > 4)) and profile == QSurfaceFormat.CoreProfile:
-        #        Logger.log("d",
-        #            "Yay, we got at least OpenGL 4.1 core: %s",
-        #            cls.versionAsText(fmt.majorVersion(), fmt.minorVersion(), profile))
-        #        return 4, 1, QSurfaceFormat.CoreProfile
-        #else:
-        #    Logger.log("d", "Failed to create OpenGL context 4.1.")
-        #
+        Logger.log("d", "Trying OpenGL context 4.1...")
+        ctx = cls.setContext(4, 1, core = True)
+        if ctx is not None:
+            fmt = ctx.format()
+            profile = fmt.profile()
+
+            # First test: we hope for this
+            if ((fmt.majorVersion() == 4 and fmt.minorVersion() >= 1) or (fmt.majorVersion() > 4)) and profile == QSurfaceFormat.CoreProfile:
+                Logger.log("d",
+                    "Yay, we got at least OpenGL 4.1 core: %s",
+                    cls.versionAsText(fmt.majorVersion(), fmt.minorVersion(), profile))
+                return 4, 1, QSurfaceFormat.CoreProfile
+        else:
+            Logger.log("d", "Failed to create OpenGL context 4.1.")
+
         # Fallback: check min spec
         Logger.log("d", "Trying OpenGL context 2.0...")
         ctx = cls.setContext(2, 0, profile = QSurfaceFormat.NoProfile)
