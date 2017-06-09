@@ -127,7 +127,8 @@ class CameraTool(Tool):
                     _zoom_speed = 2000
                     self._zoomCamera(_diff_y * _zoom_speed)
                     self._start_y = None
-        elif event.type is Event.MouseWheelEvent:
+        #elif event.type is Event.MouseWheelEvent:
+        elif event.type is Event.MouseWheelEvent and self._ctrl_is_active is False:
             self._zoomCamera(event.vertical)
             return True
         elif event.type is Event.KeyPressEvent:
