@@ -274,6 +274,10 @@ class Resources:
         config_path = None
         if Platform.isWindows():
             config_path = os.getenv("APPDATA")
+            if config_path is None:
+                config_path = os.getenv("LOCALAPPDATA")
+            if config_path is None:
+                config_path = os.path.expanduser('~')
         elif Platform.isOSX():
             config_path = os.path.expanduser("~/Library/Application Support")
         elif Platform.isLinux():
