@@ -91,6 +91,7 @@ Item
         }
         TextField
         {
+            id: xTextField
             width: UM.Theme.getSize("setting_control").width;
             height: UM.Theme.getSize("setting_control").height;
             property string unit: "degrees";
@@ -115,6 +116,7 @@ Item
         }
         TextField
         {
+            id: yTextField
             width: UM.Theme.getSize("setting_control").width;
             height: UM.Theme.getSize("setting_control").height;
             property string unit: "degrees";
@@ -139,6 +141,7 @@ Item
         }
         TextField
         {
+            id: zTextField
             width: UM.Theme.getSize("setting_control").width;
             height: UM.Theme.getSize("setting_control").height;
             property string unit: "degrees";
@@ -179,7 +182,13 @@ Item
         style: UM.Theme.styles.tool_button;
         z: 1
 
-        onClicked: UM.ActiveTool.triggerAction("resetRotation");
+        onClicked:
+        {
+            base.xText = "0"
+            base.yText = "0"
+            base.zText = "0"
+            UM.ActiveTool.triggerAction("resetRotation");
+        }
     }
 
     Button
@@ -229,14 +238,14 @@ Item
     {
         target: base
         property: "yText"
-        value: base.roundFloat(UM.ActiveTool.properties.getValue("Z"), 4)
+        value: base.roundFloat(UM.ActiveTool.properties.getValue("Y"), 4)
     }
 
     Binding
     {
         target: base
         property: "zText"
-        value:base.roundFloat(UM.ActiveTool.properties.getValue("Y"), 4)
+        value: base.roundFloat(UM.ActiveTool.properties.getValue("Z"), 4)
     }
 
 }
