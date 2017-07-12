@@ -93,7 +93,8 @@ class RotateTool(Tool):
                 self.setDragPlane(Plane(Vector(1, 0, 0), handle_position.x))
             elif id == ToolHandle.YAxis:
                 self.setDragPlane(Plane(Vector(0, 1, 0), handle_position.y))
-            elif self._locked_axis == ToolHandle.ZAxis:
+            #elif self._locked_axis == ToolHandle.ZAxis:
+            elif id == ToolHandle.ZAxis:
                 self.setDragPlane(Plane(Vector(0, 0, 1), handle_position.z))
             else:
                 self.setDragPlane(Plane(Vector(0, 1, 0), handle_position.y))
@@ -336,6 +337,9 @@ class RotateTool(Tool):
 
     ##  Reset the orientation of the mesh(es) to their original orientation(s)
     def resetRotation(self):
+        self._X_angle = 0
+        self._Y_angle = 0
+        self._Z_angle = 0
         Selection.applyOperation(SetTransformOperation, None, Quaternion(), None)
 
     ##  Initialise and start a LayFlatOperation
