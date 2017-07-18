@@ -121,37 +121,13 @@ Item
             height: UM.Theme.getSize("setting_control").height;
             property string unit: "degrees";
             style: UM.Theme.styles.text_field;
-            text: yText
-            validator: DoubleValidator
-            {
-                decimals: 4
-                locale: "en_US"
-            }
-
-            onEditingFinished:
-            {
-                var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
-                UM.ActiveTool.setProperty("Y", modified_text);
-            }
-
-            Keys.onPressed:
-            {
-                base.inc_dec("Y", event);
-            }
-        }
-        TextField
-        {
-            id: zTextField
-            width: UM.Theme.getSize("setting_control").width;
-            height: UM.Theme.getSize("setting_control").height;
-            property string unit: "degrees";
-            style: UM.Theme.styles.text_field;
             text: zText
             validator: DoubleValidator
             {
                 decimals: 4
                 locale: "en_US"
             }
+
             onEditingFinished:
             {
                 var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
@@ -161,6 +137,30 @@ Item
             Keys.onPressed:
             {
                 base.inc_dec("Z", event);
+            }
+        }
+        TextField
+        {
+            id: zTextField
+            width: UM.Theme.getSize("setting_control").width;
+            height: UM.Theme.getSize("setting_control").height;
+            property string unit: "degrees";
+            style: UM.Theme.styles.text_field;
+            text: yText
+            validator: DoubleValidator
+            {
+                decimals: 4
+                locale: "en_US"
+            }
+            onEditingFinished:
+            {
+                var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
+                UM.ActiveTool.setProperty("Y", modified_text);
+            }
+
+            Keys.onPressed:
+            {
+                base.inc_dec("Y", event);
             }
         }
     }
