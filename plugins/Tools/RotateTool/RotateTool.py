@@ -340,7 +340,8 @@ class RotateTool(Tool):
         self._X_angle = 0
         self._Y_angle = 0
         self._Z_angle = 0
-        Selection.applyOperation(SetTransformOperation, None, Quaternion(), None)
+        #Selection.applyOperation(SetTransformOperation, None, Quaternion(), None)
+        Selection.applyOperation(SetTransformOperation, None, Quaternion(0.0, 0.0, 0.0, -1.0), None)
 
     ##  Initialise and start a LayFlatOperation
     #
