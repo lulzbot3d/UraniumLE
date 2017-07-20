@@ -353,6 +353,8 @@ class Resources:
             from UM.Version import Version
             version = Version(cls.ApplicationVersion)
             storage_dir_name = os.path.join(cls.ApplicationIdentifier, "%s.%s" % (version.getMajor(), version.getMinor()))
+        Logger.log("d", "...StorageRootPath is %s", Resources._getConfigStorageRootPath())
+        Logger.log("d", "...StorageDirName is %s", storage_dir_name )
 
         # config is saved in "<CONFIG_ROOT>/<storage_dir_name>"
         cls.__config_storage_path = os.path.join(Resources._getConfigStorageRootPath(), storage_dir_name)
