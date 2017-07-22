@@ -138,15 +138,15 @@ class RotateTool(Tool):
             if self.getLockedAxis() == ToolHandle.XAxis:
                 direction = 1 if Vector.Unit_X.dot(drag_start.cross(drag_end)) > 0 else -1
                 rotation = Quaternion.fromAngleAxis(direction * angle, Vector.Unit_X)
-                self._X_angle = str( float(self._X_angle) + direction * math.degrees( angle ) )
+                self._X_angle = float(self._X_angle) + direction * math.degrees( angle )
             elif self.getLockedAxis() == ToolHandle.YAxis:
                 direction = 1 if Vector.Unit_Y.dot(drag_start.cross(drag_end)) > 0 else -1
                 rotation = Quaternion.fromAngleAxis(direction * angle, Vector.Unit_Y)
-                self._Y_angle = str( float(self._Y_angle) + direction * math.degrees( angle ) )
+                self._Y_angle = float(self._Y_angle) + direction * math.degrees( angle )
             elif self.getLockedAxis() == ToolHandle.ZAxis:
                 direction = 1 if Vector.Unit_Z.dot(drag_start.cross(drag_end)) > 0 else -1
                 rotation = Quaternion.fromAngleAxis(direction * angle, Vector.Unit_Z)
-                self._Z_angle = str( float(self._Z_angle) + direction * math.degrees( angle ) )
+                self._Z_angle = float(self._Z_angle) + direction * math.degrees( angle )
             else:
                 direction = -1
 
@@ -231,11 +231,17 @@ class RotateTool(Tool):
     #
     #   \param X type(float)
     def setX(self, X):
-        if X != self._X_angle:
+        if float(X) != self._X_angle:
+            if float(X) > self._X_angle:
+                self._angle = float(X) - self._X_angle
+            else:
+                self._angle = self._X_angle - float(X)
+
+            self.propertyChanged.emit()
             self._X_angle = float(X)
             self.propertyChanged.emit()
 
-            rotation = Quaternion.fromAngleAxis(self._parseInt(self._X_angle), Vector.Unit_X)
+            rotation = Quaternion.fromAngleAxis( math.radians( self._parseInt(self._angle) ), Vector.Unit_X)
 
             # Save the current positions of the node, as we want to rotate around their current centres
             self._saved_node_positions = []
@@ -256,6 +262,9 @@ class RotateTool(Tool):
                     op.addOperation(RotateOperation(node, rotation, rotate_around_point = position))
                 op.push()
 
+                self.propertyChanged.emit()
+
+                self._angle = 0
                 self.propertyChanged.emit()
 
     ##  Get Y
@@ -268,11 +277,17 @@ class RotateTool(Tool):
     #
     #   \param Y type(float)
     def setY(self, Y):
-        if Y != self._Y_angle:
+        if float(Y) != self._Y_angle:
+            if float(Y) > self._Y_angle:
+                self._angle = float(Y) - self._Y_angle
+            else:
+                self._angle = self._Y_angle - float(Y)
+
+            self.propertyChanged.emit()
             self._Y_angle = float(Y)
             self.propertyChanged.emit()
 
-            rotation = Quaternion.fromAngleAxis(self._parseInt(self._Y_angle), Vector.Unit_Y)
+            rotation = Quaternion.fromAngleAxis(math.radians( self._parseInt(self._angle) ), Vector.Unit_Y)
 
             # Save the current positions of the node, as we want to rotate around their current centres
             self._saved_node_positions = []
@@ -293,6 +308,9 @@ class RotateTool(Tool):
                     op.addOperation(RotateOperation(node, rotation, rotate_around_point = position))
                 op.push()
 
+                self.propertyChanged.emit()
+
+                self._angle = 0
                 self.propertyChanged.emit()
 
 
@@ -306,11 +324,18 @@ class RotateTool(Tool):
     #
     #   \param Z type(float)
     def setZ(self, Z):
-        if Z != self._Z_angle:
+        if float(Z) != self._Z_angle:
+
+            if float(Z) > self._Z_angle:
+                self._angle = float(Z) - self._Z_angle
+            else:
+                self._angle = self._Z_angle - float(Z)
+
+            self.propertyChanged.emit()
             self._Z_angle = float(Z)
             self.propertyChanged.emit()
 
-            rotation = Quaternion.fromAngleAxis(self._parseInt(self._Z_angle), Vector.Unit_Z)
+            rotation = Quaternion.fromAngleAxis(math.radians( self._parseInt(self._angle) ), Vector.Unit_Z)
 
             # Save the current positions of the node, as we want to rotate around their current centres
             self._saved_node_positions = []
@@ -333,15 +358,52 @@ class RotateTool(Tool):
 
                 self.propertyChanged.emit()
 
+            self._angle = 0
+            self.propertyChanged.emit()
 
 
     ##  Reset the orientation of the mesh(es) to their original orientation(s)
     def resetRotation(self):
+
+        q_x = Quaternion()
+        q_x.setByAngleAxis(math.radians( self._X_angle ), Vector.Unit_X)
+
+        q_y = Quaternion()
+        q_y.setByAngleAxis(math.radians( self._Y_angle ), Vector.Unit_Y)
+
+        q_z = Quaternion()
+        q_z.setByAngleAxis(math.radians( self._Z_angle), Vector.Unit_Z)
+
+        if ( self._X_angle % 90 ) :
+            Selection.applyOperation(SetTransformOperation, None, -q_x, None)
+        else:
+            Selection.applyOperation(SetTransformOperation, None, Quaternion(), None)
+
+        if ( self._Y_angle % 90) :
+            Selection.applyOperation(SetTransformOperation, None, -q_y, None)
+        else:
+            Selection.applyOperation(SetTransformOperation, None, Quaternion(), None)
+
+        if (  self._Z_angle % 90 ) :
+            Selection.applyOperation(SetTransformOperation, None, -q_z, None)
+        else:
+            Selection.applyOperation(SetTransformOperation, None, Quaternion(), None)
+
+
         self._X_angle = 0
+        self.propertyChanged.emit()
+
         self._Y_angle = 0
+        self.propertyChanged.emit()
+
         self._Z_angle = 0
-        #Selection.applyOperation(SetTransformOperation, None, Quaternion(), None)
-        Selection.applyOperation(SetTransformOperation, None, Quaternion(0.0, 0.0, 0.0, -1.0), None)
+        self.propertyChanged.emit()
+
+        self._angle = 0
+        self.propertyChanged.emit()
+
+        Selection.applyOperation(SetTransformOperation, None, Quaternion(), None)
+
 
     ##  Initialise and start a LayFlatOperation
     #
