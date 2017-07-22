@@ -1,7 +1,7 @@
 # Copyright (c) 2015 Ultimaker B.V.
 # Uranium is released under the terms of the AGPLv3 or higher.
 
-from PyQt5.QtCore import pyqtProperty, Qt, QCoreApplication, pyqtSignal, pyqtSlot, QMetaObject, QRectF
+from PyQt5.QtCore import pyqtProperty, Qt, QCoreApplication, pyqtSignal, pyqtSlot, QMetaObject, QRectF, QEvent
 from PyQt5.QtGui import QColor
 from PyQt5.QtQuick import QQuickWindow
 
@@ -185,6 +185,14 @@ class MainWindow(QQuickWindow):
         view.endRendering()
         renderer.endRendering()
         self.renderCompleted.emit()
+
+    def event(self, event):
+        if event.type() == QEvent.Close:
+            if Application.getInstance().isExitAllowed():
+                pass
+            else:
+                event.ignore()
+        return super().event(event)
 
     def _onSceneChanged(self, object):
         self.update()
