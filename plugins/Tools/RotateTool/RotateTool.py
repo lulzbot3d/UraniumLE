@@ -20,6 +20,8 @@ from UM.Operations.GroupedOperation import GroupedOperation
 from UM.Operations.SetTransformOperation import SetTransformOperation
 from UM.Operations.LayFlatOperation import LayFlatOperation
 
+from UM.Logger import Logger
+
 from . import RotateToolHandle
 
 import math
@@ -241,7 +243,9 @@ class RotateTool(Tool):
             self._X_angle = float(X)
             self.propertyChanged.emit()
 
-            rotation = Quaternion.fromAngleAxis( math.radians( self._parseInt(self._angle) ), Vector.Unit_X)
+            #rotation = Quaternion.fromAngleAxis( math.radians( self._angle ), Vector.Unit_X)
+            rotation = Quaternion()
+            rotation.setByAngleAxis( math.radians( self._angle ), Vector.Unit_X)
 
             # Save the current positions of the node, as we want to rotate around their current centres
             self._saved_node_positions = []
@@ -287,7 +291,10 @@ class RotateTool(Tool):
             self._Y_angle = float(Y)
             self.propertyChanged.emit()
 
-            rotation = Quaternion.fromAngleAxis(math.radians( self._parseInt(self._angle) ), Vector.Unit_Y)
+            #rotation = Quaternion.fromAngleAxis(math.radians( self._angle ), Vector.Unit_Y)
+            rotation = Quaternion()
+            rotation.setByAngleAxis( math.radians( self._angle ), Vector.Unit_Y)
+
 
             # Save the current positions of the node, as we want to rotate around their current centres
             self._saved_node_positions = []
@@ -335,7 +342,9 @@ class RotateTool(Tool):
             self._Z_angle = float(Z)
             self.propertyChanged.emit()
 
-            rotation = Quaternion.fromAngleAxis(math.radians( self._parseInt(self._angle) ), Vector.Unit_Z)
+            #rotation = Quaternion.fromAngleAxis(math.radians( self._angle ), Vector.Unit_Z)
+            rotation = Quaternion()
+            rotation.setByAngleAxis( math.radians( self._angle ), Vector.Unit_Z)
 
             # Save the current positions of the node, as we want to rotate around their current centres
             self._saved_node_positions = []
@@ -361,34 +370,9 @@ class RotateTool(Tool):
             self._angle = 0
             self.propertyChanged.emit()
 
-
     ##  Reset the orientation of the mesh(es) to their original orientation(s)
+    # Remember Y is Z and Z is Y
     def resetRotation(self):
-
-        q_x = Quaternion()
-        q_x.setByAngleAxis(math.radians( self._X_angle ), Vector.Unit_X)
-
-        q_y = Quaternion()
-        q_y.setByAngleAxis(math.radians( self._Y_angle ), Vector.Unit_Y)
-
-        q_z = Quaternion()
-        q_z.setByAngleAxis(math.radians( self._Z_angle), Vector.Unit_Z)
-
-        if ( self._X_angle % 90 ) :
-            Selection.applyOperation(SetTransformOperation, None, -q_x, None)
-        else:
-            Selection.applyOperation(SetTransformOperation, None, Quaternion(), None)
-
-        if ( self._Y_angle % 90) :
-            Selection.applyOperation(SetTransformOperation, None, -q_y, None)
-        else:
-            Selection.applyOperation(SetTransformOperation, None, Quaternion(), None)
-
-        if (  self._Z_angle % 90 ) :
-            Selection.applyOperation(SetTransformOperation, None, -q_z, None)
-        else:
-            Selection.applyOperation(SetTransformOperation, None, Quaternion(), None)
-
 
         self._X_angle = 0
         self.propertyChanged.emit()
