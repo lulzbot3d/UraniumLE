@@ -240,6 +240,9 @@ class QtApplication(QApplication, Application):
     def getMainWindow(self):
         return self._main_window
 
+    def getSplashScreen(self):
+        return self._splash
+
     def setMainWindow(self, window):
         if window != self._main_window:
             self._main_window = window
