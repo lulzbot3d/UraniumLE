@@ -417,7 +417,7 @@ class QtApplication(QApplication, Application):
         """
         Logger.log("d", "Prevent computer from sleeping? " + str(prevent))
 
-        if sys.platform.startswith('win'):
+        if sys.platform.startswith('win'): # Windows
             ES_CONTINUOUS = 0x80000000
             ES_SYSTEM_REQUIRED = 0x00000001
             ES_AWAYMODE_REQUIRED = 0x00000040
@@ -429,27 +429,14 @@ class QtApplication(QApplication, Application):
                     ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)
             else:
                 ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
-        elif sys.platform.startswith('darwin'):
-            import objc
-            try:
-                bundle = objc.initFrameworkWrapper("IOKit",
-                    frameworkIdentifier="com.apple.iokit",
-                    frameworkPath=objc.pathForFramework("/System/Library/Frameworks/IOKit.framework"),
-                    globals=globals())
-                foo = objc.loadBundleFunctions(bundle, globals(), [("IOPMAssertionCreateWithName", b"i@I@o^I")])
-                foo = objc.loadBundleFunctions(bundle, globals(), [("IOPMAssertionRelease", b"iI")])
-                if prevent:
-                    success, self.noSnoozeAssertionID = IOPMAssertionCreateWithName(kIOPMAssertionTypeNoDisplaySleep, 
-                        kIOPMAssertionLevelOn, "Cura is printing", None)
-                    if success != kIOReturnSuccess:
-                        self.noSnoozeAssertionID = None
-                else:
-                    if hasattr(self, "noSnoozeAssertionID") and self.noSnoozeAssertionID is not None:
-                        IOPMAssertionRelease(self.noSnoozeAssertionID)
-                        self.noSnoozeAssertionID = None
-            except:
-                Logger.log("w", "Call to IOKit framework bundle failed, unable to prevent sleep")
-                pass
+
+        elif sys.platform.startswith('darwin'): # Mac OS
+            import os
+            import subprocess
+
+            if prevent:
+                subprocess.Popen(['caffeinate', '-i', '-w', str(os.getpid())])
+
         else: # Linux
             id = self.getMainWindow().winId()
             if os.path.isfile("/usr/bin/xdg-screensaver"):
