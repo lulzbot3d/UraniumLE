@@ -429,38 +429,46 @@ class QtApplication(QApplication, Application):
         Logger.log("d", "Prevent computer from sleeping? " + str(prevent))
 
         if sys.platform.startswith('win'): # Windows
-            ES_CONTINUOUS = 0x80000000
-            ES_SYSTEM_REQUIRED = 0x00000001
-            ES_AWAYMODE_REQUIRED = 0x00000040
-            #SetThreadExecutionState returns 0 when failed, which is ignored. The function should be supported from windows XP and up.
-            if prevent:
-                # For Vista and up we use ES_AWAYMODE_REQUIRED to prevent a print from failing if the PC does go to sleep
-                # As it's not supported on XP, we catch the error and fallback to using ES_SYSTEM_REQUIRED only
-                if ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_AWAYMODE_REQUIRED) == 0:
-                    ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)
-            else:
-                ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
-
+            try:
+                ES_CONTINUOUS = 0x80000000
+                ES_SYSTEM_REQUIRED = 0x00000001
+                ES_AWAYMODE_REQUIRED = 0x00000040
+                #SetThreadExecutionState returns 0 when failed, which is ignored. The function should be supported from windows XP and up.
+                if prevent:
+                    # For Vista and up we use ES_AWAYMODE_REQUIRED to prevent a print from failing if the PC does go to sleep
+                    # As it's not supported on XP, we catch the error and fallback to using ES_SYSTEM_REQUIRED only
+                    if ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_AWAYMODE_REQUIRED) == 0:
+                        ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)
+                else:
+                    ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
+            except:
+                Logger.log("w", "Failed to prevent from sleeping")
+                pass
         elif sys.platform.startswith('darwin'): # Mac OS
             import os
             import subprocess
-
-            if prevent:
-                subprocess.Popen(['caffeinate', '-i', '-w', str(os.getpid())])
-
+            try:
+                if prevent:
+                    subprocess.Popen(['caffeinate', '-i', '-w', str(os.getpid())])
+            except:
+                Logger.log("w", "Failed to prevent from sleeping")
+                pass
         else: # Linux
-            id = self.getMainWindow().winId()
-            if os.path.isfile("/usr/bin/xdg-screensaver"):
-                try:
-                    cmd = ['xdg-screensaver', 'suspend' if prevent else 'resume', str(int(id))]
-                    subprocess.call(cmd)
-                except:
-                    Logger.log("w", "Call to /usr/bin/xdg-screensaver failed, unable to prevent sleep")
-                    pass
-            else:
-                Logger.log("w", "No /usr/bin/xdg-screensaver found, unable to prevent sleep")
-
-
+            import os
+            try:
+                id = self.getMainWindow().winId()
+                if os.path.isfile("/usr/bin/xdg-screensaver"):
+                    try:
+                        cmd = ['xdg-screensaver', 'suspend' if prevent else 'resume', str(int(id))]
+                        subprocess.call(cmd)
+                    except:
+                        Logger.log("w", "Call to /usr/bin/xdg-screensaver failed, unable to prevent sleep")
+                        pass
+                else:
+                    Logger.log("w", "No /usr/bin/xdg-screensaver found, unable to prevent sleep")
+            except:
+                Logger.log("w", "Failed to prevent from sleeping")
+                pass
 ##  Internal.
 #
 #   Wrapper around a FunctionEvent object to make Qt handle the event properly.
