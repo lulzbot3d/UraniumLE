@@ -352,7 +352,7 @@ class Resources:
         else:
             from UM.Version import Version
             version = Version(cls.ApplicationVersion)
-            storage_dir_name = os.path.join(cls.ApplicationIdentifier, "%s.%s" % (version.getMajor(), version.getMinor()))
+            storage_dir_name = os.path.join(cls.ApplicationIdentifier, str(version))
         Logger.log("d", "...StorageRootPath is %s", Resources._getConfigStorageRootPath())
         Logger.log("d", "...StorageDirName is %s", storage_dir_name )
 
@@ -409,17 +409,27 @@ class Resources:
             # If the directory found matches the current version, do nothing
             return
 
-        # Prevent circular import
-        import UM.VersionUpgradeManager
-        UM.VersionUpgradeManager.VersionUpgradeManager.getInstance().copyVersionFolder(latest_config_path, this_version_config_path)
-        # If the data dir is the same as the config dir, don't copy again
-        if latest_data_path is not None and os.path.exists(latest_data_path) and latest_data_path != latest_config_path:
-            UM.VersionUpgradeManager.VersionUpgradeManager.getInstance().copyVersionFolder(latest_data_path, this_version_data_path)
+        from UM.Application import Application
+        if Application.getInstance().askUserToCopyPreviousSettings():
+            # Prevent circular import
+            import UM.VersionUpgradeManager
+            UM.VersionUpgradeManager.VersionUpgradeManager.getInstance().copyVersionFolder(latest_config_path, this_version_config_path)
+            # If the data dir is the same as the config dir, don't copy again
+            if latest_data_path is not None and os.path.exists(latest_data_path) and latest_data_path != latest_config_path:
+                UM.VersionUpgradeManager.VersionUpgradeManager.getInstance().copyVersionFolder(latest_data_path, this_version_data_path)
 
-        # Remove "cache" if we copied it together with config
-        suspected_cache_path = os.path.join(this_version_config_path, "cache")
-        if os.path.exists(suspected_cache_path):
-            shutil.rmtree(suspected_cache_path)
+            # Remove "cache" if we copied it together with config
+            suspected_cache_path = os.path.join(this_version_config_path, "cache")
+            if os.path.exists(suspected_cache_path):
+                shutil.rmtree(suspected_cache_path)
+        else:
+            shutil.rmtree(latest_config_path)
+            if latest_data_path is not None and os.path.exists(latest_data_path) and latest_data_path != latest_config_path:
+                shutil.rmtree(latest_data_path)
+
+            suspected_cache_path = os.path.join(this_version_config_path, "cache")
+            if os.path.exists(suspected_cache_path):
+                shutil.rmtree(suspected_cache_path)
 
     @classmethod
     def _findLatestDirInPaths(cls, search_path_list, dir_type="config"):
