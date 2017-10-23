@@ -5,6 +5,11 @@ from UM.Application import Application
 from UM.Signal import Signal, signalemitter
 
 
+class MessageType:
+    Info = 1
+    Error = 2
+
+
 ## Class for displaying messages to the user.
 @signalemitter
 class Message:
@@ -14,7 +19,7 @@ class Message:
     #                   if lifetime is 0, it will never automatically be destroyed.
     #   \param dismissible Can the user dismiss the message?
     #   \progress Is there nay progress to be displayed? if -1, it's seen as indeterminate
-    def __init__(self, text = "", lifetime = 30, dismissable = True, progress = None): #pylint: disable=bad-whitespace
+    def __init__(self, text = "", lifetime = 30, dismissable = True, progress = None, type = MessageType.Info): #pylint: disable=bad-whitespace
         super().__init__()
         self._application = Application.getInstance()
         self._visible = False
@@ -25,6 +30,7 @@ class Message:
         self._lifetime_timer = None
         self._dismissable = dismissable # Can the message be closed by user?
         self._actions = []
+        self._type = type
 
     actionTriggered = Signal()
 
@@ -79,6 +85,9 @@ class Message:
     #   \return The text in the message.
     def getText(self) -> str:
         return self._text
+
+    def getType(self):
+        return self._type
 
     ##  Sets the maximum numerical value of the progress bar on the message.
     #
