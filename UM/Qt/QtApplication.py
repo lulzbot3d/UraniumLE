@@ -6,7 +6,6 @@ import os
 import signal
 import platform
 import ctypes
-import subprocess
 
 
 from PyQt5.QtCore import Qt, QCoreApplication, QEvent, QUrl, pyqtProperty, pyqtSignal, pyqtSlot, QLocale, QTranslator, QLibraryInfo, QT_VERSION_STR, PYQT_VERSION_STR
@@ -444,6 +443,7 @@ class QtApplication(QApplication, Application):
                 pass
         else: # Linux
             import os
+            import subprocess
             try:
                 id = self.getMainWindow().winId()
                 if os.path.isfile("/usr/bin/xdg-screensaver"):
