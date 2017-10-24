@@ -11,7 +11,7 @@ import subprocess
 
 from PyQt5.QtCore import Qt, QCoreApplication, QEvent, QUrl, pyqtProperty, pyqtSignal, pyqtSlot, QLocale, QTranslator, QLibraryInfo, QT_VERSION_STR, PYQT_VERSION_STR
 from PyQt5.QtQml import QQmlApplicationEngine
-from PyQt5.QtWidgets import QApplication, QSplashScreen, QMessageBox, QDialog
+from PyQt5.QtWidgets import QApplication, QSplashScreen, QMessageBox
 from PyQt5.QtGui import QGuiApplication, QPixmap
 from PyQt5.QtCore import QTimer
 
@@ -153,17 +153,6 @@ class QtApplication(QApplication, Application):
     @pyqtProperty("QVariantList", notify=recentFilesChanged)
     def recentFiles(self):
         return self._recent_files
-
-    def askUserToCopyPreviousSettings(self):
-        i18n_catalog = i18nCatalog("uranium")
-        dialog = QMessageBox()
-        dialog.setText(i18n_catalog.i18nc("message:dialog", "Do you want to copy data from previous version?"))
-        dialog.setWindowTitle(i18n_catalog.i18nc("title:dialog", Application.getInstance().getApplicationName()))
-        dialog.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-        result = dialog.exec()
-        if result == QMessageBox.Yes:
-            return True
-        return False
 
     def _onJobFinished(self, job):
         if (not isinstance(job, ReadMeshJob) and not isinstance(job, ReadFileJob)) or not job.getResult():
