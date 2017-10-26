@@ -1,5 +1,5 @@
 # Copyright (c) 2015 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 from PyQt5.QtCore import pyqtProperty, Qt, QCoreApplication, pyqtSignal, pyqtSlot, QMetaObject, QRectF, QEvent
 from PyQt5.QtGui import QColor
@@ -217,7 +217,8 @@ class MainWindow(QQuickWindow):
             camera.setWindowSize(width, height)
             projection_matrix = Matrix()
             if camera.isPerspective():
-                projection_matrix.setPerspective(30, view_width / view_height, 1, 500)
+                if view_width is not 0:
+                    projection_matrix.setPerspective(30, view_width / view_height, 1, 500)
             else:
                 projection_matrix.setOrtho(-view_width / 2, view_width / 2, -view_height / 2, view_height / 2, -500, 500)
             camera.setProjectionMatrix(projection_matrix)

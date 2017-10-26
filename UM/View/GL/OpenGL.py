@@ -1,5 +1,5 @@
 # Copyright (c) 2017 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 import sys
 import ctypes   # type: ignore
@@ -11,6 +11,7 @@ from UM.Logger import Logger
 
 from UM.View.GL import FrameBufferObject
 from UM.View.GL import ShaderProgram
+from UM.View.GL.ShaderProgram import InvalidShaderProgramError
 from UM.View.GL import Texture
 from UM.View.GL.OpenGLContext import OpenGLContext
 from UM.i18n import i18nCatalog #To make dialogs translateable.
@@ -135,7 +136,14 @@ class OpenGL(object):
             version_string = ""  # Nothing is added to "fragment" and "vertex"
         else:
             version_string = "41core"
-        shader.load(file_name, version=version_string)
+
+        try:
+            shader.load(file_name, version=version_string)
+        except InvalidShaderProgramError:
+            # If the loading failed, it could be that there is no specific shader for this version.
+            # Try again without a version nr to get the generic one.
+            if version_string != "":
+                shader.load(file_name, version = "")
         return shader
 
     ##  Create a Vertex buffer for a mesh.

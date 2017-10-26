@@ -1,5 +1,5 @@
 # Copyright (c) 2015 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 from UM.Scene.Scene import Scene
 from UM.Event import Event, MouseEvent, ToolEvent, ViewEvent
@@ -11,7 +11,6 @@ from UM.PluginRegistry import PluginRegistry
 from UM.View.View import View
 from UM.InputDevice import InputDevice
 from typing import Optional, Dict
-
 
 ##      Glue class that holds the scene, (active) view(s), (active) tool(s) and possible user inputs.
 #
@@ -247,6 +246,13 @@ class Controller:
         # First, try to perform camera control
         if self._camera_tool and self._camera_tool.event(event):
             return
+
+        if self._tools and event.type == Event.KeyPressEvent:
+            from UM.Scene.Selection import Selection  # Imported here to prevent a circular dependency.
+            if Selection.hasSelection():
+                for key, tool in self._tools.items():
+                    if tool.getShortcutKey() is not None and event.key == tool.getShortcutKey():
+                        self.setActiveTool(tool)
 
         if self._selection_tool and self._selection_tool.event(event):
             return

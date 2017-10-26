@@ -1,5 +1,5 @@
 # Copyright (c) 2016 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 import pytest
 import os.path
@@ -80,7 +80,7 @@ class MockContainer(ContainerInterface, UM.PluginObject.PluginObject):
     ##  Gets the value of a property of a container item.
     #
     #   This method is not implemented in the mock container.
-    def getProperty(self, key, property_name):
+    def getProperty(self, key, property_name, context = None):
         raise NotImplementedError()
 
     ##  Get the value of a container item.
@@ -101,7 +101,7 @@ class MockContainer(ContainerInterface, UM.PluginObject.PluginObject):
     ##  Serializes the container to a string representation.
     #
     #   This method is not implemented in the mock container.
-    def serialize(self):
+    def serialize(self, ignored_metadata_keys = None):
         raise NotImplementedError()
 
     ##  Deserializes the container from a string representation.
@@ -170,7 +170,7 @@ def test_addContainerType(container_registry, plugin_registry):
 #   \param container_registry A newly created container registry instance, from
 #   a fixture.
 def test_create(container_registry):
-    assert container_registry != None
+    assert container_registry is not None
 
 ##  Individual test cases for test_findDefinitionContainers as well as
 #   test_findInstanceContainers.

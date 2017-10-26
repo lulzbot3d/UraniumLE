@@ -1,5 +1,5 @@
 # Copyright (c) 2017 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 import os
 import os.path
@@ -83,7 +83,7 @@ class LocalFileOutputDevice(OutputDevice):
 
         if len(file_types) == 0:
             Logger.log("e", "There are no file types available to write with!")
-            raise OutputDeviceError.WriteRequestFailedError()
+            raise OutputDeviceError.WriteRequestFailedError(catalog.i18nc("@info:warning", "There are no file types available to write with!"))
 
         for item in file_types:
             type_filter = "{0} (*.{1})".format(item["description"], item["extension"])
@@ -116,17 +116,9 @@ class LocalFileOutputDevice(OutputDevice):
         # Get file name from file dialog
         file_name = dialog.selectedFiles()[0]
         Logger.log("d", "Writing to [%s]..." % file_name)
-        # OSX does not handle extensions with multiple periods correctly.
-        if Platform.isOSX():
-            Logger.log("d", "OS X: checking for double extension...")
-            mime_types = MimeType("", "", [t['extension'] for t in file_types])
-            # Check if an extension is added multiple times.
-            while mime_types.stripExtension(file_name) != mime_types.stripExtension(mime_types.stripExtension(file_name)):
-                file_name = mime_types.stripExtension(file_name)
-                Logger.log("d", "Multi extension detected, setting filename to [%s]" % file_name)
-
+        
         if os.path.exists(file_name):
-            result = QMessageBox.question(None, catalog.i18nc("@title:window", "File Already Exists"), catalog.i18nc("@label", "The file <filename>{0}</filename> already exists. Are you sure you want to overwrite it?").format(file_name))
+            result = QMessageBox.question(None, catalog.i18nc("@title:window", "File Already Exists"), catalog.i18nc("@label Don't translate the XML tag <filename>!", "The file <filename>{0}</filename> already exists. Are you sure you want to overwrite it?").format(file_name))
             if result == QMessageBox.No:
                 raise OutputDeviceError.UserCanceledError()
 
@@ -155,7 +147,8 @@ class LocalFileOutputDevice(OutputDevice):
             job.progress.connect(self._onJobProgress)
             job.finished.connect(self._onWriteJobFinished)
 
-            message = Message(catalog.i18nc("@info:progress", "Saving to <filename>{0}</filename>").format(file_name), 0, False, -1)
+            message = Message(catalog.i18nc("@info:progress Don't translate the XML tags <filename>!", "Saving to <filename>{0}</filename>").format(file_name),
+                              0, False, -1 , catalog.i18nc("@info:title", "Saving"))
             message.show()
 
             job.setMessage(message)
@@ -163,10 +156,10 @@ class LocalFileOutputDevice(OutputDevice):
             job.start()
         except PermissionError as e:
             Logger.log("e", "Permission denied when trying to write to %s: %s", file_name, str(e))
-            raise OutputDeviceError.PermissionDeniedError(catalog.i18nc("@info:status", "Permission denied when trying to save <filename>{0}</filename>").format(file_name)) from e
+            raise OutputDeviceError.PermissionDeniedError(catalog.i18nc("@info:status Don't translate the XML tags <filename>!", "Permission denied when trying to save <filename>{0}</filename>").format(file_name)) from e
         except OSError as e:
             Logger.log("e", "Operating system would not let us write to %s: %s", file_name, str(e))
-            raise OutputDeviceError.WriteRequestFailedError(catalog.i18nc("@info:status", "Could not save to <filename>{0}</filename>: <message>{1}</message>").format()) from e
+            raise OutputDeviceError.WriteRequestFailedError(catalog.i18nc("@info:status Don't translate the XML tags <filename> or <message>!", "Could not save to <filename>{0}</filename>: <message>{1}</message>").format()) from e
 
     def _onJobProgress(self, job, progress):
         self.writeProgress.emit(self, progress)
@@ -176,13 +169,13 @@ class LocalFileOutputDevice(OutputDevice):
         self.writeFinished.emit(self)
         if job.getResult():
             self.writeSuccess.emit(self)
-            message = Message(catalog.i18nc("@info:status", "Saved to <filename>{0}</filename>").format(job.getFileName()))
-            message.addAction("open_folder", catalog.i18nc("@action:button", "Open Folder"), "open-folder", catalog.i18nc("@info:tooltip","Open the folder containing the file"))
+            message = Message(catalog.i18nc("@info:status Don't translate the XML tags <filename>!", "Saved to <filename>{0}</filename>").format(job.getFileName()), title = catalog.i18nc("@info:title", "File Saved"))
+            message.addAction("open_folder", catalog.i18nc("@action:button", "Open Folder"), "open-folder", catalog.i18nc("@info:tooltip", "Open the folder containing the file"))
             message._folder = os.path.dirname(job.getFileName())
             message.actionTriggered.connect(self._onMessageActionTriggered)
             message.show()
         else:
-            message = Message(catalog.i18nc("@info:status", "Could not save to <filename>{0}</filename>: <message>{1}</message>").format(job.getFileName(), str(job.getError())), lifetime = 0)
+            message = Message(catalog.i18nc("@info:status Don't translate the XML tags <filename> or <message>!", "Could not save to <filename>{0}</filename>: <message>{1}</message>").format(job.getFileName(), str(job.getError())), lifetime = 0, title = catalog.i18nc("@info:title", "Warning"))
             message.show()
             self.writeError.emit(self)
         job.getStream().close()

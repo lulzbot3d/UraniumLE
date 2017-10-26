@@ -1,5 +1,5 @@
 # Copyright (c) 2015 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 from UM.Job import Job
 from UM.Application import Application
@@ -64,7 +64,7 @@ class ReadMeshJob(ReadFileJob):
                         scale_vector = Vector(scale_factor, scale_factor, scale_factor)
                         display_scale_factor = scale_factor * 100
 
-                        scale_message = Message(i18n_catalog.i18nc("@info:status", "Auto scaled object to {0}% of original size", ("%i" % display_scale_factor)))
+                        scale_message = Message(i18n_catalog.i18nc("@info:status", "Auto scaled object to {0}% of original size", ("%i" % display_scale_factor)), title = i18n_catalog.i18nc("@info:title", "Scaling Object"))
 
                         try:
                             node.scale(scale_vector)

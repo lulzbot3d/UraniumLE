@@ -1,5 +1,5 @@
 // Copyright (c) 2015 Ultimaker B.V.
-// Uranium is released under the terms of the AGPLv3 or higher.
+// Uranium is released under the terms of the LGPLv3 or higher.
 
 import QtQuick 2.1
 import QtQuick.Controls 1.1
@@ -176,8 +176,8 @@ PreferencesPage
 
             title: catalog.i18nc("@title:window", "About %1").arg(plugin_name)
 
-            minimumWidth: Screen.devicePixelRatio * 320
-            minimumHeight: Screen.devicePixelRatio * 240
+            minimumWidth: screenScaleFactor * 320
+            minimumHeight: screenScaleFactor * 240
             width: minimumWidth
             height: minimumHeight
 
@@ -207,21 +207,21 @@ PreferencesPage
                 id: pluginAuthorLabel
                 //: About plugin dialog author label
                 text: catalog.i18nc("@label", "Author:");
-                width: 0.4 * parent.width
+                width: (0.4 * parent.width) | 0
                 wrapMode: Text.WordWrap
                 anchors.top: pluginCaption.bottom
-                anchors.topMargin: 10
+                anchors.topMargin: 10 * screenScaleFactor
             }
 
             Label
             {
                 id: pluginAuthor;
                 text: about_window.author_text
-                width: 0.6 * parent.width
+                width: (0.6 * parent.width) | 0
                 wrapMode: Text.WordWrap
                 anchors.top: pluginCaption.bottom
                 anchors.left: pluginAuthorLabel.right
-                anchors.topMargin: 10
+                anchors.topMargin: 10 * screenScaleFactor
             }
 
             Label

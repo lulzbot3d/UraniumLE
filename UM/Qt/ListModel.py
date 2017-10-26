@@ -1,5 +1,5 @@
 # Copyright (c) 2015 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 from PyQt5.QtCore import QObject, QAbstractListModel, QVariant, QModelIndex, pyqtSlot, pyqtProperty, QByteArray, pyqtSignal
 
@@ -14,7 +14,6 @@ class ListModel(QAbstractListModel):
         super().__init__(parent)
         self._items = []
         self._role_names = {}
-
 
     # While it would be nice to expose rowCount() as a count property so
     # far implementing that only causes crashes due to an infinite recursion
@@ -47,8 +46,10 @@ class ListModel(QAbstractListModel):
         except:
             return {}
 
+    itemsChanged = pyqtSignal()
+
     ##  The list of items in this model.
-    @pyqtProperty("QVariantList")
+    @pyqtProperty("QVariantList", notify = itemsChanged)
     def items(self):
         return self._items
 
@@ -58,12 +59,14 @@ class ListModel(QAbstractListModel):
         self.beginResetModel()
         self._items = items
         self.endResetModel()
+        self.itemsChanged.emit()
 
     ##  Add an item to the list.
     #   \param item The item to add.
     @pyqtSlot(dict)
     def appendItem(self, item):
         self.insertItem(len(self._items), item)
+        self.itemsChanged.emit()
 
     ##  Insert an item into the list at an index.
     #   \param index The index where to insert.
@@ -73,6 +76,7 @@ class ListModel(QAbstractListModel):
         self.beginInsertRows(QModelIndex(), index, index)
         self._items.insert(index, item)
         self.endInsertRows()
+        self.itemsChanged.emit()
 
     ##  Remove an item from the list.
     #   \param index The index of the item to remove.
@@ -81,6 +85,7 @@ class ListModel(QAbstractListModel):
         self.beginRemoveRows(QModelIndex(), index, index)
         del self._items[index]
         self.endRemoveRows()
+        self.itemsChanged.emit()
 
     ##  Clear the list.
     @pyqtSlot()
@@ -88,6 +93,7 @@ class ListModel(QAbstractListModel):
         self.beginResetModel()
         self._items.clear()
         self.endResetModel()
+        self.itemsChanged.emit()
 
     @pyqtSlot(int, str, QVariant)
     def setProperty(self, index, property, value):

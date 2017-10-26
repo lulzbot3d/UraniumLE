@@ -1,5 +1,5 @@
 # Copyright (c) 2016 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 import uuid
 
@@ -68,7 +68,7 @@ class ContainerTestPlugin(ContainerInterface, PluginObject):
     #   None.
     #
     #   \return Always returns None.
-    def getProperty(self, key, property_name):
+    def getProperty(self, key, property_name, context = None):
         pass
 
     def hasProperty(self, key, property_name):
@@ -77,7 +77,7 @@ class ContainerTestPlugin(ContainerInterface, PluginObject):
     ##  Serializes the container to a string representation.
     #
     #   This method is not implemented in the mock container.
-    def serialize(self):
+    def serialize(self, ignored_metadata_keys=[]):
         raise NotImplementedError()
 
     ##  Deserializes the container from a string representation.

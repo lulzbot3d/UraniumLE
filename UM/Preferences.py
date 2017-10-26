@@ -1,5 +1,5 @@
 # Copyright (c) 2015 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 import configparser
 
@@ -21,7 +21,7 @@ MimeTypeDatabase.addMimeType(
 #       Typical preferences would be window size, standard machine, etc.
 @signalemitter
 class Preferences:
-    Version = 4
+    Version = 5
 
     def __init__(self):
         super().__init__()

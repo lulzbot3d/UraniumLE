@@ -1,5 +1,5 @@
 # Copyright (c) 2015 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 import configparser
 import ast
@@ -234,8 +234,8 @@ class ShaderProgram:
         if self._bound:
             return
 
-        self._bound = True
         self._shader_program.bind()
+        self._bound = True
 
         for uniform in self._uniform_values:
             self._setUniformValueDirect(uniform, self._uniform_values[uniform])
@@ -248,8 +248,8 @@ class ShaderProgram:
         if not self._shader_program or not self._bound:
             return
 
-        self._bound = False
         self._shader_program.release()
+        self._bound = False
 
         for texture_unit, texture in self._textures.items():
             texture.release(texture_unit)

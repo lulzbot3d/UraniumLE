@@ -1,5 +1,5 @@
 # Copyright (c) 2016 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 import pytest
 
@@ -72,7 +72,7 @@ class MockValueProvider:
     ##  Provides a value.
     #
     #   \param name The key of the value to provide.
-    def getProperty(self, key, property_name):
+    def getProperty(self, key, property_name, context = None):
         if not (key in self._values):
             return None
         return self._values[key]

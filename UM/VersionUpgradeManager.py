@@ -1,5 +1,5 @@
 # Copyright (c) 2016 Ultimaker B.V.
-# Cura is released under the terms of the AGPLv3 or higher.
+# Cura is released under the terms of the LGPLv3 or higher.
 
 import collections  # For deque, for breadth-first search and to track tasks, and namedtuple.
 import os  # To get the configuration file names and to rename files.
@@ -119,7 +119,7 @@ class VersionUpgradeManager:
             self._upgradeFile(upgrade_task.storage_path, upgrade_task.file_name, upgrade_task.configuration_type) #Upgrade this file.
 
         if upgraded:
-            message = UM.Message.Message(text=catalogue.i18nc("@info:version-upgrade", "A configuration from an older version of {0} was imported.", Application.getInstance().getApplicationName()))
+            message = UM.Message.Message(text=catalogue.i18nc("@info:version-upgrade", "A configuration from an older version of {0} was imported.", Application.getInstance().getApplicationName()), title = catalogue.i18nc("@info:title", "Version Upgrade"))
             message.show()
         return upgraded
 

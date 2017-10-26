@@ -1,5 +1,5 @@
 // Copyright (c) 2015 Ultimaker B.V.
-// Uranium is released under the terms of the AGPLv3 or higher.
+// Uranium is released under the terms of the LGPLv3 or higher.
 
 import QtQuick 2.2
 import QtQuick.Controls 1.2
@@ -38,7 +38,13 @@ Item
         //First convert to fixed-point notation to round the number to 4 decimals and not introduce new floating point errors.
         //Then convert to a string (is implicit). The fixed-point notation will be something like "3.200".
         //Then remove any trailing zeroes and the radix.
-        return input.toFixed(decimals).replace(/\.?0*$/, ""); //Match on periods, if any ( \.? ), followed by any number of zeros ( 0* ), then the end of string ( $ ).
+        if(input)
+        {
+            return input.toFixed(decimals).replace(/\.?0*$/, ""); //Match on periods, if any ( \.? ), followed by any number of zeros ( 0* ), then the end of string ( $ ).
+        } else
+        {
+            return 0
+        }
     }
 
     function inc_dec(prop, event, unit)
@@ -69,6 +75,7 @@ Item
         //: Reset scale tool button
         text: catalog.i18nc("@action:button","Reset")
         iconSource: UM.Theme.getIcon("scale_reset");
+        property bool needBorder: true
 
         style: UM.Theme.styles.tool_button;
 
