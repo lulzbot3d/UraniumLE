@@ -9,7 +9,7 @@ set(CPACK_GENERATOR "DEB;RPM")
 set(DEB_PACKAGE_TARGET_PLATFORM "debian-stretch" CACHE STRING "Target Debian/Ubuntu platform")
 
 set(MINIMUM_ARCUS_VERSION "15.05.90" CACHE STRING "Minimum Arcus Version")
-set(MINIMUM_CURA2_PYTHON_DEPS "0.1.0" CACHE STRING "Minimum Cura2 Python Dependencies")
+set(MINIMUM_CURA_LULZBOT_PYTHON_DEPS "0.1.0" CACHE STRING "Minimum Cura LulzBot Edition Python Dependencies")
 
 set(RPM_REQUIRES
     "python3 >= 3.5.0"
@@ -22,7 +22,7 @@ set(CPACK_RPM_PACKAGE_REQUIRES ${RPM_REQUIRES})
 if(DEB_PACKAGE_TARGET_PLATFORM STREQUAL "ubuntu-xenial")
   set(DEB_DEPENDS
     "python3 (>= 3.5.0)"
-    "cura2-python3.5-deps (>=${MINIMUM_CURA2_PYTHON_DEPS})"
+    "cura-lulzbot-python3.5-deps (>=${MINIMUM_CURA_LULZBOT_PYTHON_DEPS})"
     "arcus (>= ${MINIMUM_ARCUS_VERSION})"
   )
 else()
