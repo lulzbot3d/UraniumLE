@@ -46,7 +46,6 @@ class MainWindow(QQuickWindow):
         self.setWidth(int(self._preferences.getValue("general/window_width")))
         self.setHeight(int(self._preferences.getValue("general/window_height")))
         self.setPosition(int(self._preferences.getValue("general/window_left")), int(self._preferences.getValue("general/window_top")))
-        self.setFlags(self.flags() | Qt.WindowMinMaxButtonsHint | Qt.WindowCloseButtonHint)
 
         # Make sure restored geometry is not outside the currently available screens
         screen_found = False
