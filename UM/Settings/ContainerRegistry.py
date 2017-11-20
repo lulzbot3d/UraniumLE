@@ -120,23 +120,26 @@ class ContainerRegistry(ContainerRegistryInterface):
                 elif isinstance(container, container_type):
                     return [ container ]
             else:
-                return [] # No result, so return an empty list.
+                return []  # No result, so return an empty list.
 
-        if query in self._query_cache:
+        if query.isHashable() and query in self._query_cache:
             # If the exact same query is in the cache, we can re-use the query result
             self._query_cache.move_to_end(query) # Query was used, so make sure to update its position
             return self._query_cache[query].getResult()
 
         # Execute the query, then add it to the cache
         query.execute()
-        self._query_cache[query] = query
 
-        if len(self._query_cache) > MaxQueryCacheSize:
-            # Since we use an OrderedDict, we can use a simple FIFO scheme
-            # to discard queries. As long as we properly update queries
-            # that are being used, this results in the least used queries
-            # to be discarded.
-            self._query_cache.popitem(last = False)
+        # Only cache query result when it is hashable
+        if query.isHashable():
+            self._query_cache[query] = query
+
+            if len(self._query_cache) > MaxQueryCacheSize:
+                # Since we use an OrderedDict, we can use a simple FIFO scheme
+                # to discard queries. As long as we properly update queries
+                # that are being used, this results in the least used queries
+                # to be discarded.
+                self._query_cache.popitem(last = False)
 
         return query.getResult()
 
@@ -245,24 +248,36 @@ class ContainerRegistry(ContainerRegistryInterface):
 
     @UM.FlameProfiler.profile
     def removeContainer(self, container_id: str) -> None:
-        containers = self.findContainers(None, id = container_id)
-        if containers:
-            container = containers[0]
+        # Find the container and its index in the list
+        remove_index = None
+        container = None
+        for num, temp_container in enumerate(self._containers, start = 0):
+            if temp_container.getId() == container_id:
+                remove_index = num
+                container = temp_container
+                break
 
-            self._containers.remove(container)
-            if container.getId() in self._id_container_cache:
-                del self._id_container_cache[container.getId()]
-            self._deleteFiles(container)
-
-            if hasattr(container, "metaDataChanged"):
-                container.metaDataChanged.disconnect(self._onContainerMetaDataChanged)
-            self._clearQueryCacheByContainer(container)
-            self.containerRemoved.emit(container)
-
-            Logger.log("d", "Removed container %s", container.getId())
-
+        # Using the container index removes object from the list in more efficient way, because
+        # in Instance container overwrites compare function ( see __eq__) ant it has many steps for comparing
+        if remove_index is not None:
+            self._containers.pop(remove_index)
         else:
+            # just in case keep it, theoretically it is not needed. Calling remove function will
+            # by default use __eq__ which is overwritten
             Logger.log("w", "Could not remove container with id %s, as no container with that ID is known", container_id)
+            return
+
+        if container.getId() in self._id_container_cache:
+            del self._id_container_cache[container.getId()]
+        self._deleteFiles(container)
+
+        if hasattr(container, "metaDataChanged"):
+            container.metaDataChanged.disconnect(self._onContainerMetaDataChanged)
+
+        self._clearQueryCacheByContainer(container)
+        self.containerRemoved.emit(container)
+
+        Logger.log("d", "Removed container %s", container.getId())
 
     @UM.FlameProfiler.profile
     def renameContainer(self, container_id, new_name, new_id = None):

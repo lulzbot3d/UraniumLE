@@ -14,8 +14,12 @@ from UM.View.GL import ShaderProgram
 from UM.View.GL.ShaderProgram import InvalidShaderProgramError
 from UM.View.GL import Texture
 from UM.View.GL.OpenGLContext import OpenGLContext
-from UM.i18n import i18nCatalog #To make dialogs translateable.
+from UM.i18n import i18nCatalog  # To make dialogs translatable.
 i18n_catalog = i18nCatalog("uranium")
+
+MYPY = False
+if MYPY:
+    from UM.Mesh.MeshData import MeshData
 
 ##  Convenience methods for dealing with OpenGL.
 #
@@ -24,7 +28,7 @@ i18n_catalog = i18nCatalog("uranium")
 #   functionality using these different OpenGL bindings. Additionally, it provides singleton
 #   handling. The implementation-defined subclass must be set as singleton instance as soon
 #   as possible so that any calls to getInstance() return a proper object.
-class OpenGL(object):
+class OpenGL:
     VertexBufferProperty = "__vertex_buffer"
     IndexBufferProperty = "__index_buffer"
 
@@ -46,11 +50,11 @@ class OpenGL(object):
             QMessageBox.critical(None, i18n_catalog.i18nc("@message", "Failed to Initialize OpenGL", "Could not initialize OpenGL. This program requires OpenGL 2.0 or higher. Please check your video card drivers."))
             sys.exit(1)
 
-        # It would be nice to be able to not necessarily need OpenGL Framebuffer Object support, but
-        # due to a limiation in PyQt, currently glReadPixels or similar methods are not available.
+        # It would be nice to be able to not necessarily need OpenGL FrameBuffer Object support, but
+        # due to a limitation in PyQt, currently glReadPixels or similar methods are not available.
         # This means we can only get frame buffer contents through methods that indirectly call
-        # those methods, in this case primarily QOpenGLFramebufferObject::toImage(), making us
-        # hard-depend on Framebuffer Objects.
+        # those methods, in this case primarily QOpenGLFrameBufferObject::toImage(), making us
+        # hard-depend on FrameBuffer Objects.
         if not self.hasFrameBufferObjects():
             Logger.log("e", "Starup failed, OpenGL does not support Frame Buffer Objects")
             QMessageBox.critical(None, i18n_catalog.i18nc("Critical OpenGL Extensions Missing", "Critical OpenGL extensions are missing. This program requires support for Framebuffer Objects. Please check your video card drivers."))
@@ -63,6 +67,7 @@ class OpenGL(object):
         if vendor_string is None:
             vendor_string = "Unknown"
         vendor_string = vendor_string.lower()
+
         if "nvidia" in vendor_string:
             self._gpu_vendor = OpenGL.Vendor.NVidia
         elif "amd" in vendor_string or "ati" in vendor_string:
@@ -70,7 +75,7 @@ class OpenGL(object):
         elif "intel" in vendor_string:
             self._gpu_vendor = OpenGL.Vendor.Intel
 
-        #WORKAROUND: Cura/#1117 Cura-packaging/12
+        # WORKAROUND: Cura/#1117 Cura-packaging/12
         # Some Intel GPU chipsets return a string, which is not undecodable via PyQt5.
         # This workaround makes the code fall back to a "Unknown" renderer in these cases.
         try:
@@ -79,19 +84,33 @@ class OpenGL(object):
             Logger.log("e", "DecodeError while getting GL_RENDERER via glGetString!")
             self._gpu_type = "Unknown"
 
+        self._opengl_version = self._gl.glGetString(self._gl.GL_VERSION)
+
         if not self.hasFrameBufferObjects():
             Logger.log("w", "No frame buffer support, falling back to texture copies.")
 
         Logger.log("d", "Initialized OpenGL subsystems.")
-        Logger.log("d", "OpenGL Version:  %s", self._gl.glGetString(self._gl.GL_VERSION))
+        Logger.log("d", "OpenGL Version:  %s", self._opengl_version)
         Logger.log("d", "OpenGL Vendor:   %s", self._gl.glGetString(self._gl.GL_VENDOR))
         Logger.log("d", "OpenGL Renderer: %s", self._gpu_type)
 
     ##  Check if the current OpenGL implementation supports FrameBuffer Objects.
     #
     #   \return True if FBOs are supported, False if not.
-    def hasFrameBufferObjects(self):
+    def hasFrameBufferObjects(self) -> bool:
         return QOpenGLFramebufferObject.hasOpenGLFramebufferObjects()
+
+    ##  Get the current OpenGL version.
+    #
+    #   \return Version of OpenGL
+    def getOpenGLVersion(self):
+        return self._opengl_version
+
+    ##  Get the current GPU vendor name.
+    #
+    #   \return Name of the vendor of current GPU
+    def getGPUVendorName(self):
+        return self._gl.glGetString(self._gl.GL_VENDOR)
 
     ##  Get the current GPU vendor.
     #
@@ -129,7 +148,7 @@ class OpenGL(object):
     ##  Create a ShaderProgram Object.
     #
     #   This should return an implementation-specifc ShaderProgram subclass.
-    def createShaderProgram(self, file_name):
+    def createShaderProgram(self, file_name: str) -> ShaderProgram:
         shader = ShaderProgram.ShaderProgram()
         # The version_string must match the keys in shader files.
         if OpenGLContext.isLegacyOpenGL():
@@ -159,7 +178,7 @@ class OpenGL(object):
     #   \param kwargs Keyword arguments.
     #                 Possible values:
     #                 - force_recreate: Ignore the cached value if set and always create a new buffer.
-    def createVertexBuffer(self, mesh, **kwargs):
+    def createVertexBuffer(self, mesh: "MeshData", **kwargs) -> QOpenGLBuffer:
         if not kwargs.get("force_recreate", False) and hasattr(mesh, OpenGL.VertexBufferProperty):
             return getattr(mesh, OpenGL.VertexBufferProperty)
 
