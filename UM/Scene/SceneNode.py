@@ -406,34 +406,34 @@ class SceneNode():
     def rotate(self, rotation: Quaternion, transform_space: int = TransformSpace.Local):
         if not self._enabled:
             return
-        #self.LOG_QUATERNION( "427 rotate:: rotation", rotation )
+        #self.LOG_QUATERNION( "409 rotate:: rotation", rotation )
         orientation_matrix = rotation.toMatrix()
-        #self.LOG_MATRIX( "419 rotate:: orientation_matrix", orientation_matrix )
-        #self.LOG_VECTOR( "420 rotate:: self.getPosition()", self.getPosition() )
+        self.LOG_MATRIX( "411 rotate:: orientation_matrix", orientation_matrix )
+        #self.LOG_VECTOR( "412 rotate:: self.getPosition()", self.getPosition() )
 
         if transform_space == SceneNode.TransformSpace.Local:
             self._transformation.multiply(orientation_matrix)
         elif transform_space == SceneNode.TransformSpace.Parent:
             self._transformation.preMultiply(orientation_matrix)
         elif transform_space == SceneNode.TransformSpace.World:
-            #self.LOG_MATRIX( "427 rotate:: self._transformation", self._transformation )
+            self.LOG_MATRIX( "419 rotate:: self._transformation", self._transformation )
             inverse = self._world_transformation.getInverse()
-            #self.LOG_MATRIX( "429 rotate:: inverse", inverse )
-            #self.LOG_MATRIX( "430 rotate:: self._world_transformation", self._world_transformation )
+            self.LOG_MATRIX( "421 rotate:: inverse", inverse )
+            self.LOG_MATRIX( "422 rotate:: self._world_transformation", self._world_transformation )
 
-            #self.LOG_MATRIX( "432 rotate:: self._transformation", self._transformation )
-            #self.LOG_MATRIX( "433 rotate:: self._world_transformation.getInverse()", self._world_transformation.getInverse() )
+            self.LOG_MATRIX( "424 rotate:: self._transformation", self._transformation )
+            self.LOG_MATRIX( "425 rotate:: self._world_transformation.getInverse()", self._world_transformation.getInverse() )
             self._transformation.multiply(self._world_transformation.getInverse())
 
-            #self.LOG_MATRIX( "436 rotate:: self._transformation", self._transformation )
-            #self.LOG_MATRIX( "437 rotate:: orientation_matrix", orientation_matrix )
+            self.LOG_MATRIX( "428 rotate:: self._transformation", self._transformation )
+            self.LOG_MATRIX( "429 rotate:: orientation_matrix", orientation_matrix )
             self._transformation.multiply(orientation_matrix)
 
-            #self.LOG_MATRIX( "440 rotate:: self._transformation", self._transformation )
-            #self.LOG_MATRIX( "441 rotate:: self._world_transformation", self._world_transformation )
+            self.LOG_MATRIX( "432 rotate:: self._transformation", self._transformation )
+            self.LOG_MATRIX( "433 rotate:: self._world_transformation", self._world_transformation )
             self._transformation.multiply(self._world_transformation)
 
-            #self.LOG_MATRIX( "444 rotate:: self._transformation", self._transformation )
+            self.LOG_MATRIX( "436 rotate:: self._transformation", self._transformation )
 
         self._transformChanged()
 
@@ -659,6 +659,7 @@ class SceneNode():
         world_euler_angle_matrix = Matrix()
         world_euler_angle_matrix.setByEuler(world_euler_angles.x, world_euler_angles.y, world_euler_angles.z)
         self._derived_orientation.setByMatrix(world_euler_angle_matrix)
+        self._derived_orientation = -self._derived_orientation
 
     def _resetAABB(self):
         if not self._calculate_aabb:
@@ -689,10 +690,10 @@ class SceneNode():
 
         Logger.log("d", "\n %s: ", str_matrix_name  )
         if( matrix != None ):
-            Logger.log("d", "%d  %d  %d  %d", matrix.at(0,0),  matrix.at(0,1), matrix.at(0,2), matrix.at(0,3) )
-            Logger.log("d", "%d  %d  %d  %d", matrix.at(1,0),  matrix.at(1,1), matrix.at(1,2), matrix.at(1,3) )
-            Logger.log("d", "%d  %d  %d  %d", matrix.at(2,0),  matrix.at(2,1), matrix.at(2,2), matrix.at(2,3) )
-            Logger.log("d", "%d  %d  %d  %d", matrix.at(3,0),  matrix.at(3,1), matrix.at(3,2), matrix.at(3,3) )
+            Logger.log("d", "%f  %f  %f  %f", matrix.at(0,0),  matrix.at(0,1), matrix.at(0,2), matrix.at(0,3) )
+            Logger.log("d", "%f  %f  %f  %f", matrix.at(1,0),  matrix.at(1,1), matrix.at(1,2), matrix.at(1,3) )
+            Logger.log("d", "%f  %f  %f  %f", matrix.at(2,0),  matrix.at(2,1), matrix.at(2,2), matrix.at(2,3) )
+            Logger.log("d", "%f  %f  %f  %f", matrix.at(3,0),  matrix.at(3,1), matrix.at(3,2), matrix.at(3,3) )
         else:
             Logger.log("d", "\n %s in None ", str_matrix_name )
 
@@ -701,15 +702,15 @@ class SceneNode():
     def LOG_QUATERNION( self, str_quaternion_name, quaternion ):
         Logger.log("d", "\n ................................................................... " )
         Logger.log("d", "\n %s: ", str_quaternion_name )
-        Logger.log("d", "%d  %d  %d  %d", quaternion.toMatrix().at(0,0),  quaternion.toMatrix().at(0,1), quaternion.toMatrix().at(0,2), quaternion.toMatrix().at(0,3) )
-        Logger.log("d", "%d  %d  %d  %d", quaternion.toMatrix().at(1,0),  quaternion.toMatrix().at(1,1), quaternion.toMatrix().at(1,2), quaternion.toMatrix().at(1,3) )
-        Logger.log("d", "%d  %d  %d  %d", quaternion.toMatrix().at(2,0),  quaternion.toMatrix().at(2,1), quaternion.toMatrix().at(2,2), quaternion.toMatrix().at(2,3) )
-        Logger.log("d", "%d  %d  %d  %d", quaternion.toMatrix().at(3,0),  quaternion.toMatrix().at(3,1), quaternion.toMatrix().at(3,2), quaternion.toMatrix().at(3,3) )
+        Logger.log("d", "%f  %f  %f  %f", quaternion.toMatrix().at(0,0),  quaternion.toMatrix().at(0,1), quaternion.toMatrix().at(0,2), quaternion.toMatrix().at(0,3) )
+        Logger.log("d", "%f  %f  %f  %f", quaternion.toMatrix().at(1,0),  quaternion.toMatrix().at(1,1), quaternion.toMatrix().at(1,2), quaternion.toMatrix().at(1,3) )
+        Logger.log("d", "%f  %f  %f  %f", quaternion.toMatrix().at(2,0),  quaternion.toMatrix().at(2,1), quaternion.toMatrix().at(2,2), quaternion.toMatrix().at(2,3) )
+        Logger.log("d", "%f  %f  %f  %f", quaternion.toMatrix().at(3,0),  quaternion.toMatrix().at(3,1), quaternion.toMatrix().at(3,2), quaternion.toMatrix().at(3,3) )
         Logger.log("d", "................................................................... \n" )
 
     def LOG_VECTOR( self, str_vector_name, vector ):
         Logger.log("d", "\n ................................................................... " )
         Logger.log("d", "\n %s: ", str_vector_name )
-        Logger.log("d", "%d  %d  %d", vector.x,  vector.y, vector.z )
+        Logger.log("d", "%f  %f  %f", vector.x,  vector.y, vector.z )
         Logger.log("d", "................................................................... \n" )
 

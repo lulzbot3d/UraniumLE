@@ -386,7 +386,12 @@ class RotateTool(Tool):
         self._angle = 0
         self.propertyChanged.emit()
 
-        Selection.applyOperation(SetTransformOperation, None, Quaternion(), None)
+        Selection.applyOperation(SetTransformOperation, Vector(0.0, 0.0, 0.0), None, None, None)
+        Selection.applyOperation(SetTransformOperation, None, Quaternion(), None, None)
+        Selection.applyOperation(SetTransformOperation, None, None, Vector(1.0, 1.0, 1.0), None )
+        Selection.applyOperation(SetTransformOperation, None, None, None, Vector(0.0, 0.0, 0.0) )
+        #Selection.applyOperation(SetTransformOperation, None, None, None, None, Vector(1.0, 0.0, 0.0) )
+        #translation = None, orientation = None, scale = None, shear = None, mirror = None
 
 
     ##  Initialise and start a LayFlatOperation
