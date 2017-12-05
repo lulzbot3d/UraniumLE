@@ -66,8 +66,11 @@ vertex41core =
     attribute highp vec4 a_normal;
     attribute highp vec2 a_uvs;
 
-    varying highp vec3 v_vertex;
-    varying highp vec3 v_normal;
+    in highp vec3 v_vertex;
+    in highp vec3 v_normal;
+
+    out highp vec3 v_vertex;
+    out highp vec3 v_normal;
 
     void main()
     {
@@ -87,8 +90,8 @@ fragment41core =
     uniform mediump float u_shininess;
     uniform highp vec3 u_viewPosition;
 
-    varying highp vec3 v_vertex;
-    varying highp vec3 v_normal;
+    in highp vec3 v_vertex;
+    in highp vec3 v_normal;
 
     void main()
     {
