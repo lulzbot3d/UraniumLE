@@ -54,16 +54,17 @@ fragment41core =
     uniform lowp float u_disabledMultiplier;
 
     in lowp vec4 v_color;
+    out vec4 frag_color;
 
     void main()
     {
         if(u_activeColor == v_color)
         {
-            gl_FragColor = v_color;
+            frag_color = v_color;
         }
         else
         {
-            gl_FragColor = v_color * u_disabledMultiplier;
+            frag_color = v_color * u_disabledMultiplier;
         }
     }
 

@@ -93,6 +93,8 @@ fragment41core =
     in highp vec3 v_vertex;
     in highp vec3 v_normal;
 
+    out vec4 frag_color;
+
     void main()
     {
         mediump vec4 finalColor = vec4(0.0);
@@ -114,8 +116,8 @@ fragment41core =
         highp float NdotR = clamp(dot(viewVector, reflectedLight), 0.0, 1.0);
         finalColor += pow(NdotR, u_shininess) * u_specularColor;
 
-        gl_FragColor = finalColor;
-        gl_FragColor.a = 1.0;
+        frag_color = finalColor;
+        frag_color.a = 1.0;
     }
 
 [defaults]
