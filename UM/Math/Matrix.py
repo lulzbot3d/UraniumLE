@@ -7,6 +7,7 @@ from copy import deepcopy
 import numpy
 
 from UM.Math.Vector import Vector
+from UM.Logger import Logger
 
 numpy.seterr(divide="ignore")
 
@@ -44,6 +45,31 @@ class Matrix(object):
 
     # axis sequences for Euler angles
     _NEXT_AXIS = [1, 2, 0, 1]
+
+    def LOG_NUMPY( self, str_matrix_name, matrix ):
+        Logger.log("d", "\n ................................................................... " )
+
+        Logger.log("d", "\n----------------- Matrix.py ------------------- %s: ", str_matrix_name  )
+        Logger.log("d", "%d  %d  %d  %d", matrix[0,0],  matrix[0,1], matrix[0,2], matrix[0,3] )
+        Logger.log("d", "%d  %d  %d  %d", matrix[1,0],  matrix[1,1], matrix[1,2], matrix[1,3] )
+        Logger.log("d", "%d  %d  %d  %d", matrix[2,0],  matrix[2,1], matrix[2,2], matrix[2,3] )
+        Logger.log("d", "%d  %d  %d  %d", matrix[3,0],  matrix[3,1], matrix[3,2], matrix[3,3] )
+
+        Logger.log("d", "................................................................... \n" )
+
+
+    def LOG_MATRIX( self, str_matrix_name, matrix ):
+        Logger.log("d", "\n ................................................................... " )
+
+        Logger.log("d", "\n %s: ", str_matrix_name  )
+        if( matrix != None ):
+            Logger.log("d", "%d  %d  %d  %d", matrix.at(0,0),  matrix.at(0,1), matrix.at(0,2), matrix.at(0,3) )
+            Logger.log("d", "%d  %d  %d  %d", matrix.at(1,0),  matrix.at(1,1), matrix.at(1,2), matrix.at(1,3) )
+            Logger.log("d", "%d  %d  %d  %d", matrix.at(2,0),  matrix.at(2,1), matrix.at(2,2), matrix.at(2,3) )
+            Logger.log("d", "%d  %d  %d  %d", matrix.at(3,0),  matrix.at(3,1), matrix.at(3,2), matrix.at(3,3) )
+        else:
+            Logger.log("d", "\n %s in None ", str_matrix_name )
+
 
     def __init__(self, data = None):
         if data is None:
@@ -94,11 +120,19 @@ class Matrix(object):
 
     def multiply(self, matrix, copy = False):
         if not copy:
+            #noticed some problems here
+            #self.LOG_NUMPY( "11 self._data", self._data )
+            #self.LOG_MATRIX( "12 matrix", matrix )
+            #self.LOG_NUMPY( "13 matrix.getData()", matrix.getData() )
             self._data = numpy.dot(self._data, matrix.getData())
+            #self.LOG_NUMPY( "14 self._data", self._data )
             return self
         else:
             new_matrix = Matrix(data = self._data)
+            #self.LOG_MATRIX( "21 new_matrix", new_matrix )
+            #self.LOG_MATRIX( "21 matrix", new_matrix )
             new_matrix.multiply(matrix)
+            #self.LOG_MATRIX( "22 new_matrix", new_matrix )
             return new_matrix
 
     def preMultiply(self, matrix, copy = False):

@@ -120,52 +120,6 @@ msgctxt "@label"
 msgid "Console Logger"
 msgstr "Dziennik na konsolę"
 
-#: /home/ruben/Projects/Uranium/plugins/UpdateChecker/__init__.py:12
-msgctxt "@label"
-msgid "Update Checker"
-msgstr "Sprawdzanie aktualizacji"
-
-#: /home/ruben/Projects/Uranium/plugins/UpdateChecker/__init__.py:15
-msgctxt "@info:whatsthis"
-msgid "Checks for updates of the software."
-msgstr "Sprawdza aktualizacje oprogramowania."
-
-#: /home/ruben/Projects/Uranium/plugins/UpdateChecker/UpdateChecker.py:47
-msgctxt "@info"
-msgid "Could not access update information."
-msgstr "Brak dostępu do informacji o aktualizacji."
-
-#: /home/ruben/Projects/Uranium/plugins/UpdateChecker/UpdateChecker.py:58
-#: /home/ruben/Projects/Uranium/plugins/UpdateChecker/UpdateChecker.py:63
-msgctxt "@info"
-msgid "The version you are using does not support checking for updates."
-msgstr "Wersja, której używasz, nie wspiera sprawdzania aktualizacji."
-
-#: /home/ruben/Projects/Uranium/plugins/UpdateChecker/UpdateChecker.py:74
-msgctxt "@info"
-msgid "A new version is available!"
-msgstr "Dostępna nowa wersja!"
-
-#: /home/ruben/Projects/Uranium/plugins/UpdateChecker/UpdateChecker.py:75
-msgctxt "@action:button"
-msgid "Download"
-msgstr "Pobierz"
-
-#: /home/ruben/Projects/Uranium/plugins/UpdateChecker/UpdateChecker.py:87
-msgctxt "@info"
-msgid "An exception occured while parsing the JSON file."
-msgstr "Wystąpił błąd podczas parsowania pliku JSON."
-
-#: /home/ruben/Projects/Uranium/plugins/UpdateChecker/UpdateChecker.py:91
-msgctxt "@info"
-msgid "No new version was found."
-msgstr "Brak nowej wersji."
-
-#: /home/ruben/Projects/Uranium/plugins/UpdateChecker/UpdateChecker.py:102
-msgctxt "@item:inmenu"
-msgid "Check for Updates"
-msgstr "Sprawdź aktualizacje"
-
 #: /home/ruben/Projects/Uranium/plugins/LocalFileOutputDevice/LocalFileOutputDevicePlugin.py:46
 msgctxt "@item:inmenu"
 msgid "Local File"

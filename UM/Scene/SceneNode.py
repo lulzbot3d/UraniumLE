@@ -1,6 +1,6 @@
 # Copyright (c) 2015 Ultimaker B.V.
 # Uranium is released under the terms of the AGPLv3 or higher.
-from typing import List
+from typing import List, Optional
 
 from UM.Math.Matrix import Matrix
 from UM.Math.Vector import Vector
@@ -11,6 +11,8 @@ from UM.Mesh.MeshData import MeshData
 from UM.Signal import Signal, signalemitter
 from UM.Mesh.MeshBuilder import MeshBuilder
 from UM.Logger import Logger
+
+from UM.Scene.SceneNodeDecorator import SceneNodeDecorator
 
 from copy import deepcopy
 
@@ -43,35 +45,40 @@ class SceneNode():
         self._mesh_data = None  # type: MeshData
 
         # Local transformation (from parent to local)
-        self._transformation = Matrix()
+        self._transformation = Matrix()  # type: Matrix
 
         # Convenience "components" of the transformation
-        self._position = Vector()
-        self._scale = Vector(1.0, 1.0, 1.0)
-        self._shear = Vector(0.0, 0.0, 0.0)
-        self._mirror = Vector(1.0, 1.0, 1.0)
-        self._orientation = Quaternion()
+        self._position = Vector()  # type: Vector
+        self._scale = Vector(1.0, 1.0, 1.0)  # type: Vector
+        self._shear = Vector(0.0, 0.0, 0.0)  # type: Vector
+        self._mirror = Vector(1.0, 1.0, 1.0)  # type: Vector
+        self._orientation = Quaternion()  # type: Quaternion
 
         # World transformation (from root to local)
-        self._world_transformation = Matrix()
+        self._world_transformation = Matrix()  # type: Matrix
 
         # Convenience "components" of the world_transformation
-        self._derived_position = Vector()
-        self._derived_orientation = Quaternion()
-        self._derived_scale = Vector()
+        self._derived_position = Vector()  # type: Vector
+        self._derived_orientation = Quaternion()  # type: Quaternion
+        self._derived_scale = Vector()  # type: Vector
 
-        self._parent = parent
-        self._enabled = True  # Can this SceneNode be modified in any way?
-        self._selectable = False  # Can this SceneNode be selected in any way?
+        self._parent = parent  # type: Optional[SceneNode]
 
-        self._calculate_aabb = True  # Should the AxisAlignedBounxingBox be re-calculated?
-        self._aabb = None  # The AxisAligned bounding box.
-        self._original_aabb = None  # The AxisAligned bounding box, without transformations.
-        self._bounding_box_mesh = None
+        # Can this SceneNode be modified in any way?
+        self._enabled = True  # type: bool
+        # Can this SceneNode be selected in any way?
+        self._selectable = False  # type: bool
 
-        self._visible = kwargs.get("visible", True)
-        self._name = kwargs.get("name", "")
-        self._decorators = []
+        # Should the AxisAlignedBounxingBox be re-calculated?
+        self._calculate_aabb = True  # type: bool
+
+        # The AxisAligned bounding box.
+        self._aabb = None  # type: Optional[AxisAlignedBox]
+        self._bounding_box_mesh = None  # type: Optional[MeshData]
+
+        self._visible = kwargs.get("visible", True)  # type: bool
+        self._name = kwargs.get("name", "")  # type: str
+        self._decorators = []  # type: List[SceneNodeDecorator]
 
         ## Signals
         self.boundingBoxChanged.connect(self.calculateBoundingBoxMesh)
@@ -98,7 +105,7 @@ class SceneNode():
     ##  Set the center position of this node.
     #   This is used to modify it's mesh data (and it's children) in such a way that they are centered.
     #   In most cases this means that we use the center of mass as center (which most objects don't use)
-    def setCenterPosition(self, center):
+    def setCenterPosition(self, center: Vector):
         if self._mesh_data:
             m = Matrix()
             m.setByTranslation(-center)
@@ -108,15 +115,15 @@ class SceneNode():
 
     ##  \brief Get the parent of this node. If the node has no parent, it is the root node.
     #   \returns SceneNode if it has a parent and None if it's the root node.
-    def getParent(self):
+    def getParent(self) -> Optional["SceneNode"]:
         return self._parent
 
-    def getMirror(self):
+    def getMirror(self) -> Vector:
         return self._mirror
 
     ##  Get the MeshData of the bounding box
     #   \returns \type{MeshData} Bounding box mesh.
-    def getBoundingBoxMesh(self):
+    def getBoundingBoxMesh(self) -> Optional[MeshData]:
         return self._bounding_box_mesh
 
     ##  (re)Calculate the bounding box mesh.
@@ -167,7 +174,7 @@ class SceneNode():
 
     ##  Handler for the ParentChanged signal
     #   \param node Node from which this event was triggered.
-    def _onParentChanged(self, node):
+    def _onParentChanged(self, node: Optional["SceneNode"]):
         for child in self.getChildren():
             child.parentChanged.emit(self)
 
@@ -176,20 +183,26 @@ class SceneNode():
 
     ##  Add a SceneNodeDecorator to this SceneNode.
     #   \param \type{SceneNodeDecorator} decorator The decorator to add.
-    #   TODO: GetDecorator seems to imply that a scne node can only have a single decorator of a type, but we never enforce this.
-    def addDecorator(self, decorator):
-        decorator.setNode(self)
+    def addDecorator(self, decorator: SceneNodeDecorator):
+        if type(decorator) in [type(dec) for dec in self._decorators]:
+            Logger.log("w", "Unable to add the same decorator type (%s) to a SceneNode twice.", type(decorator))
+            return
+        try:
+            decorator.setNode(self)
+        except AttributeError:
+            Logger.logException("e", "Unable to add decorator.")
+            return
         self._decorators.append(decorator)
         self.decoratorsChanged.emit(self)
 
     ##  Get all SceneNodeDecorators that decorate this SceneNode.
     #   \return list of all SceneNodeDecorators.
-    def getDecorators(self):
+    def getDecorators(self) -> List[SceneNodeDecorator]:
         return self._decorators
 
     ##  Get SceneNodeDecorators by type.
     #   \param dec_type type of decorator to return.
-    def getDecorator(self, dec_type):
+    def getDecorator(self, dec_type) -> Optional[SceneNodeDecorator]:
         for decorator in self._decorators:
             if type(decorator) == dec_type:
                 return decorator
@@ -203,7 +216,7 @@ class SceneNode():
 
     ##  Remove decorator by type.
     #   \param dec_type type of the decorator to remove.
-    def removeDecorator(self, dec_type):
+    def removeDecorator(self, dec_type: SceneNodeDecorator):
         for decorator in self._decorators:
             if type(decorator) == dec_type:
                 decorator.clear()
@@ -216,7 +229,7 @@ class SceneNode():
     #   \param \type{string} function The function to be called.
     #   \param *args
     #   \param **kwargs
-    def callDecoration(self, function, *args, **kwargs):
+    def callDecoration(self, function: str, *args, **kwargs):
         for decorator in self._decorators:
             if hasattr(decorator, function):
                 try:
@@ -227,28 +240,28 @@ class SceneNode():
 
     ##  Does this SceneNode have a certain Decoration (as defined by a Decorator)
     #   \param \type{string} function the function to check for.
-    def hasDecoration(self, function):
+    def hasDecoration(self, function: str) -> bool:
         for decorator in self._decorators:
             if hasattr(decorator, function):
                 return True
         return False
 
-    def getName(self):
+    def getName(self) -> str:
         return self._name
 
-    def setName(self, name):
+    def setName(self, name: str):
         self._name = name
 
     ##  How many nodes is this node removed from the root?
     #   \return |tupe{int} Steps from root (0 means it -is- the root).
-    def getDepth(self):
+    def getDepth(self) -> int:
         if self._parent is None:
             return 0
         return self._parent.getDepth() + 1
 
     ##  \brief Set the parent of this object
     #   \param scene_node SceneNode that is the parent of this object.
-    def setParent(self, scene_node):
+    def setParent(self, scene_node: Optional["SceneNode"]):
         if self._parent:
             self._parent.removeChild(self)
 
@@ -260,29 +273,31 @@ class SceneNode():
 
     ##  \brief Get the visibility of this node. The parents visibility overrides the visibility.
     #   TODO: Let renderer actually use the visibility to decide whether to render or not.
-    def isVisible(self):
-        if self._parent != None and self._visible:
+    def isVisible(self) -> bool:
+        if self._parent is not None and self._visible:
             return self._parent.isVisible()
         else:
             return self._visible
 
     ##  Set the visibility of this SceneNode.
-    def setVisible(self, visible):
+    def setVisible(self, visible: bool):
         self._visible = visible
 
     ##  \brief Get the (original) mesh data from the scene node/object.
     #   \returns MeshData
-    def getMeshData(self):
+    def getMeshData(self) -> Optional[MeshData]:
         return self._mesh_data
 
     ##  \brief Get the transformed mesh data from the scene node/object, based on the transformation of scene nodes wrt root.
     #   \returns MeshData
-    def getMeshDataTransformed(self):
-        return self._mesh_data.getTransformed(self.getWorldTransformation())
+    def getMeshDataTransformed(self) -> Optional[MeshData]:
+        if self._mesh_data:
+            return self._mesh_data.getTransformed(self.getWorldTransformation())
+        return self._mesh_data
 
     ##  \brief Set the mesh of this node/object
     #   \param mesh_data MeshData object
-    def setMeshData(self, mesh_data):
+    def setMeshData(self, mesh_data: Optional[MeshData]):
         self._mesh_data = mesh_data
         self._resetAABB()
         self.meshDataChanged.emit(self)
@@ -338,15 +353,15 @@ class SceneNode():
 
     ##  \brief Get the list of direct children
     #   \returns List of children
-    def getChildren(self):
+    def getChildren(self) -> List["SceneNode"]:
         return self._children
 
-    def hasChildren(self):
+    def hasChildren(self) -> bool:
         return True if self._children else False
 
     ##  \brief Get list of all children (including it's children children children etc.)
     #   \returns list ALl children in this 'tree'
-    def getAllChildren(self):
+    def getAllChildren(self) -> List["SceneNode"]:
         children = []
         children.extend(self._children)
         for child in self._children:
@@ -359,7 +374,7 @@ class SceneNode():
 
     ##  \brief Computes and returns the transformation from world to local space.
     #   \returns 4x4 transformation matrix
-    def getWorldTransformation(self):
+    def getWorldTransformation(self) -> Matrix:
         if self._world_transformation is None:
             self._updateTransformation()
 
@@ -367,40 +382,58 @@ class SceneNode():
 
     ##  \brief Returns the local transformation with respect to its parent. (from parent to local)
     #   \retuns transformation 4x4 (homogenous) matrix
-    def getLocalTransformation(self):
+    def getLocalTransformation(self) -> Matrix:
         if self._transformation is None:
             self._updateTransformation()
 
         return deepcopy(self._transformation)
 
-    def setTransformation(self, transformation):
+    def setTransformation(self, transformation: Matrix):
         self._transformation = transformation
         self._transformChanged()
 
     ##  Get the local orientation value.
-    def getOrientation(self):
+    def getOrientation(self) -> Quaternion:
         return deepcopy(self._orientation)
 
-    def getWorldOrientation(self):
+    def getWorldOrientation(self) -> Quaternion:
         return deepcopy(self._derived_orientation)
 
     ##  \brief Rotate the scene object (and thus its children) by given amount
     #
     #   \param rotation \type{Quaternion} A quaternion indicating the amount of rotation.
     #   \param transform_space The space relative to which to rotate. Can be any one of the constants in SceneNode::TransformSpace.
-    def rotate(self, rotation, transform_space = TransformSpace.Local):
+    def rotate(self, rotation: Quaternion, transform_space: int = TransformSpace.Local):
         if not self._enabled:
             return
-
+        #self.LOG_QUATERNION( "409 rotate:: rotation", rotation )
         orientation_matrix = rotation.toMatrix()
+        self.LOG_MATRIX( "411 rotate:: orientation_matrix", orientation_matrix )
+        #self.LOG_VECTOR( "412 rotate:: self.getPosition()", self.getPosition() )
+
         if transform_space == SceneNode.TransformSpace.Local:
             self._transformation.multiply(orientation_matrix)
         elif transform_space == SceneNode.TransformSpace.Parent:
             self._transformation.preMultiply(orientation_matrix)
         elif transform_space == SceneNode.TransformSpace.World:
+            self.LOG_MATRIX( "419 rotate:: self._transformation", self._transformation )
+            inverse = self._world_transformation.getInverse()
+            self.LOG_MATRIX( "421 rotate:: inverse", inverse )
+            self.LOG_MATRIX( "422 rotate:: self._world_transformation", self._world_transformation )
+
+            self.LOG_MATRIX( "424 rotate:: self._transformation", self._transformation )
+            self.LOG_MATRIX( "425 rotate:: self._world_transformation.getInverse()", self._world_transformation.getInverse() )
             self._transformation.multiply(self._world_transformation.getInverse())
+
+            self.LOG_MATRIX( "428 rotate:: self._transformation", self._transformation )
+            self.LOG_MATRIX( "429 rotate:: orientation_matrix", orientation_matrix )
             self._transformation.multiply(orientation_matrix)
+
+            self.LOG_MATRIX( "432 rotate:: self._transformation", self._transformation )
+            self.LOG_MATRIX( "433 rotate:: self._world_transformation", self._world_transformation )
             self._transformation.multiply(self._world_transformation)
+
+            self.LOG_MATRIX( "436 rotate:: self._transformation", self._transformation )
 
         self._transformChanged()
 
@@ -408,18 +441,19 @@ class SceneNode():
     #
     #   \param orientation \type{Quaternion} The new orientation of this scene node.
     #   \param transform_space The space relative to which to rotate. Can be Local or World from SceneNode::TransformSpace.
-    def setOrientation(self, orientation, transform_space = TransformSpace.Local):
+    def setOrientation(self, orientation: Quaternion, transform_space: int = TransformSpace.Local):
         if not self._enabled or orientation == self._orientation:
             return
 
         new_transform_matrix = Matrix()
-        if transform_space == SceneNode.TransformSpace.Local:
-            orientation_matrix = orientation.toMatrix()
         if transform_space == SceneNode.TransformSpace.World:
             if self.getWorldOrientation() == orientation:
                 return
             new_orientation = orientation * (self.getWorldOrientation() * self._orientation.getInverse()).getInverse()
             orientation_matrix = new_orientation.toMatrix()
+        else:  # Local
+            orientation_matrix = orientation.toMatrix()
+
         euler_angles = orientation_matrix.getEuler()
 
         new_transform_matrix.compose(scale = self._scale, angles = euler_angles, translate = self._position, shear = self._shear)
@@ -427,17 +461,17 @@ class SceneNode():
         self._transformChanged()
 
     ##  Get the local scaling value.
-    def getScale(self):
+    def getScale(self) -> Vector:
         return self._scale
 
-    def getWorldScale(self):
+    def getWorldScale(self) -> Vector:
         return self._derived_scale
 
     ##  Scale the scene object (and thus its children) by given amount
     #
     #   \param scale \type{Vector} A Vector with three scale values
     #   \param transform_space The space relative to which to scale. Can be any one of the constants in SceneNode::TransformSpace.
-    def scale(self, scale, transform_space = TransformSpace.Local):
+    def scale(self, scale: Vector, transform_space: int = TransformSpace.Local):
         if not self._enabled:
             return
 
@@ -458,7 +492,7 @@ class SceneNode():
     #
     #   \param scale \type{Vector} The new scale value of the scene node.
     #   \param transform_space The space relative to which to rotate. Can be Local or World from SceneNode::TransformSpace.
-    def setScale(self, scale, transform_space = TransformSpace.Local):
+    def setScale(self, scale: Vector, transform_space: int = TransformSpace.Local):
         if not self._enabled or scale == self._scale:
             return
         if transform_space == SceneNode.TransformSpace.Local:
@@ -471,18 +505,18 @@ class SceneNode():
             self.scale(scale / self._scale, SceneNode.TransformSpace.World)
 
     ##  Get the local position.
-    def getPosition(self):
+    def getPosition(self) -> Vector:
         return self._position
 
     ##  Get the position of this scene node relative to the world.
-    def getWorldPosition(self):
+    def getWorldPosition(self) -> Vector:
         return self._derived_position
 
     ##  Translate the scene object (and thus its children) by given amount.
     #
     #   \param translation \type{Vector} The amount to translate by.
     #   \param transform_space The space relative to which to translate. Can be any one of the constants in SceneNode::TransformSpace.
-    def translate(self, translation, transform_space = TransformSpace.Local):
+    def translate(self, translation: Vector, transform_space: int = TransformSpace.Local):
         if not self._enabled:
             return
         translation_matrix = Matrix()
@@ -502,7 +536,7 @@ class SceneNode():
     #
     #   \param position The new position value of the SceneNode.
     #   \param transform_space The space relative to which to rotate. Can be Local or World from SceneNode::TransformSpace.
-    def setPosition(self, position, transform_space = TransformSpace.Local):
+    def setPosition(self, position: Vector, transform_space: int = TransformSpace.Local):
         if not self._enabled or position == self._position:
             return
         if transform_space == SceneNode.TransformSpace.Local:
@@ -520,7 +554,7 @@ class SceneNode():
     #
     #   \param target \type{Vector} The target to look at.
     #   \param up \type{Vector} The vector to consider up. Defaults to Vector.Unit_Y, i.e. (0, 1, 0).
-    def lookAt(self, target, up = Vector.Unit_Y):
+    def lookAt(self, target: Vector, up: Vector = Vector.Unit_Y):
         if not self._enabled:
             return
 
@@ -537,7 +571,6 @@ class SceneNode():
             [ 0.0,  0.0,  0.0,  1.0]
         ])
 
-
         self.setOrientation(Quaternion.fromMatrix(m))
 
     ##  Can be overridden by child nodes if they need to perform special rendering.
@@ -548,56 +581,48 @@ class SceneNode():
     #   \param renderer The renderer object to use for rendering.
     #
     #   \return False if the view should render this node, True if we handle our own rendering.
-    def render(self, renderer):
+    def render(self, renderer) -> bool:
         return False
 
     ##  Get whether this SceneNode is enabled, that is, it can be modified in any way.
-    def isEnabled(self):
+    def isEnabled(self) -> bool:
         return self._enabled
 
     ##  Set whether this SceneNode is enabled.
     #   \param enable True if this object should be enabled, False if not.
     #   \sa isEnabled
-    def setEnabled(self, enable):
+    def setEnabled(self, enable: bool):
         self._enabled = enable
 
     ##  Get whether this SceneNode can be selected.
     #
     #   \note This will return false if isEnabled() returns false.
-    def isSelectable(self):
+    def isSelectable(self) -> bool:
         return self._enabled and self._selectable
 
     ##  Set whether this SceneNode can be selected.
     #
     #   \param select True if this SceneNode should be selectable, False if not.
-    def setSelectable(self, select):
+    def setSelectable(self, select: bool):
         self._selectable = select
 
     ##  Get the bounding box of this node and its children.
-    def getBoundingBox(self):
+    def getBoundingBox(self) -> Optional[AxisAlignedBox]:
         if not self._calculate_aabb:
             return None
         if self._aabb is None:
             self._calculateAABB()
         return self._aabb
 
-    ##  Get the bounding box of this node and its children. Without taking any transformation into account
-    def getOriginalBoundingBox(self):
-        if not self._calculate_aabb:
-            return None
-        if self._original_aabb is None:
-            self._calculateAABB()
-        return self._original_aabb
-
     ##  Set whether or not to calculate the bounding box for this node.
     #
     #   \param calculate True if the bounding box should be calculated, False if not.
-    def setCalculateBoundingBox(self, calculate):
+    def setCalculateBoundingBox(self, calculate: bool):
         self._calculate_aabb = calculate
 
     boundingBoxChanged = Signal()
 
-    def getShear(self):
+    def getShear(self) -> Vector:
         return self._shear
 
     ##  private:
@@ -610,11 +635,13 @@ class SceneNode():
             child._transformChanged()
 
     def _updateTransformation(self):
+        #self.LOG_VECTOR( "before decompose:  self._mirror", self._mirror )
         scale, shear, euler_angles, translation, mirror = self._transformation.decompose()
         self._position = translation
         self._scale = scale
         self._shear = shear
         self._mirror = mirror
+        #self.LOG_VECTOR( "after decompose:  self._mirror", self._mirror )
         orientation = Quaternion()
         euler_angle_matrix = Matrix()
         euler_angle_matrix.setByEuler(euler_angles.x, euler_angles.y, euler_angles.z)
@@ -632,6 +659,7 @@ class SceneNode():
         world_euler_angle_matrix = Matrix()
         world_euler_angle_matrix.setByEuler(world_euler_angles.x, world_euler_angles.y, world_euler_angles.z)
         self._derived_orientation.setByMatrix(world_euler_angle_matrix)
+        self._derived_orientation = -self._derived_orientation
 
     def _resetAABB(self):
         if not self._calculate_aabb:
@@ -643,21 +671,46 @@ class SceneNode():
 
     def _calculateAABB(self):
         aabb = None
-        original_aabb = None
         if self._mesh_data:
             aabb = self._mesh_data.getExtents(self.getWorldTransformation())
-            original_aabb = self._mesh_data.getExtents()
-        else: # If there is no mesh_data, use a boundingbox that encompasses the local (0,0,0)
+        else:  # If there is no mesh_data, use a boundingbox that encompasses the local (0,0,0)
             position = self.getWorldPosition()
             aabb = AxisAlignedBox(minimum = position, maximum = position)
-            original_aabb = AxisAlignedBox(minimum = position, maximum = position)
 
         for child in self._children:
             if aabb is None:
                 aabb = child.getBoundingBox()
-                original_aabb = child.getOriginalBoundingBox()
             else:
                 aabb = aabb + child.getBoundingBox()
-                original_aabb = original_aabb + child.getOriginalBoundingBox()
         self._aabb = aabb
-        self._original_aabb = original_aabb
+
+
+    def LOG_MATRIX( self, str_matrix_name, matrix ):
+        Logger.log("d", "\n ................................................................... " )
+
+        Logger.log("d", "\n %s: ", str_matrix_name  )
+        if( matrix != None ):
+            Logger.log("d", "%f  %f  %f  %f", matrix.at(0,0),  matrix.at(0,1), matrix.at(0,2), matrix.at(0,3) )
+            Logger.log("d", "%f  %f  %f  %f", matrix.at(1,0),  matrix.at(1,1), matrix.at(1,2), matrix.at(1,3) )
+            Logger.log("d", "%f  %f  %f  %f", matrix.at(2,0),  matrix.at(2,1), matrix.at(2,2), matrix.at(2,3) )
+            Logger.log("d", "%f  %f  %f  %f", matrix.at(3,0),  matrix.at(3,1), matrix.at(3,2), matrix.at(3,3) )
+        else:
+            Logger.log("d", "\n %s in None ", str_matrix_name )
+
+        Logger.log("d", "................................................................... \n" )
+
+    def LOG_QUATERNION( self, str_quaternion_name, quaternion ):
+        Logger.log("d", "\n ................................................................... " )
+        Logger.log("d", "\n %s: ", str_quaternion_name )
+        Logger.log("d", "%f  %f  %f  %f", quaternion.toMatrix().at(0,0),  quaternion.toMatrix().at(0,1), quaternion.toMatrix().at(0,2), quaternion.toMatrix().at(0,3) )
+        Logger.log("d", "%f  %f  %f  %f", quaternion.toMatrix().at(1,0),  quaternion.toMatrix().at(1,1), quaternion.toMatrix().at(1,2), quaternion.toMatrix().at(1,3) )
+        Logger.log("d", "%f  %f  %f  %f", quaternion.toMatrix().at(2,0),  quaternion.toMatrix().at(2,1), quaternion.toMatrix().at(2,2), quaternion.toMatrix().at(2,3) )
+        Logger.log("d", "%f  %f  %f  %f", quaternion.toMatrix().at(3,0),  quaternion.toMatrix().at(3,1), quaternion.toMatrix().at(3,2), quaternion.toMatrix().at(3,3) )
+        Logger.log("d", "................................................................... \n" )
+
+    def LOG_VECTOR( self, str_vector_name, vector ):
+        Logger.log("d", "\n ................................................................... " )
+        Logger.log("d", "\n %s: ", str_vector_name )
+        Logger.log("d", "%f  %f  %f", vector.x,  vector.y, vector.z )
+        Logger.log("d", "................................................................... \n" )
+

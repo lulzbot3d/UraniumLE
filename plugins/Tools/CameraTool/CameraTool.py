@@ -2,6 +2,7 @@
 # Uranium is released under the terms of the AGPLv3 or higher.
 
 from UM.Tool import Tool
+from UM.Preferences import Preferences
 from UM.Event import Event, MouseEvent, KeyEvent
 from UM.Math.Vector import Vector
 from UM.Math.Matrix import Matrix
@@ -39,6 +40,15 @@ class CameraTool(Tool):
         self._start_y = None
 
         self._drag_distance = 0.05
+
+        Preferences.getInstance().addPreference("view/invert_zoom", False)
+        self._invert_zoom = Preferences.getInstance().getValue("view/invert_zoom")
+        Preferences.getInstance().preferenceChanged.connect(self._onPreferencesChanged)
+
+    def _onPreferencesChanged(self, name):
+        if name != "view/invert_zoom":
+            return
+        self._invert_zoom = Preferences.getInstance().getValue("view/invert_zoom")
 
     ##  Set the minimum and maximum distance from the origin used for "zooming" the camera
     #
@@ -117,7 +127,8 @@ class CameraTool(Tool):
                     _zoom_speed = 2000
                     self._zoomCamera(_diff_y * _zoom_speed)
                     self._start_y = None
-        elif event.type is Event.MouseWheelEvent:
+        #elif event.type is Event.MouseWheelEvent:
+        elif event.type is Event.MouseWheelEvent and self._ctrl_is_active is False:
             self._zoomCamera(event.vertical)
             return True
         elif event.type is Event.KeyPressEvent:
@@ -216,6 +227,10 @@ class CameraTool(Tool):
         r = (camera.getWorldPosition() - self._origin).length()
         delta = r * (zoom_range / 128 / 10.0)
         r -= delta
+
+        if self._invert_zoom:
+            delta *= -1
+
         if delta > 0:
             if r > self._min_zoom:
                 camera.translate(Vector(0.0, 0.0, -delta))

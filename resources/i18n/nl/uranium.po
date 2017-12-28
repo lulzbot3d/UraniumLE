@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: 2.3\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2017-03-27 17:40+0200\n"
-"PO-Revision-Date: 2017-01-27 16:32+0100\n"
+"PO-Revision-Date: 2017-04-04 11:27+0200\n"
 "Last-Translator: Ruben Dulek <r.dulek@ultimaker.com>\n"
 "Language-Team: Ultimaker <info@ultimaker.com>\n"
 "Language: nl-NL\n"
@@ -118,52 +118,6 @@ msgstr "STL-bestand (binair)"
 msgctxt "@label"
 msgid "Console Logger"
 msgstr "Consolelogger"
-
-#: /home/ruben/Projects/Uranium/plugins/UpdateChecker/__init__.py:12
-msgctxt "@label"
-msgid "Update Checker"
-msgstr "Updatecontrole"
-
-#: /home/ruben/Projects/Uranium/plugins/UpdateChecker/__init__.py:15
-msgctxt "@info:whatsthis"
-msgid "Checks for updates of the software."
-msgstr "Controleert of er updates zijn voor de software."
-
-#: /home/ruben/Projects/Uranium/plugins/UpdateChecker/UpdateChecker.py:47
-msgctxt "@info"
-msgid "Could not access update information."
-msgstr "Geen toegang tot update-informatie."
-
-#: /home/ruben/Projects/Uranium/plugins/UpdateChecker/UpdateChecker.py:58
-#: /home/ruben/Projects/Uranium/plugins/UpdateChecker/UpdateChecker.py:63
-msgctxt "@info"
-msgid "The version you are using does not support checking for updates."
-msgstr "Het controleren op updates wordt in de door u gebruikte versie niet ondersteund."
-
-#: /home/ruben/Projects/Uranium/plugins/UpdateChecker/UpdateChecker.py:74
-msgctxt "@info"
-msgid "A new version is available!"
-msgstr "Er is een nieuwe versie beschikbaar."
-
-#: /home/ruben/Projects/Uranium/plugins/UpdateChecker/UpdateChecker.py:75
-msgctxt "@action:button"
-msgid "Download"
-msgstr "Downloaden"
-
-#: /home/ruben/Projects/Uranium/plugins/UpdateChecker/UpdateChecker.py:87
-msgctxt "@info"
-msgid "An exception occured while parsing the JSON file."
-msgstr "Er is een uitzondering opgetreden tijdens het parseren van het JSON-bestand."
-
-#: /home/ruben/Projects/Uranium/plugins/UpdateChecker/UpdateChecker.py:91
-msgctxt "@info"
-msgid "No new version was found."
-msgstr "Er is geen nieuwe versie gevonden."
-
-#: /home/ruben/Projects/Uranium/plugins/UpdateChecker/UpdateChecker.py:102
-msgctxt "@item:inmenu"
-msgid "Check for Updates"
-msgstr "Controleren op Updates"
 
 #: /home/ruben/Projects/Uranium/plugins/LocalFileOutputDevice/LocalFileOutputDevicePlugin.py:46
 msgctxt "@item:inmenu"
@@ -425,12 +379,12 @@ msgstr "Er is een configuratie van een oudere versie van {0} geïmporteerd."
 #: /home/ruben/Projects/Uranium/UM/View/GL/OpenGL.py:45
 msgctxt "@message"
 msgid "Failed to Initialize OpenGL"
-msgstr ""
+msgstr "Kan OpenGL niet initialiseren"
 
 #: /home/ruben/Projects/Uranium/UM/View/GL/OpenGL.py:55
 msgctxt "Critical OpenGL Extensions Missing"
 msgid "Critical OpenGL extensions are missing. This program requires support for Framebuffer Objects. Please check your video card drivers."
-msgstr ""
+msgstr "Er ontbreken essentiële OpenGL-extensies. Voor dit programma is ondersteuning voor Framebuffer-objecten vereist. Controleer het stuurprogramma voor uw videokaart."
 
 #: /home/ruben/Projects/Uranium/UM/FileHandler/ReadFileJob.py:36
 #, python-brace-format

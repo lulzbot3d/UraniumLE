@@ -1,10 +1,10 @@
-# Copyright (c) 2016 Ultimaker B.V.
+# Copyright (c) 2017 Ultimaker B.V.
 # Uranium is released under the terms of the AGPLv3 or higher.
 
+import copy #To implement deepcopy.
 import enum
 import os
-from typing import Any, List, Set, KeysView
-from typing import Dict
+from typing import Any, List, Set, Dict, Optional, Iterable
 
 from UM.Settings.Interfaces import ContainerInterface
 from UM.Signal import Signal, signalemitter
@@ -54,22 +54,36 @@ class SettingInstance:
 
         super().__init__()
 
-        self._definition = definition
-        self._container = container
+        self._definition = definition  # type: SettingDefinition
+        self._container = container  # type: ContainerInterface
 
-        self._visible = True
-        self._validator = None
+        self._visible = True  # type: bool
+        self._validator = None  # type: Optional[Validator]
         validator_type = SettingDefinition.getValidatorForType(self._definition.type)
         if validator_type:
             self._validator = validator_type(self._definition.key)
 
         self._state = InstanceState.Default
 
-        self.__property_values = {} # type: Dict[str, Any]
+        self.__property_values = {}  # type: Dict[str, Any]
 
     ##  Get a list of all supported property names
-    def getPropertyNames(self) -> KeysView[str]:
+    def getPropertyNames(self) -> Iterable[str]:
         return self.__property_values.keys()
+
+    ##  Copies the setting instance and all its properties and state.
+    #
+    #   The definition and the instance container containing this instance are
+    #   not deep-copied but just taken over from the original, since they are
+    #   seen as back-links. Please set them correctly after deep-copying this
+    #   instance.
+    def __deepcopy__(self, memo):
+        result = SettingInstance(self._definition, self._container)
+        result._visible = self._visible
+        result._validator = copy.deepcopy(self._validator, memo)
+        result._state = self._state
+        result.__property_values = copy.deepcopy(self.__property_values, memo)
+        return result
 
     def __eq__(self, other: Any) -> bool:
         if type(self) != type(other):
@@ -105,7 +119,7 @@ class SettingInstance:
         raise AttributeError("'SettingInstance' object has no attribute '{0}'".format(name))
 
     @call_if_enabled(_traceSetProperty, _isTraceEnabled())
-    def setProperty(self, name: str, value: Any, container: ContainerInterface = None) -> None:
+    def setProperty(self, name: str, value: Any, container: ContainerInterface = None):
         if SettingDefinition.hasProperty(name):
             if SettingDefinition.isReadOnlyProperty(name):
                 Logger.log("e", "Tried to set property %s which is a read-only property", name)
@@ -120,7 +134,7 @@ class SettingInstance:
                     if not container:
                         container = self._container
                     ## If state changed, emit the signal
-                    if self._state != InstanceState.User:
+                    if self._state != InstanceState.User and container.getMetaDataEntry("type") == "user":
                         self._state = InstanceState.User
                         self.propertyChanged.emit(self._definition.key, "state")
 
@@ -143,7 +157,7 @@ class SettingInstance:
                 raise AttributeError("No property {0} defined".format(name))
 
     @call_if_enabled(_traceUpdateProperty, _isTraceEnabled())
-    def updateProperty(self, name: str, container: ContainerInterface = None) -> None:
+    def updateProperty(self, name: str, container: Optional[ContainerInterface] = None):
         if not SettingDefinition.hasProperty(name):
             Logger.log("e", "Trying to update unknown property %s", name)
             return
@@ -216,12 +230,18 @@ class SettingInstance:
     #   \param relations_set \type{set} Set of keys (strings) of settings that are influenced
     #   \param relations list of relation objects that need to be checked.
     #   \param role name of the property value of the settings
-    def _addRelations(self, relations_set: Set["SettingRelation"], relations: List["SettingRelation"], role: str) -> None:
+    def _addRelations(self, relations_set: Set["SettingRelation"], relations: List["SettingRelation"], role: str):
         for relation in filter(lambda r: r.role == role, relations):
             if relation.type == RelationType.RequiresTarget:
                 continue
+
             # Do not add relation to self.
             if relation.target.key == self.definition.key:
+                continue
+
+            # Don't add it to list if it's already there.
+            # We do need to continue, as it might cause recursion issues otherwise.
+            if relation in relations_set:
                 continue
 
             relations_set.add(relation)
@@ -229,6 +249,7 @@ class SettingInstance:
             property_names = SettingDefinition.getPropertyNames()
             property_names.remove("value")  # Move "value" to the front of the list so we always update that first.
             property_names.insert(0, "value")
+
             # Ensure that all properties of related settings are added.
             for property_name in property_names:
                 self._addRelations(relations_set, relation.target.relations, property_name)

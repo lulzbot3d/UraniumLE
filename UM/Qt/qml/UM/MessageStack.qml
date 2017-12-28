@@ -39,14 +39,24 @@ ListView {
         }
         anchors.horizontalCenter: parent.horizontalCenter;
 
-        color: UM.Theme.getColor("message_background")
+        color:
+        {
+            if(model.type == 2)
+            {
+                return UM.Theme.getColor("message_background_error")
+            }
+            else
+            {
+                return UM.Theme.getColor("message_background")
+            }
+        }
         border.width: UM.Theme.getSize("default_lining").width
         border.color: UM.Theme.getColor("message_border")
 
         property variant actions: model.actions;
         property variant model_id: model.id
 
-        Label {
+        Text {
             id: messageLabel
             anchors {
                 left: parent.left;

@@ -1,9 +1,10 @@
-# Copyright (c) 2015 Ultimaker B.V.
+# Copyright (c) 2017 Ultimaker B.V.
 # Copyright (c) Thiago Marcos P. Santos
 # Copyright (c) Christopher S. Case
 # Copyright (c) David H. Bronke
 # Uranium is released under the terms of the AGPLv3 or higher.
 
+import enum #For the compress parameter of postponeSignals.
 import inspect
 import threading
 import os
@@ -24,6 +25,7 @@ from UM import FlameProfiler
 MYPY = False
 if MYPY:
     from UM.Application import Application
+
 
 # Helper functions for tracing signal emission.
 def _traceEmit(signal: Any, *args: Any, **kwargs: Any) -> None:
@@ -49,36 +51,45 @@ def _traceEmit(signal: Any, *args: Any, **kwargs: Any) -> None:
 def _traceConnect(signal: Any, *args: Any, **kwargs: Any) -> None:
     Logger.log("d", "Connecting signal %s to %s", str(signal._Signal__name), str(args[0]))
 
+
 def _traceDisconnect(signal: Any, *args: Any, **kwargs: Any) -> None:
     Logger.log("d", "Connecting signal %s from %s", str(signal._Signal__name), str(args[0]))
+
 
 def _isTraceEnabled() -> bool:
     return "URANIUM_TRACE_SIGNALS" in os.environ
 
+
 class SignalQueue:
-    def functionEvent(self, event): pass
-    def getMainThread(self): pass
+    def functionEvent(self, event):
+        pass
+
+    def getMainThread(self):
+        pass
 
 ###########################################################################
 # Integration with the Flame Profiler.
 
+
 def _recordSignalNames():
     return FlameProfiler.enabled()
 
-def profileEmit(function):
+
+def profileEmit(func):
     if FlameProfiler.enabled():
-        @functools.wraps(function)
+        @functools.wraps(func)
         def wrapped(self, *args, **kwargs):
             FlameProfiler.updateProfileConfig()
             if FlameProfiler.isRecordingProfile():
                 with FlameProfiler.profileCall("[SIG] " + self.getName()):
-                    function(self, *args, **kwargs)
+                    func(self, *args, **kwargs)
             else:
-                function(self, *args, **kwargs)
+                func(self, *args, **kwargs)
         return wrapped
 
     else:
-        return function
+        return func
+
 
 ###########################################################################
 
@@ -177,11 +188,11 @@ class Signal:
                 for line in tb:
                     Logger.log("w", line)
 
-            if self._compress_postpone:
+            if self._compress_postpone == CompressTechnique.CompressSingle:
                 # If emits should be compressed, we only emit the last emit that was called
                 self._postponed_emits = (args, kwargs)
             else:
-                # If emits should not be compressed, we catch all calls to emit and put them in a list to be called later.
+                # If emits should not be compressed or compressed per parameter value, we catch all calls to emit and put them in a list to be called later.
                 if not self._postponed_emits:
                     self._postponed_emits = []
                 self._postponed_emits.append((args, kwargs))
@@ -199,7 +210,6 @@ class Signal:
             return
 
         self.__performEmit(*args, **kwargs)
-
 
     ##  Connect to this signal.
     #   \param connector The signal or slot (function) to connect.
@@ -258,7 +268,7 @@ class Signal:
     def __getstate__(self):
         return {}
 
-    ##  To proerly handle deepcopy in combination with __getstate__
+    ##  To properly handle deepcopy in combination with __getstate__
     #
     #   Apparently deepcopy uses __getstate__ internally, which is not documented. The reimplementation
     #   of __getstate__ then breaks deepcopy. On the other hand, if we do not reimplement it like that,
@@ -280,9 +290,9 @@ class Signal:
 
     #   To avoid circular references when importing Application, this should be
     #   set by the Application instance.
-    _app = None # type: Application
+    _app = None  # type: Application
 
-    _signalQueue = None # type: SignalQueue
+    _signalQueue = None  # type: SignalQueue
 
     # Private implementation of the actual emit.
     # This is done to make it possible to freely push function events without needing to maintain state.
@@ -330,8 +340,14 @@ class Signal:
     #     signal_str = ", ".join([str(signal) for signal in self.__signals])
     #     return "Signal<{}> {{ __functions={{ {} }}, __methods={{ {} }}, __signals={{ {} }} }}".format(id(self), function_str, method_str, signal_str)
 
+
 def strMethodSet(method_set):
     return "{" + ", ".join([str(m) for m in method_set]) + "}"
+
+class CompressTechnique(enum.Enum):
+    NoCompression = 0
+    CompressSingle = 1
+    CompressPerParameterValue = 2
 
 ##  A context manager that allows postponing of signal emissions
 #
@@ -348,7 +364,7 @@ def strMethodSet(method_set):
 #   \param signals The signals to postpone emits for.
 #   \param compress Whether to enable compression of emits or not.
 @contextlib.contextmanager
-def postponeSignals(*signals, compress = False):
+def postponeSignals(*signals, compress: CompressTechnique = CompressTechnique.NoCompression):
     # To allow for nested postpones on the same signals, we should check if signals are not already
     # postponed and only change those that are not yet postponed.
     restore_emit = []
@@ -356,8 +372,7 @@ def postponeSignals(*signals, compress = False):
         if not signal._postpone_emit: # Do nothing if the signal has already been changed
             signal._postpone_emit = True
             signal._postpone_thread = threading.current_thread()
-            if compress:
-                signal._compress_postpone = True
+            signal._compress_postpone = compress
             # Since we made changes, make sure to restore the signal after exiting the context manager
             restore_emit.append(signal)
 
@@ -370,8 +385,12 @@ def postponeSignals(*signals, compress = False):
 
         if signal._postponed_emits:
             # Send any signal emits that were collected while emits were being postponed
-            if signal._compress_postpone:
+            if signal._compress_postpone == CompressTechnique.CompressSingle:
                 signal.emit(*signal._postponed_emits[0], **signal._postponed_emits[1])
+            elif signal._compress_postpone == CompressTechnique.CompressPerParameterValue:
+                uniques = {(tuple(args), tuple(kwargs.items())) for args, kwargs in signal._postponed_emits} #Have to make them tuples in order to make them hashable.
+                for args, kwargs in uniques:
+                    signal.emit(*args, **dict(kwargs))
             else:
                 for args, kwargs in signal._postponed_emits:
                     signal.emit(*args, **kwargs)
@@ -395,9 +414,10 @@ class SignalEmitter:
     ##  Initialize method.
     @deprecated("Please use the new @signalemitter decorator", "2.2")
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        super().__init__()
         for name, signal in inspect.getmembers(self, lambda i: isinstance(i, Signal)):
             setattr(self, name, Signal(type = signal.getType())) #pylint: disable=bad-whitespace
+
 
 ##  Class decorator that ensures a class has unique instances of signals.
 #
@@ -431,13 +451,14 @@ def signalemitter(cls):
 
 T = TypeVar('T')
 
+
 ##  Minimal implementation of a weak reference list with immutable tendencies.
 #
 #   Strictly speaking this isn't immutable because the garbage collector can modify
 #   it, but no application code can. Also, this class doesn't implement the Python
 #   list API, only the handful of methods we actually need in the code above.
 class WeakImmutableList(Generic[T], Iterable):
-    def __init__(self) -> None:
+    def __init__(self):
         self.__list = []    # type: List[ReferenceType[Optional[T]]]
 
     ## Append an item and return a new list
@@ -445,7 +466,7 @@ class WeakImmutableList(Generic[T], Iterable):
     #  \param item the item to append
     #  \return a new list
     def append(self, item: T) -> "WeakImmutableList[T]":
-        new_instance = WeakImmutableList()   # type: WeakImmutableList[T]
+        new_instance = WeakImmutableList()  # type: WeakImmutableList[T]
         new_instance.__list = self.__cleanList()
         new_instance.__list.append(ReferenceType(item))
         return new_instance
@@ -464,7 +485,7 @@ class WeakImmutableList(Generic[T], Iterable):
                 new_instance.__list.remove(item_ref)
                 return new_instance
         else:
-            return self # No changes needed
+            return self  # No changes needed
 
     # Create a new list with the missing values removed.
     def __cleanList(self) -> "List[ReferenceType[Optional[T]]]":
@@ -472,6 +493,7 @@ class WeakImmutableList(Generic[T], Iterable):
 
     def __iter__(self):
         return WeakImmutableListIterator(self.__list)
+
 
 ## Iterator wrapper which filters out missing values.
 #
@@ -493,9 +515,10 @@ class WeakImmutableListIterator(Generic[T], Iterable):
 
 U = TypeVar('U')
 
+
 ##  A variation of WeakImmutableList which holds a pair of values using weak refernces.
 class WeakImmutablePairList(Generic[T,U], Iterable):
-    def __init__(self) -> None:
+    def __init__(self):
         self.__list = []    # type: List[Tuple[ReferenceType[T],ReferenceType[U]]]
 
     ## Append an item and return a new list
@@ -503,7 +526,7 @@ class WeakImmutablePairList(Generic[T,U], Iterable):
     #  \param item the item to append
     #  \return a new list
     def append(self, left_item: T, right_item: U) -> "WeakImmutablePairList[T,U]":
-        new_instance = WeakImmutablePairList() # type: WeakImmutablePairList[T,U]
+        new_instance = WeakImmutablePairList()  # type: WeakImmutablePairList[T,U]
         new_instance.__list = self.__cleanList()
         new_instance.__list.append( (weakref.ref(left_item), weakref.ref(right_item)) )
         return new_instance
@@ -533,6 +556,7 @@ class WeakImmutablePairList(Generic[T,U], Iterable):
 
     def __iter__(self):
         return WeakImmutablePairListIterator(self.__list)
+
 
 # A small iterator wrapper which dereferences the weak ref objects and filters
 # out the objects which have already disappeared via GC.

@@ -10,12 +10,21 @@ Item {
     property alias source: img.source;
     property alias color: shader.color;
     property alias sourceSize: img.sourceSize;
+    property alias isBorderVisible: borderRectangle.visible;
 
-    Image {
-        id: img;
-        anchors.fill: parent;
-        visible: false;
+    Rectangle {
+        id: borderRectangle
+        anchors.fill: parent
+        color: "#788814"
+        visible: false
+        Image {
+            id: img;
+
+            anchors.fill: parent;
+            visible: false;
+        }
     }
+
 
     ShaderEffect {
         id: shader;

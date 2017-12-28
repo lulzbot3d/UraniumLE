@@ -4,8 +4,9 @@
 import configparser
 import io
 import copy
-from typing import Dict
-from typing import List
+from typing import List, Dict, Optional
+
+from PyQt5.QtCore import QObject, pyqtProperty, pyqtSignal
 
 from UM.Settings.Interfaces import DefinitionContainerInterface
 from UM.Signal import Signal, signalemitter
@@ -13,10 +14,7 @@ from UM.PluginObject import PluginObject
 from UM.Logger import Logger
 from UM.MimeTypeDatabase import MimeTypeDatabase, MimeType
 
-from UM.Settings.Interfaces import ContainerRegistryInterface
-from UM.Settings.DefinitionContainer import DefinitionContainer
-
-from UM.Settings.Interfaces import ContainerInterface
+from UM.Settings.Interfaces import ContainerInterface, ContainerRegistryInterface
 from UM.Settings.SettingInstance import SettingInstance
 
 class InvalidInstanceError(Exception):
@@ -36,18 +34,19 @@ MimeTypeDatabase.addMimeType(
     )
 )
 
+
 ##  A container for SettingInstance objects.
 #
 #
 @signalemitter
-class InstanceContainer(ContainerInterface, PluginObject):
+class InstanceContainer(QObject, ContainerInterface, PluginObject):
     Version = 2
 
     ##  Constructor
     #
     #   \param container_id A unique, machine readable/writable ID for this container.
     def __init__(self, container_id, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(parent = None, *args, **kwargs)
 
         self._id = str(container_id)    # type: str
         self._name = container_id       # type: str
@@ -73,6 +72,8 @@ class InstanceContainer(ContainerInterface, PluginObject):
         new_container._definition = self._definition
         new_container._metadata = copy.deepcopy(self._metadata, memo)
         new_container._instances = copy.deepcopy(self._instances, memo)
+        for instance in new_container._instances.values(): #Set the back-links of the new instances correctly to the copied container.
+            instance._container = new_container
         new_container._read_only = self._read_only
         new_container._dirty = self._dirty
         new_container._path = copy.deepcopy(self._path, memo)
@@ -109,19 +110,35 @@ class InstanceContainer(ContainerInterface, PluginObject):
     def __ne__(self, other):
         return not (self == other)
 
+    ##  For pickle support
+    def __getnewargs__(self):
+        return (self._id,)
+
+    ##  For pickle support
+    def __getstate__(self):
+        return self.__dict__
+
+    ##  For pickle support
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+
     ##  \copydoc ContainerInterface::getId
     #
     #   Reimplemented from ContainerInterface
     def getId(self) -> str:
         return self._id
 
-    id = property(getId)
+    id = pyqtProperty(str, fget = getId, constant = True)
 
     def setCachedValues(self, cached_values):
         if not self._instances:
             self._cached_values = cached_values
         else:
             Logger.log("w", "Unable set values to be lazy loaded when values are already loaded ")
+
+    @classmethod
+    def getLoadingPriority(cls) -> int:
+        return 1
 
     ##  \copydoc ContainerInterface::getPath.
     #
@@ -141,15 +158,26 @@ class InstanceContainer(ContainerInterface, PluginObject):
     def getName(self) -> str:
         return self._name
 
-    name = property(getName)
-
-    nameChanged = Signal()
-
     def setName(self, name):
         if name != self._name:
             self._name = name
             self._dirty = True
             self.nameChanged.emit()
+            self.pyqtNameChanged.emit()
+
+
+    # Because we want to expose the properties of InstanceContainer as Qt properties for
+    # CURA-3497, the nameChanged signal should be changed to a pyqtSignal. However,
+    # pyqtSignal throws TypeError when calling disconnect() when there are no connections.
+    # This causes a lot of errors in Cura code when we try to disconnect from nameChanged.
+    # Therefore, rather than change the type of nameChanged, we add an extra signal that
+    # is used as notify for the property.
+    #
+    # TODO: Remove this once the Cura code has been refactored to not use nameChanged anymore.
+    pyqtNameChanged = pyqtSignal()
+
+    nameChanged = Signal()
+    name = pyqtProperty(str, fget = getName, fset = setName, notify = pyqtNameChanged)
 
     ##  \copydoc ContainerInterface::isReadOnly
     #
@@ -158,7 +186,12 @@ class InstanceContainer(ContainerInterface, PluginObject):
         return self._read_only
 
     def setReadOnly(self, read_only):
-        self._read_only = read_only
+        if read_only != self._read_only:
+            self._read_only = read_only
+            self.readOnlyChanged.emit()
+
+    readOnlyChanged = pyqtSignal()
+    readOnly = pyqtProperty(bool, fget = isReadOnly, fset = setReadOnly, notify = readOnlyChanged)
 
     ##  \copydoc ContainerInterface::getMetaData
     #
@@ -166,14 +199,14 @@ class InstanceContainer(ContainerInterface, PluginObject):
     def getMetaData(self):
         return self._metadata
 
-    metaData = property(getMetaData)
-    metaDataChanged = Signal()
-
     def setMetaData(self, metadata):
         if metadata != self._metadata:
             self._metadata = metadata
             self._dirty = True
             self.metaDataChanged.emit(self)
+
+    metaDataChanged = pyqtSignal(QObject)
+    metaData = pyqtProperty("QVariantMap", fget = getMetaData, fset = setMetaData, notify = metaDataChanged)
 
     ##  \copydoc ContainerInterface::getMetaDataEntry
     #
@@ -273,14 +306,12 @@ class InstanceContainer(ContainerInterface, PluginObject):
             instance.propertyChanged.connect(self.propertyChanged)
             self._instances[instance.definition.key] = instance
 
-        self._instances[key].setProperty(property_name, property_value, container)
+        self._instances[key].setProperty(property_name, property_value, self)
 
         if not set_from_cache:
             self.setDirty(True)
 
     propertyChanged = Signal()
-
-    metaDataChanged = Signal()
 
     ##  Remove all instances from this container.
     def clear(self):
@@ -356,11 +387,8 @@ class InstanceContainer(ContainerInterface, PluginObject):
         parser.write(stream)
         return stream.getvalue()
 
-    ##  \copydoc ContainerInterface::deserialize
-    #
-    #   Reimplemented from ContainerInterface
-    def deserialize(self, serialized: str) -> None:
-        parser = configparser.ConfigParser(interpolation = None)
+    def _readAndValidateSerialized(self, serialized: str) -> configparser.ConfigParser:
+        parser = configparser.ConfigParser(interpolation=None)
         parser.read_string(serialized)
 
         has_general = "general" in parser
@@ -376,6 +404,37 @@ class InstanceContainer(ContainerInterface, PluginObject):
             if not has_version:
                 exception_string += " property 'version'"
             raise InvalidInstanceError(exception_string)
+        return parser
+
+    def getConfigurationTypeFromSerialized(self, serialized: str) -> Optional[str]:
+        configuration_type = None
+        try:
+            parser = self._readAndValidateSerialized(serialized)
+            configuration_type = parser['metadata'].get('type')
+        except Exception as e:
+            Logger.log("d", "Could not get configuration type: %s", e)
+        return configuration_type
+
+    def getVersionFromSerialized(self, serialized: str) -> Optional[int]:
+        configuration_type = self.getConfigurationTypeFromSerialized(serialized)
+        # get version
+        version = None
+        try:
+            import UM.VersionUpgradeManager
+            version = UM.VersionUpgradeManager.VersionUpgradeManager.getInstance().getFileVersion(configuration_type,
+                                                                                                  serialized)
+        except Exception as e:
+            #Logger.log("d", "Could not get version from serialized: %s", e)
+            pass
+        return version
+
+    ##  \copydoc ContainerInterface::deserialize
+    #
+    #   Reimplemented from ContainerInterface
+    def deserialize(self, serialized: str) -> str:
+        # update the serialized data first
+        serialized = super().deserialize(serialized)
+        parser = self._readAndValidateSerialized(serialized)
 
         if int(parser["general"]["version"]) != self.Version:
             raise IncorrectInstanceVersionError("Reported version {0} but expected version {1}".format(int(parser["general"]["version"]), self.Version))

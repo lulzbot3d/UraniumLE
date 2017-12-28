@@ -31,18 +31,7 @@ add_custom_target(typecheck)
 add_custom_command(TARGET typecheck POST_BUILD COMMAND ${PYTHON_EXECUTABLE} run_mypy.py WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 # # Tests
-enable_testing()
-add_test(NAME pytest COMMAND ${PYTHON_EXECUTABLE} -m pytest -r a --junitxml=${CMAKE_BINARY_DIR}/junit.xml ${CMAKE_SOURCE_DIR})
-# Using untranslated strings on Linux
-if(UNIX AND NOT APPLE) 
-    set_tests_properties(pytest PROPERTIES ENVIRONMENT LANG=C)
-endif()
-# Adding PYTHONPATH on every OS
-set_tests_properties(pytest PROPERTIES ENVIRONMENT PYTHONPATH=${CMAKE_SOURCE_DIR})
-# Adding compatibility with our old tests target
-add_custom_target(tests
-                  COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target test
-                  COMMENT "Notice: tests target is deprecated, please use the test target")
+include(UraniumTests)
 
 # # Benchmarks
 # add_custom_target(benchmark)
@@ -64,14 +53,26 @@ add_custom_target(extract-messages ${CMAKE_SOURCE_DIR}/scripts/extract-messages 
 # Build Translations
 CREATE_TRANSLATION_TARGETS()
 
-if(APPLE OR WIN32)
-    install(DIRECTORY UM DESTINATION lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages)
+if(NOT PYTHON_SITE_PACKAGES_DIR)
+	if(APPLE OR WIN32)
+		set(PYTHON_SITE_PACKAGES_DIR lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages
+			CACHE STRING "Directory to install Python bindings to")
+	else()
+		set(PYTHON_SITE_PACKAGES_DIR lib/python${PYTHON_VERSION_MAJOR}/dist-packages CACHE
+			STRING "Directory to install Python bindings to")
+	endif()
+	set(URANIUM_INSTALL_MODULES_PATH 
+		${CMAKE_INSTALL_DATADIR}/cmake-${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}/Modules/ )
+	set(URANIUM_INSTALL_PLUGINS_PATH 
+		lib/uranium)
 else()
-    install(DIRECTORY UM DESTINATION lib/python${PYTHON_VERSION_MAJOR}/dist-packages)
+	set(URANIUM_INSTALL_MODULES_PATH ${CMAKE_INSTALL_DATADIR}/cmake/Modules/)
+	set(URANIUM_INSTALL_PLUGINS_PATH ${CMAKE_INSTALL_LIBDIR}/uranium )
 endif()
-install(FILES ${CMAKE_SOURCE_DIR}/cmake/UraniumTranslationTools.cmake
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/cmake-${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}/Modules/ )
+install(DIRECTORY UM DESTINATION ${PYTHON_SITE_PACKAGES_DIR})
+
+install(FILES ${CMAKE_SOURCE_DIR}/cmake/UraniumTranslationTools.cmake DESTINATION ${URANIUM_INSTALL_MODULES_PATH})
 install(DIRECTORY resources DESTINATION ${CMAKE_INSTALL_DATADIR}/uranium)
-install(DIRECTORY plugins DESTINATION lib/uranium)
+install(DIRECTORY plugins DESTINATION ${URANIUM_INSTALL_PLUGINS_PATH} )
 
 include(CPackConfig.cmake)
