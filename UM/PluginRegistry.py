@@ -4,6 +4,7 @@
 import imp
 import os
 import zipfile
+import sys
 
 from UM.Preferences import Preferences
 from UM.PluginError import PluginNotFoundError, InvalidMetaDataError
@@ -171,9 +172,34 @@ class PluginRegistry(QObject):
                 else:
                     self._addPluginObject(plugin_object, plugin_id, plugin_type)
 
-            self._plugins[plugin_id] = plugin
-            self.addActivePlugin(plugin_id)
-            Logger.log("i", "Loaded plugin %s", plugin_id)
+                value = Preferences.getInstance().getValue( "general/disabled_plugins" )
+
+                try:
+                    application_name =  os.path.basename(sys.argv[0])
+                    file = Resources.getPath(Resources.Preferences, application_name + ".cfg")
+                    Preferences.getInstance().readFromFile(file)
+
+                    if "ZOffset" not in plugin_id:
+                        self._plugins[plugin_id] = plugin
+                        self.addActivePlugin(plugin_id)
+                        Logger.log("i", "Loaded plugin %s", plugin_id)
+                    else:
+                        if "ZOffset" not in value:
+                            self._plugins[plugin_id] = plugin
+                            self.addActivePlugin(plugin_id)
+                            Logger.log("i", "Loaded plugin %s", plugin_id)
+                        else:
+                            self.removeActivePlugin(plugin_id)
+
+
+                except FileNotFoundError:
+                    if "ZOffset" not in plugin_id:
+                        self._plugins[plugin_id] = plugin
+                        self.addActivePlugin(plugin_id)
+                        Logger.log("i", "3 Loaded plugin %s", plugin_id)
+                    else:
+                        self.removeActivePlugin(plugin_id)
+
 
         except KeyError as e:
             Logger.log("e", "Error loading plugin %s:", plugin_id)
