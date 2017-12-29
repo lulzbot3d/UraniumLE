@@ -306,7 +306,7 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
             instance.propertyChanged.connect(self.propertyChanged)
             self._instances[instance.definition.key] = instance
 
-        self._instances[key].setProperty(property_name, property_value, container)
+        self._instances[key].setProperty(property_name, property_value, self)
 
         if not set_from_cache:
             self.setDirty(True)
@@ -388,7 +388,7 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
         return stream.getvalue()
 
     def _readAndValidateSerialized(self, serialized: str) -> configparser.ConfigParser:
-        parser = configparser.ConfigParser(interpolation=None)
+        parser = configparser.ConfigParser(interpolation=None, comment_prefixes=('#',))
         parser.read_string(serialized)
 
         has_general = "general" in parser

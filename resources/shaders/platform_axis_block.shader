@@ -39,7 +39,7 @@ vertex41core =
     in highp vec4 a_vertex;
     in lowp vec4 a_color;
 
-    varying lowp vec4 v_color;
+    out lowp vec4 v_color;
 
     void main()
     {
@@ -53,17 +53,18 @@ fragment41core =
     uniform lowp vec4 u_activeColor;
     uniform lowp float u_disabledMultiplier;
 
-    varying lowp vec4 v_color;
+    in lowp vec4 v_color;
+    out vec4 frag_color;
 
     void main()
     {
         if(u_activeColor == v_color)
         {
-            gl_FragColor = v_color;
+            frag_color = v_color;
         }
         else
         {
-            gl_FragColor = v_color * u_disabledMultiplier;
+            frag_color = v_color * u_disabledMultiplier;
         }
     }
 
