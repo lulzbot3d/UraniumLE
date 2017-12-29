@@ -388,7 +388,7 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
         return stream.getvalue()
 
     def _readAndValidateSerialized(self, serialized: str) -> configparser.ConfigParser:
-        parser = configparser.ConfigParser(interpolation=None)
+        parser = configparser.ConfigParser(interpolation=None, comment_prefixes=('#',))
         parser.read_string(serialized)
 
         has_general = "general" in parser
