@@ -89,78 +89,112 @@ Item
             color: UM.Theme.getColor("y_axis"); // This is intentional. The internal axis are switched.
             verticalAlignment: Text.AlignVCenter;
         }
-        TextField
+
+        UM.TooltipArea
         {
-            id: xTextField
-            width: UM.Theme.getSize("setting_control").width;
-            height: UM.Theme.getSize("setting_control").height;
-            property string unit: "degrees";
-            style: UM.Theme.styles.text_field;
-            text: xText
-            validator: DoubleValidator
-            {
-                decimals: 4
-                locale: "en_US"
-            }
+            width: childrenRect.width;
+            height: childrenRect.height;
+            text: catalog.i18nc("@info:tooltip","Valid values are between -99999999.9999 and 99999999.9999")
 
-            onEditingFinished:
+            TextField
             {
-                var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
-                UM.ActiveTool.setProperty("X", modified_text);
-            }
+                id: xTextField
+                width: UM.Theme.getSize("setting_control").width;
+                height: UM.Theme.getSize("setting_control").height;
+                property string unit: "degrees";
+                style: UM.Theme.styles.text_field;
+                text: xText
+                validator: DoubleValidator
+                {
+                    top: 99999999.9999
+                    bottom: -99999999.9999
+                    decimals: 4
+                    locale: "en_US"
+                    notation: DoubleValidator.StandardNotation
+                }
 
-            Keys.onPressed:
-            {
-                base.inc_dec("X", event);
+
+                onEditingFinished:
+                {
+                    var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
+                    UM.ActiveTool.setProperty("X", modified_text);
+                }
+
+                Keys.onPressed:
+                {
+                    base.inc_dec("X", event);
+                }
             }
         }
-        TextField
+
+        UM.TooltipArea
         {
-            id: yTextField
-            width: UM.Theme.getSize("setting_control").width;
-            height: UM.Theme.getSize("setting_control").height;
-            property string unit: "degrees";
-            style: UM.Theme.styles.text_field;
-            text: zText
-            validator: DoubleValidator
-            {
-                decimals: 4
-                locale: "en_US"
-            }
+            width: childrenRect.width;
+            height: childrenRect.height;
+            text: catalog.i18nc("@info:tooltip","Valid values are between -99999999.9999 and 99999999.9999")
 
-            onEditingFinished:
+            TextField
             {
-                var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
-                UM.ActiveTool.setProperty("Z", modified_text);
-            }
+                id: yTextField
+                width: UM.Theme.getSize("setting_control").width;
+                height: UM.Theme.getSize("setting_control").height;
+                property string unit: "degrees";
+                style: UM.Theme.styles.text_field;
+                text: zText
+                validator: DoubleValidator
+                {
+                    top: 99999999.9999
+                    bottom: -99999999.9999
+                    decimals: 4
+                    locale: "en_US"
+                    notation: DoubleValidator.StandardNotation
+                }
 
-            Keys.onPressed:
-            {
-                base.inc_dec("Z", event);
+                onEditingFinished:
+                {
+                    var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
+                    UM.ActiveTool.setProperty("Z", modified_text);
+                }
+
+                Keys.onPressed:
+                {
+                    base.inc_dec("Z", event);
+                }
             }
         }
-        TextField
-        {
-            id: zTextField
-            width: UM.Theme.getSize("setting_control").width;
-            height: UM.Theme.getSize("setting_control").height;
-            property string unit: "degrees";
-            style: UM.Theme.styles.text_field;
-            text: yText
-            validator: DoubleValidator
-            {
-                decimals: 4
-                locale: "en_US"
-            }
-            onEditingFinished:
-            {
-                var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
-                UM.ActiveTool.setProperty("Y", modified_text);
-            }
 
-            Keys.onPressed:
+        UM.TooltipArea
+        {
+            width: childrenRect.width;
+            height: childrenRect.height;
+            text: catalog.i18nc("@info:tooltip","Valid values are between -99999999.9999 and 99999999.9999")
+
+            TextField
             {
-                base.inc_dec("Y", event);
+                id: zTextField
+                width: UM.Theme.getSize("setting_control").width;
+                height: UM.Theme.getSize("setting_control").height;
+                property string unit: "degrees";
+                style: UM.Theme.styles.text_field;
+                text: yText
+                validator: DoubleValidator
+                {
+                    top: 99999999.9999
+                    bottom: -99999999.9999
+                    decimals: 4
+                    locale: "en_US"
+                    notation: DoubleValidator.StandardNotation
+                }
+                onEditingFinished:
+                {
+                    var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
+                    UM.ActiveTool.setProperty("Y", modified_text);
+                }
+
+                Keys.onPressed:
+                {
+                    base.inc_dec("Y", event);
+                }
             }
         }
     }

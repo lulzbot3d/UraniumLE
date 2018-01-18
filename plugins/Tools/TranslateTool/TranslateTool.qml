@@ -84,6 +84,7 @@ Item
         onClicked: UM.ActiveTool.triggerAction("dropToBuildplate")
         visible: false
     }
+
     Grid
     {
         id: textfields;
@@ -121,76 +122,113 @@ Item
             color: UM.Theme.getColor("y_axis"); // This is intentional. The internal axis are switched.
             verticalAlignment: Text.AlignVCenter;
         }
-        TextField
+
+
+        UM.TooltipArea
         {
-            width: UM.Theme.getSize("setting_control").width;
-            height: UM.Theme.getSize("setting_control").height;
-            property string unit: "mm";
-            style: UM.Theme.styles.text_field;
-            text: xText
-            validator: DoubleValidator
-            {
-                decimals: 4
-                locale: "en_US"
-            }
+            width: childrenRect.width;
+            height: childrenRect.height;
+            text: catalog.i18nc("@info:tooltip","Valid values are between -99999999.9999 and 99999999.9999")
 
-            onEditingFinished:
+            TextField
             {
-                var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
-                UM.ActiveTool.setProperty("X", modified_text);
-            }
+                width: UM.Theme.getSize("setting_control").width;
+                height: UM.Theme.getSize("setting_control").height;
+                property string unit: "mm";
+                style: UM.Theme.styles.text_field;
+                text: xText
+                validator: DoubleValidator
+                {
+                    decimals: 4
+                    locale: "en_US"
+                    top: 99999999.9999
+                    bottom: -99999999.9999
+                    notation: DoubleValidator.StandardNotation
+                }
 
-            Keys.onPressed:
-            {
-                base.inc_dec("X", event);
+
+                onEditingFinished:
+                {
+                    var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
+                    UM.ActiveTool.setProperty("X", modified_text);
+                }
+
+                Keys.onPressed:
+                {
+                    base.inc_dec("X", event);
+                }
             }
         }
-        TextField
+
+        UM.TooltipArea
         {
-            width: UM.Theme.getSize("setting_control").width;
-            height: UM.Theme.getSize("setting_control").height;
-            property string unit: "mm";
-            style: UM.Theme.styles.text_field;
-            text: yText
-            validator: DoubleValidator
-            {
-                decimals: 4
-                locale: "en_US"
-            }
+            width: childrenRect.width;
+            height: childrenRect.height;
+            text: catalog.i18nc("@info:tooltip","Valid values are between -99999999.9999 and 99999999.9999")
 
-            onEditingFinished:
+            TextField
             {
-                var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
-                UM.ActiveTool.setProperty("Y", modified_text);
-            }
+                width: UM.Theme.getSize("setting_control").width;
+                height: UM.Theme.getSize("setting_control").height;
+                property string unit: "mm";
+                style: UM.Theme.styles.text_field;
+                text: yText
+                validator: DoubleValidator
+                {
+                    decimals: 4
+                    locale: "en_US"
+                    top: 99999999.9999
+                    bottom: -99999999.9999
+                    notation: DoubleValidator.StandardNotation
+                }
 
-            Keys.onPressed:
-            {
-                base.inc_dec("Y", event);
+                onEditingFinished:
+                {
+                    var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
+                    UM.ActiveTool.setProperty("Y", modified_text);
+                }
+
+                Keys.onPressed:
+                {
+                    base.inc_dec("Y", event);
+                }
             }
         }
-        TextField
+
+        UM.TooltipArea
         {
-            width: UM.Theme.getSize("setting_control").width;
-            height: UM.Theme.getSize("setting_control").height;
-            property string unit: "mm";
-            style: UM.Theme.styles.text_field;
-            text: zText
-            validator: DoubleValidator
+            width: childrenRect.width;
+            height: childrenRect.height;
+            text: catalog.i18nc("@info:tooltip","Valid values are between -99999999.9999 and 99999999.9999")
+
+            TextField
             {
-                decimals: 4
-                locale: "en_US"
-            }
-            onEditingFinished:
-            {
-                var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
-                UM.ActiveTool.setProperty("Z", modified_text);
+                width: UM.Theme.getSize("setting_control").width;
+                height: UM.Theme.getSize("setting_control").height;
+                property string unit: "mm";
+                style: UM.Theme.styles.text_field;
+                text: zText
+                validator: DoubleValidator
+                {
+                    decimals: 4
+                    locale: "en_US"
+                    top: 99999999.9999
+                    bottom: -99999999.9999
+                    notation: DoubleValidator.StandardNotation
+                }
+
+                onEditingFinished:
+                {
+                    var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
+                    UM.ActiveTool.setProperty("Z", modified_text);
+                }
+
+                Keys.onPressed:
+                {
+                    base.inc_dec("Z", event);
+                }
             }
 
-            Keys.onPressed:
-            {
-                base.inc_dec("Z", event);
-            }
         }
     }
 

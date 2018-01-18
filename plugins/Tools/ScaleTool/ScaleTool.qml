@@ -170,167 +170,227 @@ Item
             verticalAlignment: Text.AlignVCenter;
         }
 
-        TextField
+        UM.TooltipArea
         {
-            id: widthTextField
-            width: UM.Theme.getSize("setting_control").width;
-            height: UM.Theme.getSize("setting_control").height;
-            property string unit: "mm";
-            style: UM.Theme.styles.text_field;
-            text: widthText
-            validator: DoubleValidator
-            {
-                bottom: 0.1
-                decimals: 4
-                locale: "en_US"
-            }
+            width: childrenRect.width;
+            height: childrenRect.height;
+            text: catalog.i18nc("@info:tooltip","Valid values are between 0.1 and 99999999.9999")
 
-            onEditingFinished:
+            TextField
             {
-                var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
-                UM.ActiveTool.setProperty("ObjectWidth", modified_text);
-            }
+                id: widthTextField
+                width: UM.Theme.getSize("setting_control").width;
+                height: UM.Theme.getSize("setting_control").height;
+                property string unit: "mm";
+                style: UM.Theme.styles.text_field;
+                text: widthText
+                validator: DoubleValidator
+                {
+                    top: 99999999.9999
+                    bottom: 0.1
+                    decimals: 4
+                    locale: "en_US"
+                    notation: DoubleValidator.StandardNotation
+                }
 
-            Keys.onPressed:
-            {
-                base.inc_dec("ObjectWidth", event, 1.0);
-            }
-        }
-        TextField
-        {
-            id: depthTextField
-            width: UM.Theme.getSize("setting_control").width;
-            height: UM.Theme.getSize("setting_control").height;
-            property string unit: "mm";
-            style: UM.Theme.styles.text_field;
-            text: depthText
-            validator: DoubleValidator
-            {
-                bottom: 0.1
-                decimals: 4
-                locale: "en_US"
-            }
+                onEditingFinished:
+                {
+                    var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
+                    UM.ActiveTool.setProperty("ObjectWidth", modified_text);
+                }
 
-            onEditingFinished:
-            {
-                var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
-                UM.ActiveTool.setProperty("ObjectDepth", modified_text);
-            }
-
-            Keys.onPressed:
-            {
-                base.inc_dec("ObjectDepth", event, 1.0);
-            }
-        }
-        TextField
-        {
-            id: heightTextField
-            width: UM.Theme.getSize("setting_control").width;
-            height: UM.Theme.getSize("setting_control").height;
-            property string unit: "mm";
-            style: UM.Theme.styles.text_field;
-            text: heightText
-            validator: DoubleValidator
-            {
-                bottom: 0.1
-                decimals: 4
-                locale: "en_US"
-            }
-
-            onEditingFinished:
-            {
-                var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
-                UM.ActiveTool.setProperty("ObjectHeight", modified_text);
-            }
-
-            Keys.onPressed:
-            {
-                base.inc_dec("ObjectHeight", event, 1.0);
+                Keys.onPressed:
+                {
+                    base.inc_dec("ObjectWidth", event, 1.0);
+                }
             }
         }
 
-        TextField
+        UM.TooltipArea
         {
-            id: xPercentage
-            width: UM.Theme.getSize("setting_control").width;
-            height: UM.Theme.getSize("setting_control").height;
-            property string unit: "%";
-            style: UM.Theme.styles.text_field;
-            text: xPercentageText
-            validator: DoubleValidator
-            {
-                // Validate to 0.1 mm
-                bottom: 100 * (0.1 / (UM.ActiveTool.properties.getValue("ObjectWidth") / UM.ActiveTool.properties.getValue("ScaleX")));
-                decimals: 4
-                locale: "en_US"
-            }
+            width: childrenRect.width;
+            height: childrenRect.height;
+            text: catalog.i18nc("@info:tooltip","Valid values are between 0.1 and 99999999.9999")
 
-            onEditingFinished:
+            TextField
             {
-                var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
-                UM.ActiveTool.setProperty("ScaleX", parseFloat(modified_text) / 100);
-            }
+                id: depthTextField
+                width: UM.Theme.getSize("setting_control").width;
+                height: UM.Theme.getSize("setting_control").height;
+                property string unit: "mm";
+                style: UM.Theme.styles.text_field;
+                text: depthText
+                validator: DoubleValidator
+                {
+                    top: 99999999.9999
+                    bottom: 0.1
+                    decimals: 4
+                    locale: "en_US"
+                    notation: DoubleValidator.StandardNotation
+                }
 
-            Keys.onPressed:
-            {
-                base.inc_dec("ScaleX", event, 0.01);
+                onEditingFinished:
+                {
+                    var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
+                    UM.ActiveTool.setProperty("ObjectDepth", modified_text);
+                }
+
+                Keys.onPressed:
+                {
+                    base.inc_dec("ObjectDepth", event, 1.0);
+                }
             }
         }
-        TextField
+
+        UM.TooltipArea
         {
-            id: zPercentage
-            width: UM.Theme.getSize("setting_control").width;
-            height: UM.Theme.getSize("setting_control").height;
-            property string unit: "%";
-            style: UM.Theme.styles.text_field;
-            text: zPercentageText
-            validator: DoubleValidator
-            {
-                // Validate to 0.1 mm
-                bottom: 100 * (0.1 / (UM.ActiveTool.properties.getValue("ObjectDepth") / UM.ActiveTool.properties.getValue("ScaleZ")));
-                decimals: 4
-                locale: "en_US"
-            }
+            width: childrenRect.width;
+            height: childrenRect.height;
+            text: catalog.i18nc("@info:tooltip","Valid values are between 0.1 and 99999999.9999")
 
-            onEditingFinished:
+            TextField
             {
-                var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
-                UM.ActiveTool.setProperty("ScaleZ", parseFloat(modified_text) / 100);
-            }
+                id: heightTextField
+                width: UM.Theme.getSize("setting_control").width;
+                height: UM.Theme.getSize("setting_control").height;
+                property string unit: "mm";
+                style: UM.Theme.styles.text_field;
+                text: heightText
+                validator: DoubleValidator
+                {
+                    top: 99999999.9999
+                    bottom: 0.1
+                    decimals: 4
+                    locale: "en_US"
+                    notation: DoubleValidator.StandardNotation
+                }
 
-            Keys.onPressed:
-            {
-                base.inc_dec("ScaleZ", event, 0.01);
+                onEditingFinished:
+                {
+                    var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
+                    UM.ActiveTool.setProperty("ObjectHeight", modified_text);
+                }
+
+                Keys.onPressed:
+                {
+                    base.inc_dec("ObjectHeight", event, 1.0);
+                }
             }
         }
-        TextField
+
+
+
+        UM.TooltipArea
         {
-            id: yPercentage
-            width: UM.Theme.getSize("setting_control").width;
-            height: UM.Theme.getSize("setting_control").height;
-            property string unit: "%";
-            style: UM.Theme.styles.text_field;
+            width: childrenRect.width;
+            height: childrenRect.height;
+            text: catalog.i18nc("@info:tooltip","Valid values are less than 99999999.9999")
 
-            text: yPercentageText
-            validator: DoubleValidator
+            TextField
             {
-                // Validate to 0.1 mm
-                bottom: 100 * (0.1 / (UM.ActiveTool.properties.getValue("ObjectHeight") / UM.ActiveTool.properties.getValue("ScaleY")))
-                decimals: 4
-                locale: "en_US"
-            }
+                id: xPercentage
+                width: UM.Theme.getSize("setting_control").width;
+                height: UM.Theme.getSize("setting_control").height;
+                property string unit: "%";
+                style: UM.Theme.styles.text_field;
+                text: xPercentageText
+                validator: DoubleValidator
+                {
+                    top: 99999999.9999
+                    // Validate to 0.1 mm
+                    bottom: 100 * (0.1 / (UM.ActiveTool.properties.getValue("ObjectWidth") / UM.ActiveTool.properties.getValue("ScaleX")));
+                    decimals: 4
+                    locale: "en_US"
+                    notation: DoubleValidator.StandardNotation
+                }
 
-            onEditingFinished:
+                onEditingFinished:
+                {
+                    var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
+                    UM.ActiveTool.setProperty("ScaleX", parseFloat(modified_text) / 100);
+                }
+
+                Keys.onPressed:
+                {
+                    base.inc_dec("ScaleX", event, 0.01);
+                }
+            }
+        }
+
+        UM.TooltipArea
+        {
+            width: childrenRect.width;
+            height: childrenRect.height;
+            text: catalog.i18nc("@info:tooltip","Valid values are less than 99999999.9999")
+
+            TextField
             {
-                var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
-                UM.ActiveTool.setProperty("ScaleY", parseFloat(modified_text) / 100);
-            }
+                id: zPercentage
+                width: UM.Theme.getSize("setting_control").width;
+                height: UM.Theme.getSize("setting_control").height;
+                property string unit: "%";
+                style: UM.Theme.styles.text_field;
+                text: zPercentageText
+                validator: DoubleValidator
+                {
+                    top: 99999999.9999
+                    // Validate to 0.1 mm
+                    bottom: 100 * (0.1 / (UM.ActiveTool.properties.getValue("ObjectDepth") / UM.ActiveTool.properties.getValue("ScaleZ")));
+                    decimals: 4
+                    locale: "en_US"
+                    notation: DoubleValidator.StandardNotation
+                }
 
-            Keys.onPressed:
+                onEditingFinished:
+                {
+                    var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
+                    UM.ActiveTool.setProperty("ScaleZ", parseFloat(modified_text) / 100);
+                }
+
+                Keys.onPressed:
+                {
+                    base.inc_dec("ScaleZ", event, 0.01);
+                }
+            }
+        }
+
+        UM.TooltipArea
+        {
+            width: childrenRect.width;
+            height: childrenRect.height;
+            text: catalog.i18nc("@info:tooltip","Valid values are less than 99999999.9999")
+
+            TextField
             {
-                base.inc_dec("ScaleY", event, 0.01);
-            }
+                id: yPercentage
+                width: UM.Theme.getSize("setting_control").width;
+                height: UM.Theme.getSize("setting_control").height;
+                property string unit: "%";
+                style: UM.Theme.styles.text_field;
 
+                text: yPercentageText
+                validator: DoubleValidator
+                {
+                    top: 99999999.9999
+                    // Validate to 0.1 mm
+                    bottom: 100 * (0.1 / (UM.ActiveTool.properties.getValue("ObjectHeight") / UM.ActiveTool.properties.getValue("ScaleY")))
+                    decimals: 4
+                    locale: "en_US"
+                    notation: DoubleValidator.StandardNotation
+                }
+
+                onEditingFinished:
+                {
+                    var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
+                    UM.ActiveTool.setProperty("ScaleY", parseFloat(modified_text) / 100);
+                }
+
+                Keys.onPressed:
+                {
+                    base.inc_dec("ScaleY", event, 0.01);
+                }
+
+            }
         }
 
         // We have to use indirect bindings, as the values can be changed from the outside, which could cause breaks
