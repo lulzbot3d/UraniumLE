@@ -1,8 +1,9 @@
 # Copyright (c) 2016 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 import pytest
-
+# QT application import is required, even though it isn't used.
+from UM.Qt.QtApplication import QtApplication
 from UM.Application import Application
 from UM.Signal import Signal
 from UM.PluginRegistry import PluginRegistry

@@ -1,5 +1,5 @@
 // Copyright (c) 2015 Ultimaker B.V.
-// Uranium is released under the terms of the AGPLv3 or higher.
+// Uranium is released under the terms of the LGPLv3 or higher.
 
 import QtQuick 2.1
 import QtQuick.Controls 1.1
@@ -32,14 +32,14 @@ Item {
         }
     }
 
-    Text {
+    Label {
         id: titleLabel;
 
         anchors {
             top: parent.top;
             left: parent.left;
             right: parent.right;
-            margins: 5;
+            margins: 5 * screenScaleFactor;
         }
 
         font.pointSize: 18;
@@ -53,7 +53,7 @@ Item {
             left: parent.left;
             right: parent.right;
             bottom: parent.bottom;
-            margins: 5;
+            margins: 5 * screenScaleFactor;
             bottomMargin: 0;
         }
 

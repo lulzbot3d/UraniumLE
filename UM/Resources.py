@@ -1,5 +1,5 @@
 # Copyright (c) 2015 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 import os
 import os.path
@@ -129,17 +129,17 @@ class Resources:
         if resource_type not in cls.__types:
             raise ResourceTypeError("Unknown type {0}".format(resource_type))
 
-        paths = []
+        paths = set()
 
         try:
-            paths.append(cls.getStoragePathForType(resource_type))
+            paths.add(cls.getStoragePathForType(resource_type))
         except UnsupportedStorageTypeError:
             pass
 
         for path in cls.__paths:
-            paths.append(os.path.join(path, cls.__types[resource_type]))
+            paths.add(os.path.join(path, cls.__types[resource_type]))
 
-        return paths
+        return list(paths)
 
     ##  Return a path where a certain resource type can be stored.
     #
@@ -505,6 +505,8 @@ class Resources:
         Resources: "",
         Preferences: "",
         Cache: "",
+        DefinitionContainers: "definitions",
         InstanceContainers: "instances",
         ContainerStacks: "stacks",
+        Themes: "themes",
     }

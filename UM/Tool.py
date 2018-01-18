@@ -1,5 +1,5 @@
 # Copyright (c) 2015 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 from UM.Signal import Signal, signalemitter
 from UM.PluginObject import PluginObject
@@ -31,6 +31,7 @@ class Tool(PluginObject):
         self._selection_pass = None
 
         self._controller.toolEnabledChanged.connect(self._onToolEnabledChanged)
+        self._shortcut_key = None
 
     ##  Should be emitted whenever a longer running operation is started, like a drag to scale an object.
     #
@@ -49,6 +50,9 @@ class Tool(PluginObject):
 
     def setExposedProperties(self, *args):
         self._exposed_properties = args
+
+    def getShortcutKey(self):
+        return self._shortcut_key
 
     ##  Handle an event.
     #   \param event \type{Event} The event to handle.

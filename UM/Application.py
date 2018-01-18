@@ -1,5 +1,5 @@
 # Copyright (c) 2017 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 import threading
 import argparse
@@ -81,8 +81,10 @@ class Application:
         PluginRegistry.addType("logger", Logger.addLogger)
         PluginRegistry.addType("extension", self.addExtension)
 
+        self.default_theme = self.getApplicationName()
+
         preferences = Preferences.getInstance()
-        preferences.addPreference("general/language", "en")
+        preferences.addPreference("general/language", "en_US")
         preferences.addPreference("general/visible_settings", "")
 
         # Let's try to see what are our paths:
@@ -169,6 +171,9 @@ class Application:
     def isExitAllowed(self):
         return True
 
+    def showToastMessage(self, title: str, message: str):
+        raise NotImplementedError
+
     ##  Get the version of the application
     #   \returns version \type{string}
     def getVersion(self) -> str:
@@ -239,7 +244,7 @@ class Application:
         if env_lang:
             return env_lang
 
-        return "en"
+        return "en_US"
 
     ##  Application has a list of plugins that it *must* have. If it does not have these, it cannot function.
     #   These plugins can not be disabled in any way.

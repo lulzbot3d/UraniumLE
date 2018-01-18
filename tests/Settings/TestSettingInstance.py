@@ -1,5 +1,5 @@
 # Copyright (c) 2016 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 import pytest
 
@@ -18,7 +18,7 @@ class MockContainer():
 
         self._instances = []
 
-    def getProperty(self, key, property_name):
+    def getProperty(self, key, property_name, context = None):
         for instance in self._instances:
             if instance.definition.key == key:
                 try:

@@ -1,5 +1,5 @@
 # Copyright (c) 2015 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 from UM.Tool import Tool
 from UM.Event import Event, MouseEvent
@@ -12,6 +12,8 @@ from UM.Operations.GroupedOperation import GroupedOperation
 from UM.Scene.Selection import Selection
 from UM.Scene.ToolHandle import ToolHandle
 
+from PyQt5.QtCore import Qt
+
 from . import MirrorToolHandle
 
 ##  Provides the tool to mirror meshes and groups
@@ -21,6 +23,7 @@ class MirrorTool(Tool):
         super().__init__()
 
         self._handle = MirrorToolHandle.MirrorToolHandle()
+        self._shortcut_key = Qt.Key_W
 
         self._operation_started = False
 

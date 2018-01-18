@@ -1,20 +1,19 @@
 # Copyright (c) 2016 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
-from typing import List
+# Uranium is released under the terms of the LGPLv3 or higher.
+import os
+from typing import Dict, List
+
+from PyQt5.QtCore import pyqtProperty, Qt, pyqtSignal, pyqtSlot, QUrl, QTimer
 
 from UM.Qt.ListModel import ListModel
 
-from PyQt5.QtCore import pyqtProperty, Qt, pyqtSignal, pyqtSlot, QUrl
-
-from UM.PluginRegistry import PluginRegistry #For getting the possible profile readers and writers.
+from UM.PluginRegistry import PluginRegistry  # For getting the possible profile readers and writers.
 from UM.Settings.ContainerRegistry import ContainerRegistry
 from UM.Settings.InstanceContainer import InstanceContainer
-
-import os
-from typing import Dict
-
+from UM.Logger import Logger
 from UM.i18n import i18nCatalog
 catalog = i18nCatalog("uranium")
+
 
 ##  Model that holds instance containers. By setting the filter property the instances held by this model can be
 #   changed.
@@ -41,7 +40,12 @@ class InstanceContainersModel(ListModel):
         ContainerRegistry.getInstance().containerAdded.connect(self._onContainerChanged)
         ContainerRegistry.getInstance().containerRemoved.connect(self._onContainerChanged)
 
-        # List of fitlers for queries. The result is the union of the each list of results.
+        self._container_change_timer = QTimer()
+        self._container_change_timer.setInterval(150)
+        self._container_change_timer.setSingleShot(True)
+        self._container_change_timer.timeout.connect(self._update)
+
+        # List of filters for queries. The result is the union of the each list of results.
         self._filter_dicts = [{}]  # type: List[Dict[str,str]]
         self._update()
 
@@ -49,7 +53,7 @@ class InstanceContainersModel(ListModel):
     def _onContainerChanged(self, container):
         # We only need to update when the changed container is a instanceContainer
         if isinstance(container, InstanceContainer):
-            self._update()
+            self._container_change_timer.start()
 
     ##  Private convenience function to reset & repopulate the model.
     def _update(self):
@@ -58,11 +62,14 @@ class InstanceContainersModel(ListModel):
             container.metaDataChanged.disconnect(self._updateMetaData)
 
         self._instance_containers = self._fetchInstanceContainers()
-        self._instance_containers.sort(key = self._sortKey)
 
         for container in self._instance_containers:
             container.nameChanged.connect(self._update)
             container.metaDataChanged.connect(self._updateMetaData)
+        try:
+            self._instance_containers.sort(key=self._sortKey)
+        except TypeError:
+            Logger.logException("w", "Sorting the InstanceContainers model went wrong.")
 
         self.setItems(list(self._recomputeItems()))
 
@@ -85,7 +92,7 @@ class InstanceContainersModel(ListModel):
 
     ##  Fetch the list of containers to display.
     #
-    #   This method is intended to be overrideable by subclasses.
+    #   This method is intended to be overridable by subclasses.
     #
     #   \return \type{List[ContainerInstance]}
     def _fetchInstanceContainers(self):

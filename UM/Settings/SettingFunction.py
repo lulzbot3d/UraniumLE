@@ -1,11 +1,12 @@
 # Copyright (c) 2016 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 import ast
 import math # Imported here so it can be used easily by the setting functions.
-from typing import Any, Dict, Callable, Set, FrozenSet, NamedTuple
+from typing import Any, Dict, Callable, Set, FrozenSet, NamedTuple, Optional
 
 from UM.Settings.Interfaces import ContainerInterface
+from UM.Settings.PropertyEvaluationContext import PropertyEvaluationContext
 from UM.Logger import Logger
 
 MYPY = False
@@ -54,7 +55,7 @@ class SettingFunction:
             Logger.log("e", "Exception in function ({0}) for setting: {1}".format(str(e), self._code))
 
     ##  Call the actual function to calculate the value.
-    def __call__(self, value_provider: ContainerInterface) -> Any:
+    def __call__(self, value_provider: ContainerInterface, context: Optional[PropertyEvaluationContext] = None) -> Any:
         if not value_provider:
             return None
 
@@ -62,8 +63,11 @@ class SettingFunction:
             return None
 
         locals = {} # type: Dict[str, Any]
+        # if there is a context, evaluate the values from the perspective of the original caller
+        if context is not None:
+            value_provider = context.rootStack()
         for name in self._used_values:
-            value = value_provider.getProperty(name, "value")
+            value = value_provider.getProperty(name, "value", context)
             if value is None:
                 continue
 
@@ -72,6 +76,9 @@ class SettingFunction:
         g = {}  # type: Dict[str, Any]
         g.update(globals())
         g.update(self.__operators)
+        # override operators if there is any in the context
+        if context is not None:
+            g.update(context.context.get("override_operators", {}))
 
         try:
             return eval(self._compiled, g, locals)

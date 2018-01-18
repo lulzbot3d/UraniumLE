@@ -1,5 +1,5 @@
 # Copyright (c) 2015 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 from . import SceneNode
 
@@ -140,6 +140,7 @@ class Platform(SceneNode.SceneNode):
 ##  Protected class that ensures that the mesh for the machine platform is loaded.
 class _LoadPlatformJob(Job):
     def __init__(self, file_name):
+        super().__init__()
         self._file_name = file_name
         self._mesh_handler = Application.getInstance().getMeshFileHandler()
 

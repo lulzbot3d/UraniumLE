@@ -1,4 +1,4 @@
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 import time
 import math
 import os
@@ -101,6 +101,8 @@ def clearProfileData():
 ##  Start recording profile data.
 def startRecordingProfileData():
     global record_profile_requested
+    global stop_record_profile_requested
+    stop_record_profile_requested = False
     record_profile_requested = True
 
 ##  Stop recording profile data.

@@ -1,5 +1,5 @@
 # Copyright (c) 2017 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 import re
 
@@ -29,6 +29,9 @@ class ContainerQuery:
 
         self._result = None
 
+    def getContainerType(self):
+        return self._container_type
+
     ##  Retrieve the result of this query.
     #
     #   \return A list of containers matching this query, or None if the query was not executed.
@@ -41,13 +44,29 @@ class ContainerQuery:
     def isIdOnly(self):
         return not self._ignore_case and len(self._kwargs) == 1 and "id" in self._kwargs
 
+    ##  Check to see if any of the kwargs is a Dict, which is not hashable for query caching.
+    #
+    #   \return True if this query is hashable.
+    def isHashable(self):
+        for kwarg in self._kwargs.values():
+            if isinstance(kwarg, dict):
+                return False
+        return True
+
     ##  Execute the actual query.
     #
     #   This will search the containers of the ContainerRegistry based on the arguments provided to this
     #   class' constructor. After it is done, the result can be retrieved with getResult().
     def execute(self):
         containers = []
-        for container in filter(lambda c: not self._container_type or isinstance(c, self._container_type), self._registry._containers):
+
+        # If no container type is specified, search through all containers.
+        if not self._container_type:
+            candidates = self._registry._containers
+        else:
+            candidates = filter(lambda c: isinstance(c, self._container_type), self._registry._containers)
+
+        for container in candidates:
             matches_container = True
             for key, value in self._kwargs.items():
                 if isinstance(value, str):

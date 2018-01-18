@@ -1,5 +1,5 @@
-# Copyright (c) 2015 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Copyright (c) 2017 Ultimaker B.V.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 from UM.Math.Polygon import Polygon
 from UM.Math.Float import Float
@@ -10,7 +10,7 @@ import pytest
 
 pytestmark = pytest.mark.skip(reason = "Incomplete tests")
 
-class TestPolygon():
+class TestPolygon:
     def setup_method(self, method):
         # Called before the first testfunction is executed
         pass

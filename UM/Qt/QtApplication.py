@@ -1,5 +1,5 @@
-# Copyright (c) 2015 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Copyright (c) 2017 Ultimaker B.V.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 import sys
 import os
@@ -10,8 +10,8 @@ import ctypes
 
 from PyQt5.QtCore import Qt, QCoreApplication, QEvent, QUrl, pyqtProperty, pyqtSignal, pyqtSlot, QLocale, QTranslator, QLibraryInfo, QT_VERSION_STR, PYQT_VERSION_STR
 from PyQt5.QtQml import QQmlApplicationEngine
-from PyQt5.QtWidgets import QApplication, QSplashScreen, QMessageBox
-from PyQt5.QtGui import QGuiApplication, QPixmap
+from PyQt5.QtWidgets import QApplication, QSplashScreen, QMessageBox, QSystemTrayIcon
+from PyQt5.QtGui import QGuiApplication, QIcon, QPixmap, QFontMetrics
 from PyQt5.QtCore import QTimer
 
 from UM.FileHandler.ReadFileJob import ReadFileJob
@@ -34,6 +34,7 @@ from UM.Mesh.ReadMeshJob import ReadMeshJob
 import UM.Qt.Bindings.Theme
 from UM.PluginRegistry import PluginRegistry
 
+
 # Raised when we try to use an unsupported version of a dependency.
 class UnsupportedVersionError(Exception):
     pass
@@ -47,7 +48,8 @@ if int(major) < 5 or int(minor) < 4:
 ##  Application subclass that provides a Qt application object.
 @signalemitter
 class QtApplication(QApplication, Application):
-    def __init__(self, **kwargs):
+
+    def __init__(self, tray_icon_name = None, **kwargs):
         plugin_path = ""
         if sys.platform == "win32":
             if hasattr(sys, "frozen"):
@@ -95,13 +97,17 @@ class QtApplication(QApplication, Application):
         self._qml_import_paths.append(os.path.join(os.path.dirname(sys.executable), "qml"))
         self._qml_import_paths.append(os.path.join(Application.getInstallPrefix(), "Resources", "qml"))
 
+        self.parseCommandLine()
+        Logger.log("i", "Command line arguments: %s", self._parsed_command_line)
+
         try:
             self._splash = self._createSplashScreen()
         except FileNotFoundError:
             self._splash = None
         else:
-            self._splash.show()
-            self.processEvents()
+            if self._splash:
+                self._splash.show()
+                self.processEvents()
 
         signal.signal(signal.SIGINT, signal.SIG_DFL)
         # This is done here as a lot of plugins require a correct gl context. If you want to change the framework,
@@ -111,8 +117,7 @@ class QtApplication(QApplication, Application):
 
         self.showSplashMessage(i18n_catalog.i18nc("@info:progress", "Loading plugins..."))
         self._loadPlugins()
-        self.parseCommandLine()
-        Logger.log("i", "Command line arguments: %s", self._parsed_command_line)
+
         self._plugin_registry.checkRequiredPlugins(self.getRequiredPlugins())
 
         self.showSplashMessage(i18n_catalog.i18nc("@info:progress", "Updating configuration..."))
@@ -146,6 +151,14 @@ class QtApplication(QApplication, Application):
             self._recent_files.append(QUrl.fromLocalFile(f))
 
         JobQueue.getInstance().jobFinished.connect(self._onJobFinished)
+
+        # Initialize System tray icon and make it invisible because it is used only to show pop up messages
+        self._tray_icon = None
+        self._tray_icon_widget = None
+        if tray_icon_name:
+            self._tray_icon = QIcon(Resources.getPath(Resources.Images, tray_icon_name))
+            self._tray_icon_widget = QSystemTrayIcon(self._tray_icon)
+            self._tray_icon_widget.setVisible(False)
 
     recentFilesChanged = pyqtSignal()
 
@@ -185,8 +198,24 @@ class QtApplication(QApplication, Application):
         with self._message_lock:
             if message not in self._visible_messages:
                 self._visible_messages.append(message)
-                message.setTimer(QTimer())
+                message.setLifetimeTimer(QTimer())
+                message.setInactivityTimer(QTimer())
                 self.visibleMessageAdded.emit(message)
+
+        # also show toast message when the main window is minimized
+        self.showToastMessage(self._application_name, message.getText())
+
+    def _onMainWindowStateChanged(self, window_state):
+        if self._tray_icon:
+            visible = window_state == Qt.WindowMinimized
+            self._tray_icon_widget.setVisible(visible)
+
+    # Show toast message using System tray widget.
+    def showToastMessage(self, title: str, message: str):
+        if self.checkWindowMinimizedState() and self._tray_icon_widget:
+            # NOTE: Qt 5.8 don't support custom icon for the system tray messages, but Qt 5.9 does.
+            #       We should use the custom icon when we switch to Qt 5.9
+            self._tray_icon_widget.showMessage(title, message)
 
     def setMainQml(self, path):
         self._main_qml = path
@@ -244,10 +273,17 @@ class QtApplication(QApplication, Application):
 
     def setMainWindow(self, window):
         if window != self._main_window:
+            if self._main_window is not None:
+                self._main_window.windowStateChanged.disconnect(self._onMainWindowStateChanged)
+
             self._main_window = window
+
+            if self._main_window is not None:
+                self._main_window.windowStateChanged.connect(self._onMainWindowStateChanged)
+
             self.mainWindowChanged.emit()
 
-    def getTheme(self, *args):
+    def getTheme(self):
         if self._theme is None:
             if self._engine is None:
                 Logger.log("e", "The theme cannot be accessed before the engine is initialised")
@@ -290,6 +326,12 @@ class QtApplication(QApplication, Application):
 
         self.quit()
 
+    def checkWindowMinimizedState(self):
+        if self._main_window is not None and self._main_window.windowState() == Qt.WindowMinimized:
+            return True
+        else:
+            return False
+
     ##  Get the backend of the application (the program that does the heavy lifting).
     #   The backend is also a QObject, which can be used from qml.
     #   \returns Backend \type{Backend}
@@ -324,7 +366,7 @@ class QtApplication(QApplication, Application):
         if not path:
             Logger.log("w", "Could not find any translations matching {0} for file {1}, falling back to english".format(language, file))
             try:
-                path = Resources.getPath(Resources.i18n, "en", "LC_MESSAGES", file + ".qm")
+                path = Resources.getPath(Resources.i18n, "en_US", "LC_MESSAGES", file + ".qm")
             except FileNotFoundError:
                 Logger.log("w", "Could not find English translations for file {0}. Switching to developer english.".format(file))
                 return
@@ -357,10 +399,16 @@ class QtApplication(QApplication, Application):
         return QSplashScreen(QPixmap(Resources.getPath(Resources.Images, self.getApplicationName() + ".png")))
 
     def _screenScaleFactor(self):
-        physical_dpi = QGuiApplication.primaryScreen().physicalDotsPerInch()
-        # Typically 'normal' screens have a DPI around 96. Modern high DPI screens are up around 220.
-        # We scale the low DPI screens with a traditional 1, and double the high DPI ones.
-        return 1.0 if physical_dpi < 150 else 2.0
+        # OSX handles sizes of dialogs behind our backs, but other platforms need
+        # to know about the device pixel ratio
+        if sys.platform == "darwin":
+            return 1.0
+        else:
+            # determine a device pixel ratio from font metrics, using the same logic as UM.Theme
+            fontPixelRatio = QFontMetrics(QCoreApplication.instance().font()).ascent() / 11
+            # round the font pixel ratio to quarters
+            fontPixelRatio = int(fontPixelRatio * 4)/4
+            return fontPixelRatio
 
     def _getDefaultLanguage(self, file):
         # If we have a language override set in the environment, try and use that.
@@ -397,14 +445,18 @@ class QtApplication(QApplication, Application):
             except FileNotFoundError:
                 pass
 
-        # If that fails, see if we can extract a language "class" from the
-        # preferred language. This will turn "en-GB" into "en" for example.
+        # If that fails, see if we can extract a language code from the
+        # preferred language, regardless of the country code. This will turn
+        # "en-GB" into "en" for example.
         lang = locale.uiLanguages()[0]
         lang = lang[0:lang.find("-")]
-        try:
-            return Resources.getPath(Resources.i18n, lang, "LC_MESSAGES", file + ".qm")
-        except FileNotFoundError:
-            pass
+        for subdirectory in os.path.listdir(Resources.getPath(Resources.i18n)):
+            if subdirectory == "en_7S": #Never automatically go to Pirate.
+                continue
+            if not os.path.isdir(Resources.getPath(Resources.i18n, subdirectory)):
+                continue
+            if subdirectory.startswith(lang + "_"): #Only match the language code, not the country code.
+                return Resources.getPath(Resources.i18n, lang, "LC_MESSAGES", file + ".qm")
 
         return None
 

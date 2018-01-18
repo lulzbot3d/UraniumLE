@@ -1,5 +1,5 @@
 # Copyright (c) 2015 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 from typing import List, Optional
 
 from UM.Math.Matrix import Matrix
@@ -15,6 +15,8 @@ from UM.Logger import Logger
 from UM.Scene.SceneNodeDecorator import SceneNodeDecorator
 
 from copy import deepcopy
+import numpy
+
 
 ##  A scene node object.
 #
@@ -26,7 +28,7 @@ from copy import deepcopy
 #   \sa SceneNodeDecorator
 #   \todo Add unit testing
 @signalemitter
-class SceneNode():
+class SceneNode:
     class TransformSpace:
         Local = 1
         Parent = 2
@@ -38,11 +40,11 @@ class SceneNode():
     #                 Possible keywords:
     #                 - visible \type{bool} Is the SceneNode (and thus, all it's children) visible? Defaults to True
     #                 - name \type{string} Name of the SceneNode. Defaults to empty string.
-    def __init__(self, parent = None, **kwargs):
+    def __init__(self, parent: Optional["SceneNode"] = None, **kwargs):
         super().__init__()  # Call super to make multiple inheritance work.
 
         self._children = []     # type: List[SceneNode]
-        self._mesh_data = None  # type: MeshData
+        self._mesh_data = None  # type: Optional[MeshData]
 
         # Local transformation (from parent to local)
         self._transformation = Matrix()  # type: Matrix
@@ -69,7 +71,7 @@ class SceneNode():
         # Can this SceneNode be selected in any way?
         self._selectable = False  # type: bool
 
-        # Should the AxisAlignedBounxingBox be re-calculated?
+        # Should the AxisAlignedBoundingBox be re-calculated?
         self._calculate_aabb = True  # type: bool
 
         # The AxisAligned bounding box.
@@ -79,6 +81,9 @@ class SceneNode():
         self._visible = kwargs.get("visible", True)  # type: bool
         self._name = kwargs.get("name", "")  # type: str
         self._decorators = []  # type: List[SceneNodeDecorator]
+
+        # Store custom settings to be compatible with Savitar SceneNode
+        self._settings = {}
 
         ## Signals
         self.boundingBoxChanged.connect(self.calculateBoundingBoxMesh)
@@ -289,11 +294,26 @@ class SceneNode():
         return self._mesh_data
 
     ##  \brief Get the transformed mesh data from the scene node/object, based on the transformation of scene nodes wrt root.
+    #          If this node is a group, it will recursively concatenate all child nodes/objects.
     #   \returns MeshData
     def getMeshDataTransformed(self) -> Optional[MeshData]:
-        if self._mesh_data:
-            return self._mesh_data.getTransformed(self.getWorldTransformation())
-        return self._mesh_data
+        return MeshData(vertices = self.getMeshDataTransformedVertices())
+
+    ##  \brief Get the transformed vertices from this scene node/object, based on the transformation of scene nodes wrt root.
+    #          If this node is a group, it will recursively concatenate all child nodes/objects.
+    #   \return numpy.ndarray
+    def getMeshDataTransformedVertices(self) -> numpy.ndarray:
+        transformed_vertices = None
+        if self.callDecoration("isGroup"):
+            for child in self._children:
+                tv = child.getMeshDataTransformedVertices()
+                if transformed_vertices is None:
+                    transformed_vertices = tv
+                else:
+                    transformed_vertices = numpy.concatenate((transformed_vertices, tv), axis = 0)
+        else:
+            transformed_vertices = self._mesh_data.getTransformed(self.getWorldTransformation()).getVertices()
+        return transformed_vertices
 
     ##  \brief Set the mesh of this node/object
     #   \param mesh_data MeshData object
@@ -389,7 +409,7 @@ class SceneNode():
         return deepcopy(self._transformation)
 
     def setTransformation(self, transformation: Matrix):
-        self._transformation = transformation
+        self._transformation = deepcopy(transformation) # Make a copy to ensure we never change the given transformation
         self._transformChanged()
 
     ##  Get the local orientation value.
@@ -624,6 +644,12 @@ class SceneNode():
 
     def getShear(self) -> Vector:
         return self._shear
+
+    def getSetting(self, key: str, default_value: str = "") -> str:
+        return self._settings.get(key, default_value)
+
+    def setSetting(self, key: str, value: str):
+        self._settings[key] = value
 
     ##  private:
     def _transformChanged(self):

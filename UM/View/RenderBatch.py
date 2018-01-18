@@ -1,5 +1,5 @@
 # Copyright (c) 2015 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 import copy
 
@@ -161,6 +161,10 @@ class RenderBatch():
     #
     #   \param camera The camera to render from.
     def render(self, camera):
+        if camera is None:
+            Logger.log("e", "Unable to render batch without a camera.")
+            return
+
         self._shader.bind()
 
         if self._backface_cull:

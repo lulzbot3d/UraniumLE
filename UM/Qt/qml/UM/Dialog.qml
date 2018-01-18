@@ -1,5 +1,5 @@
 // Copyright (c) 2015 Ultimaker B.V.
-// Uranium is released under the terms of the AGPLv3 or higher.
+// Uranium is released under the terms of the LGPLv3 or higher.
 
 import QtQuick 2.2
 import QtQuick.Window 2.1
@@ -13,10 +13,12 @@ Window {
     modality: Qt.ApplicationModal;
     flags: Qt.Dialog | Qt.CustomizeWindowHint | Qt.WindowTitleHint | Qt.WindowCloseButtonHint;
 
-    width: Screen.devicePixelRatio * 640;
-    height: Screen.devicePixelRatio * 480;
+    minimumWidth: screenScaleFactor * 640;
+    minimumHeight: screenScaleFactor * 480;
+    width: minimumWidth
+    height: minimumHeight
 
-    property int margin: Screen.devicePixelRatio * 8;
+    property int margin: screenScaleFactor * 8;
     property bool closeOnAccept: true;  // Automatically close the window when the window is "accepted" (eg using the return key)
 
     default property alias contents: contentItem.children;

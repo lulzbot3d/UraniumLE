@@ -1,5 +1,5 @@
 # Copyright (c) 2017 Ultimaker B.V.
-# Uranium is released under the terms of the AGPLv3 or higher.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
 import ast
 import json
@@ -113,6 +113,20 @@ class SettingDefinition:
             raise NotImplementedError("Setting of property {0} not supported".format(name))
 
         super().__setattr__(name, value)
+
+    ##  For Pickle support.
+    #
+    #   This should be identical to Pickle's default behaviour but the default
+    #   behaviour doesn't combine well with a non-default __getattr__.
+    def __getstate__(self):
+        return self.__dict__
+
+    ##  For Pickle support.
+    #
+    #   This should be identical to Pickle's default behaviour but the default
+    #   behaviour doesn't combine well with a non-default __getattr__.
+    def __setstate__(self, state):
+        self.__dict__.update(state)
 
     ##  The key of this setting.
     #
