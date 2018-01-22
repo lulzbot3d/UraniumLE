@@ -53,26 +53,17 @@ add_custom_target(extract-messages ${CMAKE_SOURCE_DIR}/scripts/extract-messages 
 # Build Translations
 CREATE_TRANSLATION_TARGETS()
 
-if(NOT PYTHON_SITE_PACKAGES_DIR)
-	if(APPLE OR WIN32)
-		set(PYTHON_SITE_PACKAGES_DIR lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages
-			CACHE STRING "Directory to install Python bindings to")
-	else()
-		set(PYTHON_SITE_PACKAGES_DIR lib/python${PYTHON_VERSION_MAJOR}/dist-packages CACHE
-			STRING "Directory to install Python bindings to")
-	endif()
-	set(URANIUM_INSTALL_MODULES_PATH 
-		${CMAKE_INSTALL_DATADIR}/cmake-${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}/Modules/ )
-	set(URANIUM_INSTALL_PLUGINS_PATH 
-		lib/uranium)
+
+if(EXISTS /etc/debian_version)
+    install(DIRECTORY UM DESTINATION lib${LIB_SUFFIX}/python${PYTHON_VERSION_MAJOR}/dist-packages)
 else()
-	set(URANIUM_INSTALL_MODULES_PATH ${CMAKE_INSTALL_DATADIR}/cmake/Modules/)
-	set(URANIUM_INSTALL_PLUGINS_PATH ${CMAKE_INSTALL_LIBDIR}/uranium )
+    install(DIRECTORY UM DESTINATION lib${LIB_SUFFIX}/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages)
 endif()
 install(DIRECTORY UM DESTINATION ${PYTHON_SITE_PACKAGES_DIR})
 
 install(FILES ${CMAKE_SOURCE_DIR}/cmake/UraniumTranslationTools.cmake DESTINATION ${URANIUM_INSTALL_MODULES_PATH})
 install(DIRECTORY resources DESTINATION ${CMAKE_INSTALL_DATADIR}/uranium)
-install(DIRECTORY plugins DESTINATION ${URANIUM_INSTALL_PLUGINS_PATH} )
+
+install(DIRECTORY plugins DESTINATION lib${LIB_SUFFIX}/uranium)
 
 include(CPackConfig.cmake)

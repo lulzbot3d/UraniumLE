@@ -155,6 +155,8 @@ class Application:
 
     globalContainerStackChanged = Signal()
 
+    workspaceLoaded = Signal()
+
     def setGlobalContainerStack(self, stack: "ContainerStack"):
         self._global_container_stack = stack
         self.globalContainerStackChanged.emit()
