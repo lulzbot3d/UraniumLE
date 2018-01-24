@@ -18,6 +18,8 @@ Item
     property string zText
     property string lockPosition
 
+    Keys.forwardTo: parent
+
     //Rounds a floating point number to 4 decimals. This prevents floating
     //point rounding errors.
     //
@@ -71,6 +73,8 @@ Item
 
         onClicked: UM.ActiveTool.triggerAction("resetPosition");
         visible: false
+
+        Keys.forwardTo: parent
     }
 
     Button
@@ -87,6 +91,8 @@ Item
         style: UM.Theme.styles.tool_button;
         onClicked: UM.ActiveTool.triggerAction("dropToBuildplate")
         visible: false
+
+        Keys.forwardTo: parent
     }
 
     Grid
@@ -107,6 +113,8 @@ Item
             font: UM.Theme.getFont("default");
             color: UM.Theme.getColor("x_axis");
             verticalAlignment: Text.AlignVCenter;
+
+            Keys.forwardTo: parent
         }
 
         Text
@@ -116,6 +124,8 @@ Item
             font: UM.Theme.getFont("default");
             color: UM.Theme.getColor("z_axis"); // This is intentional. The internal axis are switched.
             verticalAlignment: Text.AlignVCenter;
+
+            Keys.forwardTo: parent
         }
 
         Text
@@ -125,23 +135,18 @@ Item
             font: UM.Theme.getFont("default");
             color: UM.Theme.getColor("y_axis"); // This is intentional. The internal axis are switched.
             verticalAlignment: Text.AlignVCenter;
+
+            Keys.forwardTo: parent
         }
 
 
         UM.TooltipArea
         {
 
-            id: xTextField
-            width: UM.Theme.getSize("setting_control").width;
-            height: UM.Theme.getSize("setting_control").height;
-            property string unit: "mm";
-            style: UM.Theme.styles.text_field;
-            text: xText
-            validator: DoubleValidator
-            {
-                decimals: 4
-                locale: "en_US"
-            }
+            width: childrenRect.width;
+            height: childrenRect.height;
+            text: catalog.i18nc("@info:tooltip","Valid values are between -99999999.9999 and 99999999.9999")
+            Keys.forwardTo: parent
 
             TextField
             {
@@ -178,6 +183,7 @@ Item
             width: childrenRect.width;
             height: childrenRect.height;
             text: catalog.i18nc("@info:tooltip","Valid values are between -99999999.9999 and 99999999.9999")
+            Keys.forwardTo: parent
 
             TextField
             {
@@ -213,6 +219,7 @@ Item
             width: childrenRect.width;
             height: childrenRect.height;
             text: catalog.i18nc("@info:tooltip","Valid values are between -99999999.9999 and 99999999.9999")
+            Keys.forwardTo: parent
 
             TextField
             {
@@ -248,6 +255,7 @@ Item
     CheckBox
     {
         property var checkbox_state: 0; // if the state number is 2 then the checkbox has "partially" state
+        Keys.forwardTo: parent
 
         // temporary property, which is used to recalculate checkbox state and keeps reference of the
         // binging object. If the binding object changes then checkBox state will be updated.
@@ -283,7 +291,7 @@ Item
         anchors.leftMargin: UM.Theme.getSize("default_margin").width
 
         text: catalog.i18nc("@option:check","Lock Model");
-        style: UM.Theme.styles.partially_checkbox;
+        //style: UM.Theme.styles.partially_checkbox;
 
         onClicked: {
 
