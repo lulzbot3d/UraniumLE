@@ -17,7 +17,7 @@ class VisibleMessagesModel(ListModel):
     DismissableRole = Qt.UserRole + 8
     TileRole = Qt.UserRole + 9
     TypeRole = Qt.UserRole + 10
-    
+    StyleRole = Qt.UserRole + 11
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -56,6 +56,7 @@ class VisibleMessagesModel(ListModel):
         model.addRoleName(self.TextRole,"name")
         model.addRoleName(self.IconRole, "icon")
         model.addRoleName(self.DescriptionRole, "description")
+        model.addRoleName(self.StyleRole, "button_style")
 
         for action in actions:
             model.appendItem(action)

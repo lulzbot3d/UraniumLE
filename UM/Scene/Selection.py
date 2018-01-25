@@ -53,6 +53,7 @@ class Selection:
                 else:
                     bounding_box = bounding_box + node.getBoundingBox()
 
+
         if not bounding_box:
             bounding_box = AxisAlignedBox.Null
 

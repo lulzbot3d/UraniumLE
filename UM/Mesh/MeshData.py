@@ -254,7 +254,7 @@ class MeshData:
     ##  Gets transformed convex hull points
     #
     #   \return \type{numpy.ndarray} the vertices which describe the convex hull
-    def getConvexHullTransformedVertices(self, transformation: Matrix) -> numpy.ndarray:
+    def getConvexHullTransformedVertices(self, transformation: Matrix) -> Optional[numpy.ndarray]:
         vertices = self.getConvexHullVertices()
         if vertices is not None:
             return transformVertices(vertices, transformation)
@@ -355,10 +355,12 @@ def approximateConvexHull(vertex_data: numpy.ndarray, target_count: int) -> Opti
     start_time = time()
 
     input_max = target_count * 50   # Maximum number of vertices we want to feed to the convex hull algorithm.
-    unit_size = 0.01               # Initial rounding interval. i.e. round to 0.01.
+
+    unit_size = 0.0125             # Initial rounding interval. i.e. round to 0.125.
+    max_unit_size = 0.01
 
     # Round off vertices and extract the uniques until the number of vertices is below the input_max.
-    while len(vertex_data) > input_max:
+    while len(vertex_data) > input_max and unit_size <= max_unit_size:
         new_vertex_data = uniqueVertices(roundVertexArray(vertex_data, unit_size))
         # Check if there is variance in Z value, we need it for the convex hull calculation
         if numpy.amin(new_vertex_data[:, 1]) != numpy.amax(new_vertex_data[:, 1]):
@@ -376,7 +378,7 @@ def approximateConvexHull(vertex_data: numpy.ndarray, target_count: int) -> Opti
     hull_result = scipy.spatial.ConvexHull(vertex_data)
     vertex_data = numpy.take(hull_result.points, hull_result.vertices, axis=0)
 
-    while len(vertex_data) > target_count:
+    while len(vertex_data) > target_count and unit_size <= max_unit_size:
         vertex_data = uniqueVertices(roundVertexArray(vertex_data, unit_size))
         hull_result = scipy.spatial.ConvexHull(vertex_data)
         vertex_data = numpy.take(hull_result.points, hull_result.vertices, axis=0)

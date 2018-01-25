@@ -1,4 +1,4 @@
-// Copyright (c) 2015 Ultimaker B.V.
+// Copyright (c) 2018 Ultimaker B.V.
 // Uranium is released under the terms of the LGPLv3 or higher.
 
 import QtQuick 2.2
@@ -113,8 +113,10 @@ Item
         CheckBox
         {
             id: snapScalingCheckbox
-            //: Snap Scaling checkbox
-            text: catalog.i18nc("@option:check","Snap Scaling");
+
+            width: parent.width //Use a width instead of anchors to allow the flow layout to resolve positioning.
+
+            text: catalog.i18nc("@option:check", "Snap Scaling")
 
             style: UM.Theme.styles.checkbox;
             checked: UM.ActiveTool.properties.getValue("ScaleSnap");
@@ -130,8 +132,9 @@ Item
 
         CheckBox
         {
-            //: Uniform scaling checkbox
-            text: catalog.i18nc("@option:check","Uniform Scaling");
+            width: parent.width //Use a width instead of anchors to allow the flow layout to resolve positioning.
+
+            text: catalog.i18nc("@option:check", "Uniform Scaling")
 
             style: UM.Theme.styles.checkbox;
 

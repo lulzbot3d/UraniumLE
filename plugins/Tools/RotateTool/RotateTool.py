@@ -376,26 +376,10 @@ class RotateTool(Tool):
     ##  Reset the orientation of the mesh(es) to their original orientation(s)
     # Remember Y is Z and Z is Y
     def resetRotation(self):
+        for node in Selection.getAllSelectedObjects():
+            node.setMirror(Vector(1,1,1))
 
-        self._X_angle = 0
-        self.propertyChanged.emit()
-
-        self._Y_angle = 0
-        self.propertyChanged.emit()
-
-        self._Z_angle = 0
-        self.propertyChanged.emit()
-
-        self._angle = 0
-        self.propertyChanged.emit()
-
-        Selection.applyOperation(SetTransformOperation, Vector(0.0, 0.0, 0.0), None, None, None)
-        Selection.applyOperation(SetTransformOperation, None, Quaternion(), None, None)
-        Selection.applyOperation(SetTransformOperation, None, None, Vector(1.0, 1.0, 1.0), None )
-        Selection.applyOperation(SetTransformOperation, None, None, None, Vector(0.0, 0.0, 0.0) )
-        #Selection.applyOperation(SetTransformOperation, None, None, None, None, Vector(1.0, 0.0, 0.0) )
-        #translation = None, orientation = None, scale = None, shear = None, mirror = None
-
+        Selection.applyOperation(SetTransformOperation, None, Quaternion(), None)
 
     ##  Initialise and start a LayFlatOperation
     #

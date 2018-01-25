@@ -126,6 +126,9 @@ class SceneNode:
     def getMirror(self) -> Vector:
         return self._mirror
 
+    def setMirror(self, vector) -> Vector:
+        self._mirror = vector
+
     ##  Get the MeshData of the bounding box
     #   \returns \type{MeshData} Bounding box mesh.
     def getBoundingBoxMesh(self) -> Optional[MeshData]:
@@ -297,7 +300,7 @@ class SceneNode:
     #          If this node is a group, it will recursively concatenate all child nodes/objects.
     #   \returns MeshData
     def getMeshDataTransformed(self) -> Optional[MeshData]:
-        return MeshData(vertices = self.getMeshDataTransformedVertices())
+        return MeshData(vertices = self.getMeshDataTransformedVertices(), normals = self.getMeshDataTransformedNormals())
 
     ##  \brief Get the transformed vertices from this scene node/object, based on the transformation of scene nodes wrt root.
     #          If this node is a group, it will recursively concatenate all child nodes/objects.
@@ -314,6 +317,22 @@ class SceneNode:
         else:
             transformed_vertices = self._mesh_data.getTransformed(self.getWorldTransformation()).getVertices()
         return transformed_vertices
+
+    ##  \brief Get the transformed normals from this scene node/object, based on the transformation of scene nodes wrt root.
+    #          If this node is a group, it will recursively concatenate all child nodes/objects.
+    #   \return numpy.ndarray
+    def getMeshDataTransformedNormals(self) -> numpy.ndarray:
+        transformed_normals = None
+        if self.callDecoration("isGroup"):
+            for child in self._children:
+                tv = child.getMeshDataTransformedNormals()
+                if transformed_normals is None:
+                    transformed_normals = tv
+                else:
+                    transformed_normals = numpy.concatenate((transformed_normals, tv), axis = 0)
+        else:
+            transformed_normals = self._mesh_data.getTransformed(self.getWorldTransformation()).getNormals()
+        return transformed_normals
 
     ##  \brief Set the mesh of this node/object
     #   \param mesh_data MeshData object
@@ -710,33 +729,7 @@ class SceneNode:
                 aabb = aabb + child.getBoundingBox()
         self._aabb = aabb
 
-
-    def LOG_MATRIX( self, str_matrix_name, matrix ):
-        Logger.log("d", "\n ................................................................... " )
-
-        Logger.log("d", "\n %s: ", str_matrix_name  )
-        if( matrix != None ):
-            Logger.log("d", "%f  %f  %f  %f", matrix.at(0,0),  matrix.at(0,1), matrix.at(0,2), matrix.at(0,3) )
-            Logger.log("d", "%f  %f  %f  %f", matrix.at(1,0),  matrix.at(1,1), matrix.at(1,2), matrix.at(1,3) )
-            Logger.log("d", "%f  %f  %f  %f", matrix.at(2,0),  matrix.at(2,1), matrix.at(2,2), matrix.at(2,3) )
-            Logger.log("d", "%f  %f  %f  %f", matrix.at(3,0),  matrix.at(3,1), matrix.at(3,2), matrix.at(3,3) )
-        else:
-            Logger.log("d", "\n %s in None ", str_matrix_name )
-
-        Logger.log("d", "................................................................... \n" )
-
-    def LOG_QUATERNION( self, str_quaternion_name, quaternion ):
-        Logger.log("d", "\n ................................................................... " )
-        Logger.log("d", "\n %s: ", str_quaternion_name )
-        Logger.log("d", "%f  %f  %f  %f", quaternion.toMatrix().at(0,0),  quaternion.toMatrix().at(0,1), quaternion.toMatrix().at(0,2), quaternion.toMatrix().at(0,3) )
-        Logger.log("d", "%f  %f  %f  %f", quaternion.toMatrix().at(1,0),  quaternion.toMatrix().at(1,1), quaternion.toMatrix().at(1,2), quaternion.toMatrix().at(1,3) )
-        Logger.log("d", "%f  %f  %f  %f", quaternion.toMatrix().at(2,0),  quaternion.toMatrix().at(2,1), quaternion.toMatrix().at(2,2), quaternion.toMatrix().at(2,3) )
-        Logger.log("d", "%f  %f  %f  %f", quaternion.toMatrix().at(3,0),  quaternion.toMatrix().at(3,1), quaternion.toMatrix().at(3,2), quaternion.toMatrix().at(3,3) )
-        Logger.log("d", "................................................................... \n" )
-
-    def LOG_VECTOR( self, str_vector_name, vector ):
-        Logger.log("d", "\n ................................................................... " )
-        Logger.log("d", "\n %s: ", str_vector_name )
-        Logger.log("d", "%f  %f  %f", vector.x,  vector.y, vector.z )
-        Logger.log("d", "................................................................... \n" )
-
+    ##  String output for debugging.
+    def __str__(self):
+        name = self._name if self._name != "" else hex(id(self))
+        return "<" + self.__class__.__qualname__ + " object: '" + name + "'>"
