@@ -302,6 +302,8 @@ class QtApplication(QApplication, Application):
         return self._main_window
 
     def getSplashScreen(self):
+        if not self._splash:
+            self.createSplash()
         return self._splash
 
     def setMainWindow(self, window):
