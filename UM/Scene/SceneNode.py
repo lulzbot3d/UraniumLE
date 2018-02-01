@@ -620,6 +620,21 @@ class SceneNode:
     #   \param renderer The renderer object to use for rendering.
     #
     #   \return False if the view should render this node, True if we handle our own rendering.
+
+    def LOG_MATRIX( self, str_matrix_name, matrix ):
+        Logger.log("d", "\n ................................................................... " )
+
+        Logger.log("d", "\n %s: ", str_matrix_name  )
+        if( matrix != None ):
+            Logger.log("d", "%f  %f  %f  %f", matrix.at(0,0),  matrix.at(0,1), matrix.at(0,2), matrix.at(0,3) )
+            Logger.log("d", "%f  %f  %f  %f", matrix.at(1,0),  matrix.at(1,1), matrix.at(1,2), matrix.at(1,3) )
+            Logger.log("d", "%f  %f  %f  %f", matrix.at(2,0),  matrix.at(2,1), matrix.at(2,2), matrix.at(2,3) )
+            Logger.log("d", "%f  %f  %f  %f", matrix.at(3,0),  matrix.at(3,1), matrix.at(3,2), matrix.at(3,3) )
+        else:
+            Logger.log("d", "\n %s in None ", str_matrix_name )
+
+        Logger.log("d", "................................................................... \n" )
+
     def render(self, renderer) -> bool:
         return False
 
