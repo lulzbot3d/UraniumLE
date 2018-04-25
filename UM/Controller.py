@@ -396,3 +396,5 @@ class Controller:
                 self._camera_tool.rotateCam(angle, 0)
             elif coordinate == "y":
                 self._camera_tool.rotateCam(0, angle)
+            elif coordinate == "bottom":
+                self._camera_tool.rotateCam(180,90)
