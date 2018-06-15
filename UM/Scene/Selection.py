@@ -47,7 +47,8 @@ class Selection:
     def getBoundingBox(cls):
         bounding_box = None  # don't start with an empty bounding box, because that includes (0,0,0)
         for node in cls.__selection:
-            if type(node) is SceneNode or type(node) is Plane:
+            if isinstance(node, SceneNode):
+
                 if not bounding_box:
                     bounding_box = node.getBoundingBox()
                 else:
