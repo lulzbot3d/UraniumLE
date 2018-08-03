@@ -98,8 +98,6 @@ class CameraTool(Tool):
     def moveEvent(self, event):
         if MouseEvent.MiddleButton in event.buttons:  # mousewheel
             return True
-        elif MouseEvent.LeftButton in event.buttons and self._shift_is_active is True:  # shift -> leftbutton
-            return True
         elif MouseEvent.RightButton in event.buttons and self._shift_is_active is True:  # shift -> rightbutton
             return True
 
@@ -110,7 +108,7 @@ class CameraTool(Tool):
     def rotateEvent(self, event):
         if MouseEvent.RightButton in event.buttons:  # rightbutton
             return True
-        elif MouseEvent.LeftButton in event.buttons and self._space_is_active is True:  # shift -> leftbutton
+        elif MouseEvent.LeftButton in event.buttons and self._shift_is_active is True:  # shift -> leftbutton
             return True
 
     ##  Calls the zoomaction method for the mousewheel event, mouseMoveEvent (in combo with alt or space) and when the plus or minus keys are used

@@ -375,7 +375,7 @@ class RotateTool(Tool):
         self._Z_angle = 0
         self._Y_angle = 0
         self.propertyChanged.emit()
-    
+
     ##  Initialise and start a LayFlatOperation
     #
     #   Note: The LayFlat functionality is mostly used for 3d printing and should probably be moved into the Cura project
