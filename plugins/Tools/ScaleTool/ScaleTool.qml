@@ -9,7 +9,7 @@ import UM 1.1 as UM
 Item
 {
     id: base
-    width: childrenRect.width
+    width: childrenRect.width * 1.05
     height: childrenRect.height
     UM.I18nCatalog { id: catalog; name:"uranium"}
 
