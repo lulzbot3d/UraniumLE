@@ -591,7 +591,7 @@ class QtApplication(QApplication, Application):
             #     pass
 
             from ctypes import cdll, c_void_p, c_uint32, POINTER, byref
-            from CoreFoundation import CFStringCreateWithCString, CFRelease, kCFStringEncodingASCII
+            from CoreFoundation import CFStringCreateWithCString, kCFStringEncodingASCII
             from objc import pyobjc_id
 
             libIOKit = cdll.LoadLibrary('/System/Library/Frameworks/IOKit.framework/IOKit')
@@ -617,16 +617,13 @@ class QtApplication(QApplication, Application):
 
             kIOPMAssertionTypeNoIdleSleep = b"NoIdleSleepAssertion"
             kIOPMAssertionLevelOn = 255
-            reason = b"cura would like the computer to not idle sleep"
+            reason = b"cura-lulzbot is printing"
 
             if prevent:
-                errcode, self.assertID = IOPMAssertionCreateWithName(kIOPMAssertionTypeNoIdleSleep,
-                                                                     kIOPMAssertionLevelOn, reason)
+                errcode, self.assertID = IOPMAssertionCreateWithName(kIOPMAssertionTypeNoIdleSleep, kIOPMAssertionLevelOn, reason)
             else:
                 errcode = IOPMAssertionRelease(self.assertID)
                 self.assertID = 0
-
-            print("errcode ", errcode)
 
         else: # Linux
             import os
