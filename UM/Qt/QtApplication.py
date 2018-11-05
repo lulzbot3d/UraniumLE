@@ -98,6 +98,8 @@ class QtApplication(QApplication, Application):
         self._main_window = None
         self._theme = None
 
+        self.assertID = 0
+
         self._shutting_down = False
         self._qml_import_paths = []
         self._qml_import_paths.append(os.path.join(os.path.dirname(sys.executable), "qml"))
@@ -579,14 +581,53 @@ class QtApplication(QApplication, Application):
                 Logger.log("w", "Failed to prevent from sleeping")
                 pass
         elif sys.platform.startswith('darwin'): # Mac OS
-            import os
-            import subprocess
-            try:
-                if prevent:
-                    subprocess.Popen(['caffeinate', '-i', '-w', str(os.getpid())])
-            except:
-                Logger.log("w", "Failed to prevent from sleeping")
-                pass
+            # import os
+            # import subprocess
+            # try:
+            #     if prevent:
+            #         subprocess.Popen(['caffeinate', '-i', '-w', str(os.getpid())])
+            # except:
+            #     Logger.log("w", "Failed to prevent from sleeping")
+            #     pass
+
+            from ctypes import cdll, c_void_p, c_uint32, POINTER, byref
+            from CoreFoundation import CFStringCreateWithCString, CFRelease, kCFStringEncodingASCII
+            from objc import pyobjc_id
+
+            libIOKit = cdll.LoadLibrary('/System/Library/Frameworks/IOKit.framework/IOKit')
+            libIOKit.IOPMAssertionCreateWithName.argtypes = [c_void_p, c_uint32, c_void_p, POINTER(c_uint32)]
+            libIOKit.IOPMAssertionRelease.argtypes = [c_uint32]
+
+            def CFSTR(py_string):
+                return CFStringCreateWithCString(None, py_string, kCFStringEncodingASCII)
+
+            def raw_ptr(pyobjc_string):
+                return pyobjc_id(pyobjc_string.nsstring())
+
+            def IOPMAssertionCreateWithName(assert_name, assert_level, assert_msg):
+                assertID = c_uint32(0)
+                p_assert_name = raw_ptr(CFSTR(assert_name))
+                p_assert_msg = raw_ptr(CFSTR(assert_msg))
+                errcode = libIOKit.IOPMAssertionCreateWithName(p_assert_name,
+                                                               assert_level, p_assert_msg, byref(assertID))
+
+                return (errcode, assertID)
+
+            IOPMAssertionRelease = libIOKit.IOPMAssertionRelease
+
+            kIOPMAssertionTypeNoIdleSleep = b"NoIdleSleepAssertion"
+            kIOPMAssertionLevelOn = 255
+            reason = b"cura would like the computer to not idle sleep"
+
+            if prevent:
+                errcode, self.assertID = IOPMAssertionCreateWithName(kIOPMAssertionTypeNoIdleSleep,
+                                                                     kIOPMAssertionLevelOn, reason)
+            else:
+                errcode = IOPMAssertionRelease(self.assertID)
+                self.assertID = 0
+
+            print("errcode ", errcode)
+
         else: # Linux
             import os
             import subprocess
