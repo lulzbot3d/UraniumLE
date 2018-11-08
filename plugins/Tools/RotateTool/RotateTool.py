@@ -38,9 +38,9 @@ class RotateTool(Tool):
         self._snap_rotation = True
         self._snap_angle = math.radians(15)
 
-        self._X_angle = 0
-        self._Y_angle = 0
-        self._Z_angle = 0
+        self._X_angle = 0.0
+        self._Y_angle = 0.0
+        self._Z_angle = 0.0
 
         self._angle = None
         self._angle_update_time = None
@@ -230,6 +230,10 @@ class RotateTool(Tool):
     #
     #   \return type(float)
     def getX(self):
+        if Selection.getCount() > 1:
+            self._X_angle = 0.0
+            return self._X_angle
+        self._X_angle = Selection.getAllSelectedObjects()[0]._rotationX
         return self._X_angle
 
     ##  Set X
@@ -239,9 +243,7 @@ class RotateTool(Tool):
         if float(X) != self._X_angle:
             self._angle = ((float(X) % 360) - (self._X_angle % 360)) % 360
 
-            self.propertyChanged.emit()
             self._X_angle = float(X)
-            self.propertyChanged.emit()
 
             #rotation = Quaternion.fromAngleAxis( math.radians( self._angle ), Vector.Unit_X)
             rotation = Quaternion()
@@ -251,6 +253,7 @@ class RotateTool(Tool):
             self._saved_node_positions = []
             for node in Selection.getAllSelectedObjects():
                 self._saved_node_positions.append((node, node.getPosition()))
+                node._rotationX = self._X_angle
 
             # Rate-limit the angle change notification
             # This is done to prevent the UI from being flooded with property change notifications,
@@ -258,7 +261,6 @@ class RotateTool(Tool):
             new_time = time.monotonic()
             if not self._angle_update_time or new_time - self._angle_update_time > 0.1:
                 self._angle_update_time = new_time
-                self.propertyChanged.emit()
 
                 # Rotate around the saved centeres of all selected nodes
                 op = GroupedOperation()
@@ -266,16 +268,19 @@ class RotateTool(Tool):
                     op.addOperation(RotateOperation(node, rotation, rotate_around_point = position))
                 op.push()
 
-                self.propertyChanged.emit()
-
-                self._angle = 0
-                self.propertyChanged.emit()
+            self._angle = 0
+            self.propertyChanged.emit()
 
     ##  Get Y
     #
     #   \return type(float)
     def getY(self):
+        if Selection.getCount() > 1:
+            self._Y_angle = 0.0
+            return self._Y_angle
+        self._Y_angle = Selection.getAllSelectedObjects()[0]._rotationY
         return self._Y_angle
+
 
     ##  Set Y
     #
@@ -284,9 +289,7 @@ class RotateTool(Tool):
         if float(Y) != self._Y_angle:
             self._angle = ((float(Y) % 360) - (self._Y_angle % 360)) % 360
 
-            self.propertyChanged.emit()
             self._Y_angle = float(Y)
-            self.propertyChanged.emit()
 
             #rotation = Quaternion.fromAngleAxis(math.radians( self._angle ), Vector.Unit_Y)
             rotation = Quaternion()
@@ -297,6 +300,7 @@ class RotateTool(Tool):
             self._saved_node_positions = []
             for node in Selection.getAllSelectedObjects():
                 self._saved_node_positions.append((node, node.getPosition()))
+                node._rotationY = self._Y_angle
 
             # Rate-limit the angle change notification
             # This is done to prevent the UI from being flooded with property change notifications,
@@ -304,7 +308,6 @@ class RotateTool(Tool):
             new_time = time.monotonic()
             if not self._angle_update_time or new_time - self._angle_update_time > 0.1:
                 self._angle_update_time = new_time
-                self.propertyChanged.emit()
 
                 # Rotate around the saved centeres of all selected nodes
                 op = GroupedOperation()
@@ -312,16 +315,18 @@ class RotateTool(Tool):
                     op.addOperation(RotateOperation(node, rotation, rotate_around_point = position))
                 op.push()
 
-                self.propertyChanged.emit()
-
-                self._angle = 0
-                self.propertyChanged.emit()
+            self._angle = 0
+            self.propertyChanged.emit()
 
 
     ##  Get Z
     #
     #   \return type(float)
     def getZ(self):
+        if Selection.getCount() > 1:
+            self._Z_angle = 0.0
+            return self._Z_angle
+        self._Z_angle = Selection.getAllSelectedObjects()[0]._rotationZ
         return self._Z_angle
 
     ##  Set Z
@@ -331,9 +336,7 @@ class RotateTool(Tool):
         if float(Z) != self._Z_angle:
             self._angle = ((float(Z) % 360) - (self._Z_angle % 360)) % 360
 
-            self.propertyChanged.emit()
             self._Z_angle = float(Z)
-            self.propertyChanged.emit()
 
             #rotation = Quaternion.fromAngleAxis(math.radians( self._angle ), Vector.Unit_Z)
             rotation = Quaternion()
@@ -343,6 +346,7 @@ class RotateTool(Tool):
             self._saved_node_positions = []
             for node in Selection.getAllSelectedObjects():
                 self._saved_node_positions.append((node, node.getPosition()))
+                node._rotationZ = self._Z_angle
 
             # Rate-limit the angle change notification
             # This is done to prevent the UI from being flooded with property change notifications,
@@ -350,7 +354,6 @@ class RotateTool(Tool):
             new_time = time.monotonic()
             if not self._angle_update_time or new_time - self._angle_update_time > 0.1:
                 self._angle_update_time = new_time
-                self.propertyChanged.emit()
 
                 # Rotate around the saved centeres of all selected nodes
                 op = GroupedOperation()
@@ -358,7 +361,6 @@ class RotateTool(Tool):
                     op.addOperation(RotateOperation(node, rotation, rotate_around_point = position))
                 op.push()
 
-                self.propertyChanged.emit()
 
             self._angle = 0
             self.propertyChanged.emit()
@@ -368,6 +370,9 @@ class RotateTool(Tool):
     def resetRotation(self):
         for node in Selection.getAllSelectedObjects():
             node.setMirror(Vector(1,1,1))
+            node._rotationX = 0.0
+            node._rotationY = 0.0
+            node._rotationZ = 0.0
 
         Selection.applyOperation(SetTransformOperation, None, Quaternion(), None)
 
