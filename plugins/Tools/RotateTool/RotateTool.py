@@ -144,14 +144,20 @@ class RotateTool(Tool):
                 direction = 1 if Vector.Unit_X.dot(drag_start.cross(drag_end)) > 0 else -1
                 rotation = Quaternion.fromAngleAxis(direction * angle, Vector.Unit_X)
                 self._X_angle = float(self._X_angle) + direction * math.degrees( angle )
+                for node in Selection.getAllSelectedObjects():
+                    node._rotationX = self._X_angle
             elif self.getLockedAxis() == ToolHandle.YAxis:
                 direction = 1 if Vector.Unit_Y.dot(drag_start.cross(drag_end)) > 0 else -1
                 rotation = Quaternion.fromAngleAxis(direction * angle, Vector.Unit_Y)
                 self._Y_angle = float(self._Y_angle) + direction * math.degrees( angle )
+                for node in Selection.getAllSelectedObjects():
+                    node._rotationY = self._Y_angle
             elif self.getLockedAxis() == ToolHandle.ZAxis:
                 direction = 1 if Vector.Unit_Z.dot(drag_start.cross(drag_end)) > 0 else -1
                 rotation = Quaternion.fromAngleAxis(direction * angle, Vector.Unit_Z)
                 self._Z_angle = float(self._Z_angle) + direction * math.degrees( angle )
+                for node in Selection.getAllSelectedObjects():
+                    node._rotationZ = self._Z_angle
             else:
                 direction = -1
 
