@@ -36,6 +36,7 @@ class LocalFileOutputDevice(OutputDevice):
         self.setIconName("save")
 
         self._writing = False
+        self.setPriority(1.5)
 
     ##  Request the specified nodes to be written to a file.
     #
