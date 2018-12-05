@@ -102,11 +102,7 @@ class LocalFileOutputDevice(OutputDevice):
         if file_name is not None:
             dialog.selectFile(file_name)
 
-        if os.path.exists("/media"):
-            stored_directory = "/media"
-        else:
-            stored_directory = Preferences.getInstance().getValue("local_file/dialog_save_path")
-
+        stored_directory = Preferences.getInstance().getValue("local_file/dialog_save_path")
         dialog.setDirectory(stored_directory)
 
         if not dialog.exec_():
