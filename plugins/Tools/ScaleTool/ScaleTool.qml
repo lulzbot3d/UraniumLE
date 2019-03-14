@@ -3,15 +3,14 @@
 
 import QtQuick 2.2
 import QtQuick.Controls 1.2
-
+import QtQuick.Layouts 1.1
 import UM 1.1 as UM
 
-Item
+ColumnLayout
 {
     id: base
-    width: childrenRect.width * 1.05
-    height: childrenRect.height
     UM.I18nCatalog { id: catalog; name:"uranium"}
+    spacing: UM.Theme.getSize("default_margin").height
 
     // We use properties for the text as doing the bindings indirectly doesn't cause any breaks
     // Javascripts don't seem to play well with the bindings (and sometimes break em)
@@ -23,7 +22,8 @@ Item
     property string depthText
     property string widthText
 
-    function getPercentage(scale){
+    function getPercentage(scale)
+    {
         return scale * 100;
     }
 
@@ -49,13 +49,15 @@ Item
 
     function inc_dec(prop, event, unit)
     {
-        if (event.key == Qt.Key_Up) {
+        if (event.key == Qt.Key_Up)
+        {
             var t = parseFloat(UM.ActiveTool.properties.getValue(prop)) + unit;
             if(t <= 0){t=UM.ActiveTool.properties.getValue(prop)}
             UM.ActiveTool.setProperty(prop, t);
             event.accepted = true;
         }
-        if (event.key == Qt.Key_Down) {
+        if (event.key == Qt.Key_Down)
+        {
             var t = parseFloat(UM.ActiveTool.properties.getValue(prop)) - unit;
             if(t <= 0){t=UM.ActiveTool.properties.getValue(prop)}
             UM.ActiveTool.setProperty(prop, t);
@@ -63,91 +65,9 @@ Item
         }
     }
 
-    Button
-    {
-        id: resetScaleButton
-        anchors.top: textfields.bottom
-        anchors.topMargin: UM.Theme.getSize("default_margin").height;
-        anchors.left: textfields.left
-        anchors.leftMargin: UM.Theme.getSize("default_margin").width;
-        z: 2
-
-        //: Reset scale tool button
-        text: catalog.i18nc("@action:button","Reset")
-        iconSource: UM.Theme.getIcon("scale_reset");
-        property bool needBorder: true
-
-        style: UM.Theme.styles.tool_button;
-
-        onClicked: UM.ActiveTool.triggerAction("resetScale");
-    }
-
-    Button
-    {
-        id: scaleToMaxButton
-
-        //: Scale to max tool button
-        text: catalog.i18nc("@action:button","Scale to Max");
-        iconSource: UM.Theme.getIcon("scale_max");
-
-        anchors.top: resetScaleButton.top;
-        anchors.left: resetScaleButton.right;
-        anchors.leftMargin: UM.Theme.getSize("default_margin").width;
-        z: 1
-
-        style: UM.Theme.styles.tool_button;
-        onClicked: UM.ActiveTool.triggerAction("scaleToMax")
-    }
-
-
-    Flow {
-        id: checkboxes;
-
-        anchors.left: scaleToMaxButton.right;
-        anchors.leftMargin: UM.Theme.getSize("default_margin").width;
-        anchors.right: parent.right;
-        anchors.top: resetScaleButton.top;
-
-        spacing: UM.Theme.getSize("default_margin").height;
-
-        CheckBox
-        {
-            id: snapScalingCheckbox
-
-            width: parent.width //Use a width instead of anchors to allow the flow layout to resolve positioning.
-
-            text: catalog.i18nc("@option:check", "Snap Scaling")
-
-            style: UM.Theme.styles.checkbox;
-            checked: UM.ActiveTool.properties.getValue("ScaleSnap");
-            onClicked: {
-                UM.ActiveTool.setProperty("ScaleSnap", checked);
-                if (snapScalingCheckbox.checked){
-                    UM.ActiveTool.setProperty("ScaleX", parseFloat(xPercentage.text) / 100);
-                    UM.ActiveTool.setProperty("ScaleY", parseFloat(yPercentage.text) / 100);
-                    UM.ActiveTool.setProperty("ScaleZ", parseFloat(zPercentage.text) / 100);
-                }
-            }
-        }
-
-        CheckBox
-        {
-            width: parent.width //Use a width instead of anchors to allow the flow layout to resolve positioning.
-
-            text: catalog.i18nc("@option:check", "Uniform Scaling")
-
-            style: UM.Theme.styles.checkbox;
-
-            checked: !UM.ActiveTool.properties.getValue("NonUniformScale");
-            onClicked: UM.ActiveTool.setProperty("NonUniformScale", !checked);
-        }
-    }
-
     Grid
     {
         id: textfields;
-
-        anchors.top: parent.top;
 
         columns: 3;
         flow: Grid.TopToBottom;
@@ -287,8 +207,6 @@ Item
                 }
             }
         }
-
-
 
         UM.TooltipArea
         {
@@ -446,6 +364,78 @@ Item
             target: base
             property: "zPercentageText"
             value: base.roundFloat(100 * UM.ActiveTool.properties.getValue("ScaleZ"), 4)
+        }
+    }
+
+    RowLayout
+    {
+        spacing: UM.Theme.getSize("default_margin").width;
+
+        Button
+        {
+            id: resetScaleButton
+            z: 2
+
+            //: Reset scale tool button
+            text: catalog.i18nc("@action:button","Reset")
+            iconSource: UM.Theme.getIcon("scale_reset");
+            property bool needBorder: true
+
+            style: UM.Theme.styles.tool_button;
+
+            onClicked: UM.ActiveTool.triggerAction("resetScale");
+        }
+
+        Button
+        {
+            id: scaleToMaxButton
+
+            //: Scale to max tool button
+            text: catalog.i18nc("@action:button","Scale to Max");
+            iconSource: UM.Theme.getIcon("scale_max");
+            z: 1
+
+            style: UM.Theme.styles.tool_button;
+            onClicked: UM.ActiveTool.triggerAction("scaleToMax")
+        }
+
+
+        ColumnLayout
+        {
+            id: checkboxes;
+
+            spacing: UM.Theme.getSize("default_margin").height / 2;
+
+            CheckBox
+            {
+                id: snapScalingCheckbox
+
+                width: parent.width //Use a width instead of anchors to allow the flow layout to resolve positioning.
+                text: catalog.i18nc("@option:check", "Snap Scaling")
+                style: UM.Theme.styles.checkbox;
+                checked: UM.ActiveTool.properties.getValue("ScaleSnap");
+
+                onClicked: {
+                    UM.ActiveTool.setProperty("ScaleSnap", checked);
+                    if (snapScalingCheckbox.checked){
+                        UM.ActiveTool.setProperty("ScaleX", parseFloat(xPercentage.text) / 100);
+                        UM.ActiveTool.setProperty("ScaleY", parseFloat(yPercentage.text) / 100);
+                        UM.ActiveTool.setProperty("ScaleZ", parseFloat(zPercentage.text) / 100);
+                    }
+                }
+            }
+
+            CheckBox
+            {
+                width: parent.width //Use a width instead of anchors to allow the flow layout to resolve positioning.
+
+                text: catalog.i18nc("@option:check", "Uniform Scaling")
+
+                style: UM.Theme.styles.checkbox;
+
+                checked: !UM.ActiveTool.properties.getValue("NonUniformScale");
+                onClicked: UM.ActiveTool.setProperty("NonUniformScale", !checked);
+            }
         }
     }
 }
