@@ -217,15 +217,6 @@ class SettingPropertyProvider(QObject):
             return None
         return value
 
-    @pyqtSlot(str, result="QVariant")
-    def getRawPropertyValue(self, property_name):
-        try:
-            value = self._stack.getProperty(self._key, property_name)
-        except IndexError:
-            Logger.log("w", "Tried to get property of type %s from %s but it did not exist", property_name, self._key)
-            return None
-        return value
-
     @pyqtSlot(int)
     def removeFromContainer(self, index):
         current_stack = self._stack
