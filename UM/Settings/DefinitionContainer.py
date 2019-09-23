@@ -177,7 +177,7 @@ class DefinitionContainer(QObject, DefinitionContainerInterface, PluginObject):
             value = getattr(definition, property_name)
             if value is None and property_name == "value":
                 value = getattr(definition, "default_value")
-                if key in ["machine_start_gcode", "machine_end_gcode", "machine_wipe_gcode", "machine_level_x_axis_gcode",
+                if key in ["machine_start_gcode", "machine_end_gcode", "machine_wipe_gcode","machine_abort_gcode", "machine_level_x_axis_gcode",
                            "machine_extruder_start_code", "machine_extruder_end_code"]:
                     value_from_file = getattr(definition, "default_value_from_file")
                     if value_from_file != None:
