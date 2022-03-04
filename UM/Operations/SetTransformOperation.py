@@ -4,22 +4,25 @@
 from . import Operation
 from UM.Math.Matrix import Matrix
 from UM.Math.Vector import Vector
-from UM.Logger import Logger
 
 ##  Operation that translates, rotates and scales a node all at once.
 class SetTransformOperation(Operation.Operation):
-    ##  Creates the transform operation.
-    #
-    #   Careful! No real input checking is done by this function. If you'd
-    #   provide other transformations than respectively translation, orientation
-    #   and scale in place for the translation, orientation and scale matrices,
-    #   it could get confused.
-    #
-    #   \param node The scene node to transform.
-    #   \param translation A translation matrix to move the node with.
-    #   \param orientation An orientation matrix to rotate the node with.
-    #   \param scale A scaling matrix to resize the node with.
+    """Operation that translates, rotates and scales a node all at once."""
+
     def __init__(self, node, translation = None, orientation = None, scale = None, shear = None, mirror = None):
+        """Creates the transform operation.
+
+        Careful! No real input checking is done by this function. If you'd
+        provide other transformations than respectively translation, orientation
+        and scale in place for the translation, orientation and scale matrices,
+        it could get confused.
+
+        :param node: The scene node to transform.
+        :param translation: A translation matrix to move the node with.
+        :param orientation: An orientation matrix to rotate the node with.
+        :param scale: A scaling matrix to resize the node with.
+        """
+
         super().__init__()
         self._node = node
 
@@ -57,22 +60,23 @@ class SetTransformOperation(Operation.Operation):
                 self._new_mirror = Vector(-node.getMirror().x, -node.getMirror().y, -node.getMirror().z)
             else:
                 self._new_mirror = node.getMirror()
+
         self._new_transformation = Matrix()
 
         euler_orientation = self._new_orientation.toMatrix().getEuler()
-
         self._new_transformation.compose(scale = self._new_scale, shear = self._new_shear, angles = euler_orientation, translate = self._new_translation, mirror = self._new_mirror)
-
 
     ##  Undoes the transformation, restoring the node to the old state.
     def undo(self):
-        self._node.setTransformation(self._old_transformation)
+        """Undoes the transformation, restoring the node to the old state."""
 
+        self._node.setTransformation(self._old_transformation)
 
     ##  Re-applies the transformation after it has been undone.
     def redo(self):
-        self._node.setTransformation(self._new_transformation)
+        """Re-applies the transformation after it has been undone."""
 
+        self._node.setTransformation(self._new_transformation)
 
     ##  Merges this operation with another TransformOperation.
     #
@@ -86,6 +90,19 @@ class SetTransformOperation(Operation.Operation):
     #   \return A combination of the two operations, or False if the merge
     #   failed.
     def mergeWith(self, other):
+        """Merges this operation with another TransformOperation.
+
+        This prevents the user from having to undo multiple operations if they
+        were not his operations.
+
+        You should ONLY merge this operation with an older operation. It is NOT
+        symmetric.
+
+        :param other: The older operation with which to merge this operation.
+        :return: A combination of the two operations, or False if the merge
+        failed.
+        """
+
         if type(other) is not SetTransformOperation:
             return False
         if other._node != self._node: # Must be on the same node.
@@ -100,34 +117,9 @@ class SetTransformOperation(Operation.Operation):
     #
     #   A programmer-readable representation of this operation.
     def __repr__(self):
-        return "SetTransformOperation(node = {0})".format(self._node)
+        """Returns a programmer-readable representation of this operation.
 
+        A programmer-readable representation of this operation.
+        """
 
-    def LOG_MATRIX( self, str_matrix_name, matrix ):
-        Logger.log("d", "\n ................................................................... " )
-
-        Logger.log("d", "\n %s: ", str_matrix_name  )
-        if( matrix != None ):
-            Logger.log("d", "%d  %d  %d  %d", matrix.at(0,0),  matrix.at(0,1), matrix.at(0,2), matrix.at(0,3) )
-            Logger.log("d", "%d  %d  %d  %d", matrix.at(1,0),  matrix.at(1,1), matrix.at(1,2), matrix.at(1,3) )
-            Logger.log("d", "%d  %d  %d  %d", matrix.at(2,0),  matrix.at(2,1), matrix.at(2,2), matrix.at(2,3) )
-            Logger.log("d", "%d  %d  %d  %d", matrix.at(3,0),  matrix.at(3,1), matrix.at(3,2), matrix.at(3,3) )
-        else:
-            Logger.log("d", "\n %s in None ", str_matrix_name )
-
-        Logger.log("d", "................................................................... \n" )
-
-    def LOG_QUATERNION( self, str_quaternion_name, quaternion ):
-        Logger.log("d", "\n ................................................................... " )
-        Logger.log("d", "\n %s: ", str_quaternion_name )
-        Logger.log("d", "%d  %d  %d  %d", quaternion.toMatrix().at(0,0),  quaternion.toMatrix().at(0,1), quaternion.toMatrix().at(0,2), quaternion.toMatrix().at(0,3) )
-        Logger.log("d", "%d  %d  %d  %d", quaternion.toMatrix().at(1,0),  quaternion.toMatrix().at(1,1), quaternion.toMatrix().at(1,2), quaternion.toMatrix().at(1,3) )
-        Logger.log("d", "%d  %d  %d  %d", quaternion.toMatrix().at(2,0),  quaternion.toMatrix().at(2,1), quaternion.toMatrix().at(2,2), quaternion.toMatrix().at(2,3) )
-        Logger.log("d", "%d  %d  %d  %d", quaternion.toMatrix().at(3,0),  quaternion.toMatrix().at(3,1), quaternion.toMatrix().at(3,2), quaternion.toMatrix().at(3,3) )
-        Logger.log("d", "................................................................... \n" )
-
-    def LOG_VECTOR( self, str_vector_name, vector ):
-        Logger.log("d", "\n ................................................................... " )
-        Logger.log("d", "\n %s: ", str_vector_name )
-        Logger.log("d", "%d  %d  %d", vector.x,  vector.y, vector.z )
-        Logger.log("d", "................................................................... \n" )
+        return "SetTransformOp.(node={0})".format(self._node)

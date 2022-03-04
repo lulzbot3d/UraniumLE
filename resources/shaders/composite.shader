@@ -13,6 +13,14 @@ vertex =
     }
 
 fragment =
+    #ifdef GL_ES
+        #ifdef GL_FRAGMENT_PRECISION_HIGH
+            precision highp float;
+        #else
+            precision mediump float;
+        #endif // GL_FRAGMENT_PRECISION_HIGH
+    #endif // GL_ES
+
     uniform sampler2D u_layer0;
     uniform sampler2D u_layer1;
     uniform sampler2D u_layer2;
@@ -58,6 +66,7 @@ fragment =
         {
             gl_FragColor = mix(result, u_outline_color, abs(sum.a));
         }
+        gl_FragColor.a = gl_FragColor.a > 0.5 ? 1.0 : 0.0;
     }
 
 vertex41core =
@@ -123,6 +132,7 @@ fragment41core =
         {
             frag_color = mix(result, u_outline_color, abs(sum.a));
         }
+        frag_color.a = frag_color.a > 0.5 ? 1.0 : 0.0;
     }
 
 [defaults]

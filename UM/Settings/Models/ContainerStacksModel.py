@@ -1,13 +1,18 @@
+# Copyright (c) 2018 Ultimaker B.V.
+# Uranium is released under the terms of the LGPLv3 or higher.
+
 from UM.Qt.ListModel import ListModel
 
-from PyQt5.QtCore import pyqtSlot, pyqtProperty, Qt, pyqtSignal
+from PyQt5.QtCore import pyqtProperty, Qt, pyqtSignal
 
 from UM.Settings.ContainerRegistry import ContainerRegistry
 from UM.Settings.ContainerStack import ContainerStack
 
-##  Model that holds container stacks. By setting the filter property the stacks held by this model can be
-#   changed.
 class ContainerStacksModel(ListModel):
+    """Model that holds container stacks. By setting the filter property the stacks held by this model can be
+    changed.
+    """
+
     NameRole = Qt.UserRole + 1
     IdRole = Qt.UserRole + 2
     MetaDataRole = Qt.UserRole + 3
@@ -21,24 +26,27 @@ class ContainerStacksModel(ListModel):
 
         # Listen to changes
         ContainerRegistry.getInstance().containerAdded.connect(self._onContainerChanged)
+        ContainerRegistry.getInstance().containerMetaDataChanged.connect(self._onContainerChanged)
         ContainerRegistry.getInstance().containerRemoved.connect(self._onContainerChanged)
         self._filter_dict = {}
         self._update()
 
-    ##  Handler for container added/removed events from registry
     def _onContainerChanged(self, container):
+        """Handler for container added/removed events from registry"""
+
         # We only need to update when the added / removed container is a stack.
         if isinstance(container, ContainerStack):
             self._update()
 
-    ##  Handler for container name change events.
     def _onContainerNameChanged(self):
+        """Handler for container name change events."""
+
         self._update()
 
-    ##  Private convenience function to reset & repopulate the model.
     def _update(self):
-        items = []
+        """Private convenience function to reset & repopulate the model."""
 
+        items = []
         # Remove all connections
         for container in self._container_stacks:
             container.nameChanged.disconnect(self._onContainerNameChanged)
@@ -57,9 +65,11 @@ class ContainerStacksModel(ListModel):
                              "metadata": metadata})
         self.setItems(items)
 
-    ##  Set the filter of this model based on a string.
-    #   \param filter_dict Dictionary to do the filtering by.
     def setFilter(self, filter_dict):
+        """Set the filter of this model based on a string.
+        :param filter_dict: Dictionary to do the filtering by.
+        """
+
         self._filter_dict = filter_dict
         self._update()
 

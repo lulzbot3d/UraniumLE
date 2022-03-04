@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Ultimaker B.V.
+# Copyright (c) 2020 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
 
 from UM.Tool import Tool
@@ -14,14 +14,19 @@ from UM.Math.Quaternion import Quaternion
 
 from PyQt5.QtCore import Qt
 
+from UM.Message import Message
+from UM.Operations.GravityOperation import GravityOperation
+from UM.Operations.GroupedOperation import GroupedOperation
+from UM.Operations.LayFlatOperation import LayFlatOperation
 from UM.Operations.RotateOperation import RotateOperation
 from UM.Operations.GroupedOperation import GroupedOperation
 from UM.Operations.SetTransformOperation import SetTransformOperation
 from UM.Operations.LayFlatOperation import LayFlatOperation
 
-from UM.Logger import Logger
-
-from . import RotateToolHandle
+try:
+    from . import RotateToolHandle
+except (ImportError, SystemError):
+    import RotateToolHandle  # type: ignore  # This fixes the tests not being able to import.
 
 import math
 import time
@@ -38,10 +43,6 @@ class RotateTool(Tool):
         self._snap_rotation = True
         self._snap_angle = math.radians(15)
 
-        self._X_angle = 0.0
-        self._Y_angle = 0.0
-        self._Z_angle = 0.0
-
         self._angle = None
         self._angle_update_time = None
 
@@ -51,7 +52,7 @@ class RotateTool(Tool):
         self._iterations = 0
         self._total_iterations = 0
         self._rotating = False
-        self.setExposedProperties("ToolHint", "RotationSnap", "RotationSnapAngle", "X", "Y", "Z" )
+        self.setExposedProperties("ToolHint", "RotationSnap", "RotationSnapAngle")
         self._saved_node_positions = []
 
     ##  Handle mouse and keyboard events
@@ -79,6 +80,12 @@ class RotateTool(Tool):
             if not id:
                 return False
 
+            if id in self._handle.getExtraWidgetsColorMap():
+                self._active_widget = self._handle.ExtraWidgets(id)
+                self._widget_click_start = time.monotonic()
+                # Continue as if the picked widget is the appropriate axis
+                id = math.floor((self._active_widget.value - self._active_widget.XPositive90.value) / 2) + self._handle.XAxis
+
             if self._handle.isAxis(id):
                 self.setLockedAxis(id)
             else:
@@ -89,15 +96,14 @@ class RotateTool(Tool):
 
             # Save the current positions of the node, as we want to rotate around their current centres
             self._saved_node_positions = []
-            for node in Selection.getAllSelectedObjects():
+            for node in self._getSelectedObjectsWithoutSelectedAncestors():
                 self._saved_node_positions.append((node, node.getPosition()))
 
             if id == ToolHandle.XAxis:
                 self.setDragPlane(Plane(Vector(1, 0, 0), handle_position.x))
             elif id == ToolHandle.YAxis:
                 self.setDragPlane(Plane(Vector(0, 1, 0), handle_position.y))
-            #elif self._locked_axis == ToolHandle.ZAxis:
-            elif id == ToolHandle.ZAxis:
+            elif self._locked_axis == ToolHandle.ZAxis:
                 self.setDragPlane(Plane(Vector(0, 0, 1), handle_position.z))
             else:
                 self.setDragPlane(Plane(Vector(0, 1, 0), handle_position.y))
@@ -105,7 +111,7 @@ class RotateTool(Tool):
             self.setDragStart(event.x, event.y)
             self._rotating = False
             self._angle = 0
-
+            return True
 
         if event.type == Event.MouseMoveEvent:
             # Perform a rotate operation
@@ -126,7 +132,7 @@ class RotateTool(Tool):
             drag_start = (self.getDragStart() - handle_position).normalized()
             drag_position = self.getDragPosition(event.x, event.y)
             if not drag_position:
-                return
+                return False
             drag_end = (drag_position - handle_position).normalized()
 
             try:
@@ -137,27 +143,18 @@ class RotateTool(Tool):
             if self._snap_rotation:
                 angle = int(angle / self._snap_angle) * self._snap_angle
                 if angle == 0:
-                    return
+                    return False
 
-            rotation = None
+            rotation = Quaternion()
             if self.getLockedAxis() == ToolHandle.XAxis:
                 direction = 1 if Vector.Unit_X.dot(drag_start.cross(drag_end)) > 0 else -1
                 rotation = Quaternion.fromAngleAxis(direction * angle, Vector.Unit_X)
-                self._X_angle = float(self._X_angle) + direction * math.degrees( angle )
-                for node in Selection.getAllSelectedObjects():
-                    node._rotationX = self._X_angle
             elif self.getLockedAxis() == ToolHandle.YAxis:
                 direction = 1 if Vector.Unit_Y.dot(drag_start.cross(drag_end)) > 0 else -1
                 rotation = Quaternion.fromAngleAxis(direction * angle, Vector.Unit_Y)
-                self._Y_angle = float(self._Y_angle) + direction * math.degrees( angle )
-                for node in Selection.getAllSelectedObjects():
-                    node._rotationY = self._Y_angle
             elif self.getLockedAxis() == ToolHandle.ZAxis:
                 direction = 1 if Vector.Unit_Z.dot(drag_start.cross(drag_end)) > 0 else -1
                 rotation = Quaternion.fromAngleAxis(direction * angle, Vector.Unit_Z)
-                self._Z_angle = float(self._Z_angle) + direction * math.degrees( angle )
-                for node in Selection.getAllSelectedObjects():
-                    node._rotationZ = self._Z_angle
             else:
                 direction = -1
 
@@ -171,27 +168,99 @@ class RotateTool(Tool):
                 self.propertyChanged.emit()
 
                 # Rotate around the saved centeres of all selected nodes
-                op = GroupedOperation()
-                for node, position in self._saved_node_positions:
-                    op.addOperation(RotateOperation(node, rotation, rotate_around_point = position))
-                op.push()
+                if len(self._saved_node_positions) > 1:
+                    op = GroupedOperation()
+                    for node, position in self._saved_node_positions:
+                        op.addOperation(RotateOperation(node, rotation, rotate_around_point = position))
+                    op.push()
+                else:
+                    for node, position in self._saved_node_positions:
+                        RotateOperation(node, rotation, rotate_around_point=position).push()
 
                 self.setDragStart(event.x, event.y)
+            return True
 
         if event.type == Event.MouseReleaseEvent:
+            if self._active_widget != None and time.monotonic() - self._widget_click_start < 0.2:
+                id = self._selection_pass.getIdAtPosition(event.x, event.y)
+
+                if id in self._handle.getExtraWidgetsColorMap() and self._active_widget == self._handle.ExtraWidgets(id):
+                    axis = math.floor((self._active_widget.value - self._active_widget.XPositive90.value) / 2)
+
+                    angle = math.radians(90 if (self._active_widget.value - ToolHandle.AllAxis) % 2 else -90)
+                    axis += self._handle.XAxis
+                    if axis == ToolHandle.XAxis:
+                        rotation = Quaternion.fromAngleAxis(angle, Vector.Unit_X)
+                    elif axis == ToolHandle.YAxis:
+                        rotation = Quaternion.fromAngleAxis(angle, Vector.Unit_Y)
+                    else:
+                        rotation = Quaternion.fromAngleAxis(angle, Vector.Unit_Z)
+
+
+                    # Rotate around the saved centeres of all selected nodes
+                    if len(self._saved_node_positions) > 1:
+                        op = GroupedOperation()
+                        for node, position in self._saved_node_positions:
+                            op.addOperation(RotateOperation(node, rotation, rotate_around_point = position))
+                        op.push()
+                    else:
+                        for node, position in self._saved_node_positions:
+                            RotateOperation(node, rotation, rotate_around_point=position).push()
+
+            self._active_widget = None  # type: Optional[RotateToolHandle.ExtraWidgets]
+
             # Finish a rotate operation
             if self.getDragPlane():
                 self.setDragPlane(None)
-                self.setLockedAxis(None)
+                self.setLockedAxis(ToolHandle.NoAxis)
                 self._angle = None
                 self.propertyChanged.emit()
                 if self._rotating:
                     self.operationStopped.emit(self)
                 return True
 
-    ##  Return a formatted angle of the current rotate operation
-    #
-    #   \return type(String) fully formatted string showing the angle by which the mesh(es) are rotated
+    def _onSelectedFaceChanged(self):
+        if not self._select_face_mode:
+            return
+
+        self._handle.setEnabled(not Selection.getFaceSelectMode())
+
+        selected_face = Selection.getSelectedFace()
+        if not Selection.getSelectedFace() or not (Selection.hasSelection() and Selection.getFaceSelectMode()):
+            return
+
+        original_node, face_id = selected_face
+        meshdata = original_node.getMeshDataTransformed()
+        if not meshdata or face_id < 0:
+            return
+        if face_id > (meshdata.getVertexCount() / 3 if not meshdata.hasIndices() else meshdata.getFaceCount()):
+            return
+
+        face_mid, face_normal = meshdata.getFacePlane(face_id)
+        object_mid = original_node.getBoundingBox().center
+        rotation_point_vector = Vector(object_mid.x, object_mid.y, face_mid[2])
+        face_normal_vector = Vector(face_normal[0], face_normal[1], face_normal[2])
+        rotation_quaternion = Quaternion.rotationTo(face_normal_vector.normalized(), Vector(0.0, -1.0, 0.0))
+
+        operation = GroupedOperation()
+        current_node = None  # type: Optional[SceneNode]
+        for node in Selection.getAllSelectedObjects():
+            current_node = node
+            parent_node = current_node.getParent()
+            while parent_node and parent_node.callDecoration("isGroup"):
+                current_node = parent_node
+                parent_node = current_node.getParent()
+        if current_node is None:
+            return
+
+        rotate_operation = RotateOperation(current_node, rotation_quaternion, rotation_point_vector)
+        gravity_operation = GravityOperation(current_node)
+        operation.addOperation(rotate_operation)
+        operation.addOperation(gravity_operation)
+        operation.push()
+
+        # NOTE: We might want to consider unchecking the select-face button after the operation is done.
+
     def getToolHint(self):
         return "%d°" % round(math.degrees(self._angle)) if self._angle else None
 
@@ -223,169 +292,29 @@ class RotateTool(Tool):
             self._snap_angle = angle
             self.propertyChanged.emit()
 
+    def getSelectFaceToLayFlatMode(self) -> bool:
+        """Whether the rotate tool is in 'Lay flat by face'-Mode."""
 
-    def _parseInt(self, str_value):
-        try:
-            parsed_value = float(str_value)
-        except ValueError:
-            parsed_value = float(0)
-        return parsed_value
+        if not Selection.getFaceSelectMode():
+            self._select_face_mode = False  # .. but not the other way around!
+        return self._select_face_mode
 
+    def setSelectFaceToLayFlatMode(self, select: bool) -> None:
+        """Set the rotate tool to/from 'Lay flat by face'-Mode."""
 
-    ##  Get X
-    #
-    #   \return type(float)
-    def getX(self):
-        if Selection.getCount() > 1:
-            self._X_angle = 0.0
-            return self._X_angle
-        self._X_angle = Selection.getAllSelectedObjects()[0]._rotationX
-        return self._X_angle
-
-    ##  Set X
-    #
-    #   \param X type(float)
-    def setX(self, X):
-        if float(X) != self._X_angle:
-            self._angle = ((float(X) % 360) - (self._X_angle % 360)) % 360
-
-            self._X_angle = float(X)
-
-            #rotation = Quaternion.fromAngleAxis( math.radians( self._angle ), Vector.Unit_X)
-            rotation = Quaternion()
-            rotation.setByAngleAxis( math.radians( self._angle ), Vector.Unit_X)
-
-            # Save the current positions of the node, as we want to rotate around their current centres
-            self._saved_node_positions = []
-            for node in Selection.getAllSelectedObjects():
-                self._saved_node_positions.append((node, node.getPosition()))
-                node._rotationX = self._X_angle
-
-            # Rate-limit the angle change notification
-            # This is done to prevent the UI from being flooded with property change notifications,
-            # which in turn would trigger constant repaints.
-            new_time = time.monotonic()
-            if not self._angle_update_time or new_time - self._angle_update_time > 0.1:
-                self._angle_update_time = new_time
-
-                # Rotate around the saved centeres of all selected nodes
-                op = GroupedOperation()
-                for node, position in self._saved_node_positions:
-                    op.addOperation(RotateOperation(node, rotation, rotate_around_point = position))
-                op.push()
-
-            self._angle = 0
+        if select != self._select_face_mode or select != Selection.getFaceSelectMode():
+            self._select_face_mode = select
+            if not select:
+                Selection.clearFace()
+            Selection.setFaceSelectMode(self._select_face_mode)
             self.propertyChanged.emit()
 
-    ##  Get Y
-    #
-    #   \return type(float)
-    def getY(self):
-        if Selection.getCount() > 1:
-            self._Y_angle = 0.0
-            return self._Y_angle
-        self._Y_angle = Selection.getAllSelectedObjects()[0]._rotationY
-        return self._Y_angle
-
-
-    ##  Set Y
-    #
-    #   \param Y type(float)
-    def setY(self, Y):
-        if float(Y) != self._Y_angle:
-            self._angle = ((float(Y) % 360) - (self._Y_angle % 360)) % 360
-
-            self._Y_angle = float(Y)
-
-            #rotation = Quaternion.fromAngleAxis(math.radians( self._angle ), Vector.Unit_Y)
-            rotation = Quaternion()
-            rotation.setByAngleAxis( math.radians( self._angle ), Vector.Unit_Y)
-
-
-            # Save the current positions of the node, as we want to rotate around their current centres
-            self._saved_node_positions = []
-            for node in Selection.getAllSelectedObjects():
-                self._saved_node_positions.append((node, node.getPosition()))
-                node._rotationY = self._Y_angle
-
-            # Rate-limit the angle change notification
-            # This is done to prevent the UI from being flooded with property change notifications,
-            # which in turn would trigger constant repaints.
-            new_time = time.monotonic()
-            if not self._angle_update_time or new_time - self._angle_update_time > 0.1:
-                self._angle_update_time = new_time
-
-                # Rotate around the saved centeres of all selected nodes
-                op = GroupedOperation()
-                for node, position in self._saved_node_positions:
-                    op.addOperation(RotateOperation(node, rotation, rotate_around_point = position))
-                op.push()
-
-            self._angle = 0
-            self.propertyChanged.emit()
-
-
-    ##  Get Z
-    #
-    #   \return type(float)
-    def getZ(self):
-        if Selection.getCount() > 1:
-            self._Z_angle = 0.0
-            return self._Z_angle
-        self._Z_angle = Selection.getAllSelectedObjects()[0]._rotationZ
-        return self._Z_angle
-
-    ##  Set Z
-    #
-    #   \param Z type(float)
-    def setZ(self, Z):
-        if float(Z) != self._Z_angle:
-            self._angle = ((float(Z) % 360) - (self._Z_angle % 360)) % 360
-
-            self._Z_angle = float(Z)
-
-            #rotation = Quaternion.fromAngleAxis(math.radians( self._angle ), Vector.Unit_Z)
-            rotation = Quaternion()
-            rotation.setByAngleAxis( math.radians( self._angle ), Vector.Unit_Z)
-
-            # Save the current positions of the node, as we want to rotate around their current centres
-            self._saved_node_positions = []
-            for node in Selection.getAllSelectedObjects():
-                self._saved_node_positions.append((node, node.getPosition()))
-                node._rotationZ = self._Z_angle
-
-            # Rate-limit the angle change notification
-            # This is done to prevent the UI from being flooded with property change notifications,
-            # which in turn would trigger constant repaints.
-            new_time = time.monotonic()
-            if not self._angle_update_time or new_time - self._angle_update_time > 0.1:
-                self._angle_update_time = new_time
-
-                # Rotate around the saved centeres of all selected nodes
-                op = GroupedOperation()
-                for node, position in self._saved_node_positions:
-                    op.addOperation(RotateOperation(node, rotation, rotate_around_point = position))
-                op.push()
-
-
-            self._angle = 0
-            self.propertyChanged.emit()
-
-    ##  Reset the orientation of the mesh(es) to their original orientation(s)
-    # Remember Y is Z and Z is Y
     def resetRotation(self):
+
         for node in Selection.getAllSelectedObjects():
             node.setMirror(Vector(1,1,1))
-            node._rotationX = 0.0
-            node._rotationY = 0.0
-            node._rotationZ = 0.0
 
         Selection.applyOperation(SetTransformOperation, None, Quaternion(), None)
-
-        self._X_angle = 0
-        self._Z_angle = 0
-        self._Y_angle = 0
-        self.propertyChanged.emit()
 
     ##  Initialise and start a LayFlatOperation
     #
@@ -413,7 +342,7 @@ class RotateTool(Tool):
     ##  Lays the given object flat. The given object can be a group or not.
     def _layObjectFlat(self, selected_object):
         if not selected_object.callDecoration("isGroup"):
-            self._total_iterations += len(selected_object.getMeshDataTransformed().getVertices()) * 2
+            self._total_iterations += selected_object.getMeshData().getVertexCount() * 2
         else:
             for child in selected_object.getChildren():
                 self._layObjectFlat(child)

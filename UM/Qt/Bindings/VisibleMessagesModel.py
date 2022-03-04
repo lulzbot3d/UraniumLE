@@ -1,10 +1,14 @@
-# Copyright (c) 2015 Ultimaker B.V.
+# Copyright (c) 2021 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
+from typing import Union
 
-from UM.Qt.ListModel import ListModel
+from PyQt5.QtCore import Qt, QUrl
+
 from UM.Application import Application
 from PyQt5.QtCore import Qt
 from UM.FlameProfiler import pyqtSlot
+from UM.Qt.ListModel import ListModel
+
 
 class VisibleMessagesModel(ListModel):
     TextRole = Qt.UserRole + 1
@@ -16,8 +20,12 @@ class VisibleMessagesModel(ListModel):
     DescriptionRole = Qt.UserRole + 7
     DismissableRole = Qt.UserRole + 8
     TileRole = Qt.UserRole + 9
-    TypeRole = Qt.UserRole + 10
-    StyleRole = Qt.UserRole + 11
+    StyleRole = Qt.UserRole + 10
+    ImageSourceRole = Qt.UserRole + 11
+    ImageCaptionRole = Qt.UserRole + 12
+    OptionTextRole = Qt.UserRole + 13
+    OptionStateRole = Qt.UserRole + 14
+    MessageTypeRole = Qt.UserRole + 15
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -29,8 +37,12 @@ class VisibleMessagesModel(ListModel):
         self.addRoleName(self.IDRole, "id")
         self.addRoleName(self.ActionsRole, "actions")
         self.addRoleName(self.DismissableRole, "dismissable")
-        self.addRoleName(self.TypeRole, "type")
         self.addRoleName(self.TileRole, "title")
+        self.addRoleName(self.ImageSourceRole, "image_source")
+        self.addRoleName(self.ImageCaptionRole, "image_caption")
+        self.addRoleName(self.OptionTextRole, "option_text")
+        self.addRoleName(self.OptionStateRole, "option_state")
+        self.addRoleName(self.MessageTypeRole, "message_type")
         self._populateMessageList()
 
     def _populateMessageList(self):
@@ -46,9 +58,23 @@ class VisibleMessagesModel(ListModel):
             "actions": self.createActionsModel(message.getActions()),
             "dismissable": message.isDismissable(),
             "title": message.getTitle(),
-            "type": message.getType()
+            "image_source": self.getImageSourceAsQUrl(message.getImageSource()),
+            "image_caption": message.getImageCaption(),
+            "option_text": message.getOptionText(),
+            "option_state": message.getOptionState(),
+            "message_type": int(message.getMessageType())
         })
+        message.titleChanged.connect(self._onMessageTitleChanged)
+        message.textChanged.connect(self._onMessageTextChanged)
         message.progressChanged.connect(self._onMessageProgress)
+
+    @staticmethod
+    def getImageSourceAsQUrl(image_source: Union[QUrl, str]) -> QUrl:
+        if type(image_source) is str:
+            return QUrl.fromLocalFile(image_source)
+        elif type(image_source) is QUrl:
+            return image_source
+        return QUrl.fromLocalFile("")
 
     def createActionsModel(self, actions):
         model = ListModel()
@@ -66,6 +92,13 @@ class VisibleMessagesModel(ListModel):
     def hideMessage(self, message_id):
         Application.getInstance().hideMessageById(message_id)
 
+    @pyqtSlot(str, bool)
+    def optionToggled(self, message_id, value):
+        for message in Application.getInstance().getVisibleMessages():
+            if str(id(message)) == message_id:
+                message.optionToggled.emit(value)
+                break
+
     @pyqtSlot(str, str)
     def actionTriggered(self, message_id, action_id):
         for message in Application.getInstance().getVisibleMessages():
@@ -79,6 +112,18 @@ class VisibleMessagesModel(ListModel):
             if self.items[index]["id"] == message_id:
                 self.removeItem(index)
                 break
+
+    def _onMessageTitleChanged(self, message):
+        index = self.find("id", str(id(message)))
+
+        if index != -1:
+            self.setProperty(index, "title", message.getTitle())
+
+    def _onMessageTextChanged(self, message):
+        index = self.find("id", str(id(message)))
+
+        if index != -1:
+            self.setProperty(index, "text", message.getText())
 
     def _onMessageProgress(self, message):
         index = self.find("id", str(id(message)))

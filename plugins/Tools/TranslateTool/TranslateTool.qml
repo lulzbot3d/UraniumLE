@@ -18,8 +18,6 @@ Item
     property string zText
     property string lockPosition
 
-    Keys.forwardTo: parent
-
     //Rounds a floating point number to 4 decimals. This prevents floating
     //point rounding errors.
     //
@@ -104,158 +102,136 @@ Item
 
         columns: 2;
         flow: Grid.TopToBottom;
-        spacing: UM.Theme.getSize("default_margin").width / 2;
+        spacing: Math.round(UM.Theme.getSize("default_margin").width / 2);
 
-        Text
+        Label
         {
             height: UM.Theme.getSize("setting_control").height;
             text: "X";
             font: UM.Theme.getFont("default");
             color: UM.Theme.getColor("x_axis");
             verticalAlignment: Text.AlignVCenter;
-
-            Keys.forwardTo: parent
+            renderType: Text.NativeRendering
+            width: Math.ceil(contentWidth) //Make sure that the grid cells have an integer width.
         }
 
-        Text
+        Label
         {
             height: UM.Theme.getSize("setting_control").height;
             text: "Y";
             font: UM.Theme.getFont("default");
             color: UM.Theme.getColor("z_axis"); // This is intentional. The internal axis are switched.
             verticalAlignment: Text.AlignVCenter;
-
-            Keys.forwardTo: parent
+            renderType: Text.NativeRendering
+            width: Math.ceil(contentWidth) //Make sure that the grid cells have an integer width.
         }
 
-        Text
+        Label
         {
             height: UM.Theme.getSize("setting_control").height;
             text: "Z";
             font: UM.Theme.getFont("default");
             color: UM.Theme.getColor("y_axis"); // This is intentional. The internal axis are switched.
             verticalAlignment: Text.AlignVCenter;
-
-            Keys.forwardTo: parent
+            renderType: Text.NativeRendering
+            width: Math.ceil(contentWidth) //Make sure that the grid cells have an integer width.
         }
-
-
-        UM.TooltipArea
+        TextField
         {
-
-            width: childrenRect.width;
-            height: childrenRect.height;
-            text: catalog.i18nc("@info:tooltip","Valid values are between -99999999.9999 and 99999999.9999")
-            Keys.forwardTo: parent
-
-            TextField
+            id: xTextField
+            width: UM.Theme.getSize("setting_control").width;
+            height: UM.Theme.getSize("setting_control").height;
+            property string unit: "mm";
+            style: UM.Theme.styles.text_field;
+            text: xText
+            validator: DoubleValidator
             {
-                width: UM.Theme.getSize("setting_control").width;
-                height: UM.Theme.getSize("setting_control").height;
-                property string unit: "mm";
-                style: UM.Theme.styles.text_field;
-                text: xText
-                validator: DoubleValidator
-                {
-                    decimals: 4
-                    locale: "en_US"
-                    top: 99999999.9999
-                    bottom: -99999999.9999
-                    notation: DoubleValidator.StandardNotation
-                }
-
-
-                onEditingFinished:
-                {
-                    var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
-                    UM.ActiveTool.setProperty("X", modified_text);
-                }
-
-                Keys.onPressed:
-                {
-                    base.inc_dec("X", event);
-                }
-            }
-        }
-
-        UM.TooltipArea
-        {
-            width: childrenRect.width;
-            height: childrenRect.height;
-            text: catalog.i18nc("@info:tooltip","Valid values are between -99999999.9999 and 99999999.9999")
-            Keys.forwardTo: parent
-
-            TextField
-            {
-                width: UM.Theme.getSize("setting_control").width;
-                height: UM.Theme.getSize("setting_control").height;
-                property string unit: "mm";
-                style: UM.Theme.styles.text_field;
-                text: yText
-                validator: DoubleValidator
-                {
-                    decimals: 4
-                    locale: "en_US"
-                    top: 99999999.9999
-                    bottom: -99999999.9999
-                    notation: DoubleValidator.StandardNotation
-                }
-
-                onEditingFinished:
-                {
-                    var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
-                    UM.ActiveTool.setProperty("Y", modified_text);
-                }
-
-                Keys.onPressed:
-                {
-                    base.inc_dec("Y", event);
-                }
-            }
-        }
-
-        UM.TooltipArea
-        {
-            width: childrenRect.width;
-            height: childrenRect.height;
-            text: catalog.i18nc("@info:tooltip","Valid values are between -99999999.9999 and 99999999.9999")
-            Keys.forwardTo: parent
-
-            TextField
-            {
-                width: UM.Theme.getSize("setting_control").width;
-                height: UM.Theme.getSize("setting_control").height;
-                property string unit: "mm";
-                style: UM.Theme.styles.text_field;
-                text: zText
-                validator: DoubleValidator
-                {
-                    decimals: 4
-                    locale: "en_US"
-                    top: 99999999.9999
-                    bottom: -99999999.9999
-                    notation: DoubleValidator.StandardNotation
-                }
-
-                onEditingFinished:
-                {
-                    var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
-                    UM.ActiveTool.setProperty("Z", modified_text);
-                }
-
-                Keys.onPressed:
-                {
-                    base.inc_dec("Z", event);
-                }
+                decimals: 4
+                locale: "en_US"
             }
 
+            onEditingFinished:
+            {
+                var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
+                UM.ActiveTool.setProperty("X", modified_text);
+            }
+            onActiveFocusChanged:
+            {
+                if(!activeFocus && text =="")
+                {
+                    xText = 0.1; // Yeaaah i know. We need to change it to something else so we can force it to 0
+                    xText = 0;
+                }
+            }
+            Keys.onBacktabPressed: selectTextInTextfield(zTextField)
+            Keys.onTabPressed: selectTextInTextfield(yTextField)
+        }
+        TextField
+        {
+            id: yTextField
+            width: UM.Theme.getSize("setting_control").width;
+            height: UM.Theme.getSize("setting_control").height;
+            property string unit: "mm";
+            style: UM.Theme.styles.text_field;
+            text: yText
+            validator: DoubleValidator
+            {
+                decimals: 4
+                locale: "en_US"
+            }
+
+            onEditingFinished:
+            {
+                var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
+                UM.ActiveTool.setProperty("Y", modified_text);
+            }
+
+            onActiveFocusChanged:
+            {
+                if(!activeFocus && text =="")
+                {
+                    yText = 0.1; // Yeaaah i know. We need to change it to something else so we can force it to 0
+                    yText = 0;
+                }
+            }
+            Keys.onBacktabPressed: selectTextInTextfield(xTextField)
+            Keys.onTabPressed: selectTextInTextfield(zTextField)
+        }
+        TextField
+        {
+            id: zTextField
+            width: UM.Theme.getSize("setting_control").width;
+            height: UM.Theme.getSize("setting_control").height;
+            property string unit: "mm";
+            style: UM.Theme.styles.text_field;
+            text: zText
+            validator: DoubleValidator
+            {
+                decimals: 4
+                locale: "en_US"
+            }
+            onEditingFinished:
+            {
+                var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
+                UM.ActiveTool.setProperty("Z", modified_text);
+            }
+
+            onActiveFocusChanged:
+            {
+                if(!activeFocus && text =="")
+                {
+                    zText = 0.1; // Yeaaah i know. We need to change it to something else so we can force it to 0
+                    zText = 0;
+                }
+            }
+            Keys.onBacktabPressed: selectTextInTextfield(yTextField)
+            Keys.onTabPressed: selectTextInTextfield(xTextField)
         }
     }
 
     CheckBox
     {
         property var checkbox_state: 0; // if the state number is 2 then the checkbox has "partially" state
-        Keys.forwardTo: parent
 
         // temporary property, which is used to recalculate checkbox state and keeps reference of the
         // binging object. If the binding object changes then checkBox state will be updated.
@@ -291,7 +267,7 @@ Item
         anchors.leftMargin: UM.Theme.getSize("default_margin").width
 
         text: catalog.i18nc("@option:check","Lock Model");
-        //style: UM.Theme.styles.partially_checkbox;
+        style: UM.Theme.styles.partially_checkbox;
 
         onClicked: {
 

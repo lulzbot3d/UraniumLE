@@ -1,7 +1,7 @@
 # Copyright (c) 2017 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
 
-from typing import Optional
+from typing import Any, Optional
 import uuid
 
 from UM.PluginObject import PluginObject
@@ -63,6 +63,9 @@ class ContainerTestPlugin(ContainerInterface, PluginObject):
     def isReadOnly(self):
         return False
 
+    def getAllKeys(self):
+        pass
+
     ##  Get the value of a property of a container item.
     #
     #   Since this test container cannot contain any items, it always returns
@@ -72,6 +75,9 @@ class ContainerTestPlugin(ContainerInterface, PluginObject):
     def getProperty(self, key, property_name, context = None):
         pass
 
+    def setProperty(self, key: str, property_name: str, property_value: Any, container: "ContainerInterface" = None, set_from_cache: bool = False) -> None:
+        pass
+
     def hasProperty(self, key, property_name):
         pass
 
@@ -79,6 +85,10 @@ class ContainerTestPlugin(ContainerInterface, PluginObject):
     #
     #   This method is not implemented in the mock container.
     def serialize(self, ignored_metadata_keys=set()):
+        raise NotImplementedError()
+
+    # Should return false (or even throw an exception) if trust (or other verification) is invalidated.
+    def _trustHook(self, file_name: Optional[str]) -> bool:
         raise NotImplementedError()
 
     ##  Deserializes the container from a string representation.
@@ -94,5 +104,11 @@ class ContainerTestPlugin(ContainerInterface, PluginObject):
     @classmethod
     def getVersionFromSerialized(cls, serialized):
         raise NotImplementedError()
+
+    def isDirty(self):
+        return True
+
+    def setDirty(self, dirty):
+        pass
 
     metaDataChanged = None  # type: Signal

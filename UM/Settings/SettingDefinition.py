@@ -79,12 +79,12 @@ class SettingDefinition:
     #   \param i18n_catalog \type{i18nCatalog} The translation catalog to use for this setting. Defaults to None.
     def __init__(self, key: str, container: Optional[DefinitionContainerInterface] = None, parent: Optional["SettingDefinition"] = None, i18n_catalog: i18nCatalog = None) -> None:
         super().__init__()
-
+        self._all_keys = set()  # type: Set[str]
         self._key = key  # type: str
         self._container = container # type: Optional[DefinitionContainerInterface]
         self._parent = parent   # type:  Optional["SettingDefinition"]
 
-        self._i18n_catalog = i18n_catalog  # type: i18nCatalog
+        self._i18n_catalog = i18n_catalog  # type: Optional[i18nCatalog]
 
         self._children = []     # type: List[SettingDefinition]
         self._relations = []    # type: List[SettingRelation]
@@ -169,21 +169,27 @@ class SettingDefinition:
     def serialize(self) -> str:
         pass
 
-    ##  Gets the key of this setting definition and of all its descendants.
-    #
-    #   \return A set of the key in this definition and all its descendants.
-    def getAllKeys(self) -> Set[str]:
-        keys = set()
-        keys.add(self.key)
-        for child in self.children:
-            keys |= child.getAllKeys() #Recursively get all keys of all descendants.
-        return keys
+   def getAllKeys(self) -> Set[str]:
+        """Gets the key of this setting definition and of all its descendants.
 
-    ##  Serialize this setting to a dict.
-    #
-    #   \return \type{dict} A representation of this setting definition.
+        :return: A set of the key in this definition and all its descendants.
+        """
+
+        if not self._all_keys:
+            # It was reset, re-calculate them
+            self._all_keys = set()
+            self._all_keys.add(self.key)
+            for child in self.children:
+                self._all_keys |= child.getAllKeys()  # Recursively get all keys of all descendants.
+        return self._all_keys
+
     def serialize_to_dict(self) -> Dict[str, Any]:
-        result = {}     # type: Dict[str, Any]
+        """Serialize this setting to a dict.
+
+        :return: :type{dict} A representation of this setting definition.
+        """
+
+        result = {}  # type: Dict[str, Any]
         result["label"] = self.key
 
         result["children"] = {}
@@ -224,9 +230,34 @@ class SettingDefinition:
 
         return None
 
-    ## Check if this setting definition matches the provided criteria.
-    #   \param kwargs \type{dict} A dictionary of keyword arguments that need to match its attributes.
+    def _matches1l8nProperty(self, property_name: str, value: Any, catalog) -> bool:
+        try:
+            property_value = getattr(self, property_name)
+        except AttributeError:
+            # If we do not have the attribute, we do not match
+            return False
+
+        if catalog:
+            translated_key = "{key} {property_name}".format(key = self._key, property_name = property_name)
+            property_value = catalog.i18nc(translated_key, property_value)
+
+        if not isinstance(value, str):
+            return False
+        if value != property_value:
+            if "*" not in value:
+                return False
+
+            value = value.strip("* ").lower()
+            if value not in property_value.lower():
+                return False
+
+        return True
+
     def matchesFilter(self, **kwargs: Any) -> bool:
+        """Check if this setting definition matches the provided criteria.
+
+        :param kwargs: :type{dict} A dictionary of keyword arguments that need to match its attributes.
+        """
 
         # First check for translated labels.
         keywords = kwargs.copy()
@@ -253,6 +284,7 @@ class SettingDefinition:
                 value = value.strip("* ").lower()
                 if value not in property_value.lower():
                     return False
+            del keywords["i18n_label|i18n_description"]
 
         if "i18n_catalog" in keywords:
             del keywords["i18n_catalog"]
@@ -318,6 +350,7 @@ class SettingDefinition:
                     return [self]
                 return [self.__descendants[key]]
 
+        definitions = []  # type: List["SettingDefinition"]
         if self.matchesFilter(**kwargs):
             definitions.append(self)
 
@@ -397,18 +430,18 @@ class SettingDefinition:
     #
     #   \return A list of all the names of supported properties.
     @classmethod
-    def getPropertyNames(cls, type: DefinitionPropertyType = None) -> List[str]:
-        result = []
-        for key, value in cls.__property_definitions.items():
-            if not type or value["type"] == type:
-                result.append(key)
-        return result
+    def getPropertyNames(cls, def_type: DefinitionPropertyType = None) -> List[str]:
+        """Get the names of all supported properties.
 
-    ##  Check if a property with the specified name is defined as a supported property.
-    #
-    #   \param name \type{string} The name of the property to check if it is supported.
-    #
-    #   \return True if the property is supported, False if not.
+        :param type: :type{DefinitionPropertyType} The type of property to get the name of. Defaults to None which means all properties.
+
+        :return: A list of all the names of supported properties.
+        """
+
+        if def_type is None:
+            return list(cls.__property_definitions.keys())
+        return [key for key, value in cls.__property_definitions.items() if not def_type or value["type"] == def_type]
+
     @classmethod
     def hasProperty(cls, name: str) -> bool:
         return name in cls.__property_definitions
@@ -574,7 +607,7 @@ class SettingDefinition:
 
     def _updateDescendants(self, definition: "SettingDefinition" = None) -> Dict[str, "SettingDefinition"]:
         result = {}
-
+        self._all_keys = set()  # Reset the keys cache.
         if not definition:
             definition = self
 
@@ -600,7 +633,6 @@ class SettingDefinition:
         # A description of what is wrong when the setting has an error validation state. Used for display purposes.
         "error_description": {"type": DefinitionPropertyType.TranslatedString, "required": False, "read_only": True, "default": "", "depends_on" : None},
         # The default value of the setting. Used when no value function is defined.
-        "default_value_from_file": {"type": DefinitionPropertyType.Any, "required": False, "read_only": True, "default": None, "depends_on" : None},
         "default_value": {"type": DefinitionPropertyType.Any, "required": False, "read_only": True,  "default": 0, "depends_on" : None},
         # A function used to calculate the value of the setting.
         "value": {"type": DefinitionPropertyType.Function, "required": False, "read_only": False,  "default": None, "depends_on" : None},
@@ -617,7 +649,17 @@ class SettingDefinition:
         # A dictionary of key-value pairs that provide the options for an enum type setting. The key is the actual value, the value is a translated display string.
         "options": {"type": DefinitionPropertyType.Any, "required": False, "read_only": True, "default": {}, "depends_on" : None},
         # Optional comments that apply to the setting. Will be ignored.
-        "comments": {"type": DefinitionPropertyType.String, "required": False, "read_only": True, "default": "", "depends_on" : None}
+        "comments": {"type": DefinitionPropertyType.String, "required": False, "read_only": True, "default": "", "depends_on" : None},
+        # For string type: Indicates if this string setting is allowed to have empty value. This can only be used for string settings.
+        "allow_empty": {"type": DefinitionPropertyType.Function, "required": False, "read_only": True, "default": True, "depends_on": None},
+        # For string type: Indicates that this string setting should be an UUID. This can only be used for string settings.
+        "is_uuid": {"type": DefinitionPropertyType.Function, "required": False, "read_only": True, "default": False, "depends_on": None},
+        # For string type: If a non-empty string is provided, it will be used as a regex pattern to validate the value string. The value will be invalid if the value string matches the pattern.
+        "regex_blacklist_pattern": {"type": DefinitionPropertyType.String, "required": False, "read_only": True, "default": "", "depends_on": None},
+        # For bool type: if the value is the same as the warning value, the setting will be in the warning state.
+        "warning_value": {"type": DefinitionPropertyType.Function, "required": False, "read_only": True, "default": None, "depends_on": None},
+        # For bool type: if the value is the same as the error value, the setting will be in the error state.
+        "error_value": {"type": DefinitionPropertyType.Function, "required": False, "read_only": True, "default": None, "depends_on": None},
     }   # type: Dict[str, Dict[str, Any]]
 
     ##  Conversion from string to integer.
@@ -648,27 +690,19 @@ class SettingDefinition:
         except:
             return 0
 
-    def _fromFloatConverson(v):
-        if v is not None:
-            if type(v) != str:
-                return str(round(v, 4))
-            else:
-                return v
-        return ""
-
     __type_definitions = {
         # An integer value
         "int": {"from": lambda v: str(v) if v is not None else "", "to": _toIntConversion, "validator": Validator},
         # A boolean value
-        "bool": {"from": str, "to": ast.literal_eval, "validator": None},
+        "bool": {"from": str, "to": ast.literal_eval, "validator": Validator},
         # Special case setting; Doesn't have a value. Display purposes only.
         "category": {"from": None, "to": None, "validator": None},
         # A string value
-        "str": {"from": None, "to": None, "validator": None},
+        "str": {"from": None, "to": None, "validator": Validator},
         # An enumeration
         "enum": {"from": None, "to": None, "validator": None},
         # A floating point value
-        "float": {"from": _fromFloatConverson, "to": _toFloatConversion, "validator": Validator},
+        "float": {"from": lambda v: str(round(v, 4)) if v is not None else "", "to": _toFloatConversion, "validator": Validator},
         # A list of 2D points
         "polygon": {"from": str, "to": ast.literal_eval, "validator": None},
         # A list of polygons

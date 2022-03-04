@@ -1,28 +1,25 @@
-// Copyright (c) 2015 Ultimaker B.V.
+// Copyright (c) 2018 Ultimaker B.V.
 // Uranium is released under the terms of the LGPLv3 or higher.
 
 import QtQuick 2.1
+import QtGraphicalEffects 1.0
 import UM 1.3 as UM
 
-Item {
+Item
+{
     id: base;
 
-    property alias source: img.source;
-    property alias color: shader.color;
-    property alias sourceSize: img.sourceSize;
-    property alias isBorderVisible: borderRectangle.visible;
+    property alias source: img.source
+    property alias color: overlay.color
+    property alias sourceSize: img.sourceSize
 
-    Rectangle {
-        id: borderRectangle
+    Image
+    {
+        id: img
         anchors.fill: parent
-        color: "#788814"
         visible: false
-        Image {
-            id: img;
-
-            anchors.fill: parent;
-            visible: false;
-        }
+        sourceSize.width: parent.width
+        sourceSize.height: parent.height
     }
 
 

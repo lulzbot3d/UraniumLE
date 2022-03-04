@@ -1,12 +1,13 @@
-# Copyright (c) 2015 Ultimaker B.V.
+# Copyright (c) 2018 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
 
 import configparser
+from typing import Any, Dict, IO, Optional, Tuple, Union
 
-from UM.Signal import Signal, signalemitter
 from UM.Logger import Logger
 from UM.MimeTypeDatabase import MimeTypeDatabase, MimeType #To register the MIME type of the preference file.
 from UM.SaveFile import SaveFile
+from UM.Signal import Signal, signalemitter
 
 MimeTypeDatabase.addMimeType(
     MimeType(
@@ -17,23 +18,34 @@ MimeTypeDatabase.addMimeType(
     )
 )
 
-##      Preferences are application based settings that are saved for future use.
-#       Typical preferences would be window size, standard machine, etc.
+
 @signalemitter
 class Preferences:
-    Version = 5
+    """Preferences are application based settings that are saved for future use.
 
-    def __init__(self):
+    Typical preferences would be window size, standard machine, etc.
+    The application preferences can be gotten from the getPreferences() function in Application
+    """
+
+    Version = 7
+
+    def __init__(self) -> None:
         super().__init__()
 
-        self._file = None
-        self._parser = None
-        self._preferences = {}
+        self._parser = None  # type: Optional[configparser.ConfigParser]
+        self._preferences = {}  # type: Dict[str, Dict[str, _Preference]]
 
-    def addPreference(self, key, default_value):
+    def addPreference(self, key: str, default_value: Any) -> None:
+        """Add a new preference to the list.
+
+        If the preference was already added, it's default is set to whatever is provided
+        """
+
+        if key.count("/") != 1:
+            raise Exception("Preferences must be in the [CATEGORY]/[KEY] format")
         preference = self._findPreference(key)
         if preference:
-            preference.setDefault(default_value)
+            self.setDefault(key, default_value)
             return
 
         group, key = self._splitKey(key)
@@ -42,32 +54,44 @@ class Preferences:
 
         self._preferences[group][key] = _Preference(key, default_value)
 
-    ##  Changes the default value of a preference.
-    #
-    #   If the preference is currently set to the old default, the value of the
-    #   preference will be set to the new default.
-    #
-    #   \param key The key of the preference to set the default of.
-    #   \param default_value The new default value of the preference.
-    def setDefault(self, key, default_value):
+    def removePreference(self, key: str) -> None:
         preference = self._findPreference(key)
-        if not preference: #Key not found.
+        if preference is None:
+            Logger.log("i", "Preferences '%s' doesn't exist, nothing to remove.", key)
+            return
+
+        group, key = self._splitKey(key)
+        del self._preferences[group][key]
+        Logger.log("i", "Preferences '%s' removed.", key)
+
+    def setDefault(self, key: str, default_value: Any) -> None:
+        """Changes the default value of a preference.
+
+        If the preference is currently set to the old default, the value of the
+        preference will be set to the new default.
+
+        :param key: The key of the preference to set the default of.
+        :param default_value: The new default value of the preference.
+        """
+
+        preference = self._findPreference(key)
+        if not preference:  # Key not found.
             Logger.log("w", "Tried to set the default value of non-existing setting %s.", key)
             return
         if preference.getValue() == preference.getDefault():
             self.setValue(key, default_value)
         preference.setDefault(default_value)
 
-    def setValue(self, key, value):
+    def setValue(self, key: str, value: Any) -> None:
         preference = self._findPreference(key)
-
         if preference:
-            preference.setValue(value)
-            self.preferenceChanged.emit(key)
+            if preference.getValue() != value:
+                preference.setValue(value)
+                self.preferenceChanged.emit(key)
         else:
             Logger.log("w", "Tried to set the value of non-existing setting %s.", key)
 
-    def getValue(self, key):
+    def getValue(self, key: str) -> Any:
         preference = self._findPreference(key)
 
         if preference:
@@ -81,22 +105,25 @@ class Preferences:
         Logger.log("w", "Tried to get the value of non-existing setting %s.", key)
         return None
 
-    def resetPreference(self, key):
+    def resetPreference(self, key: str) -> None:
         preference = self._findPreference(key)
 
         if preference:
-            preference.setValue(preference.getDefault())
-            self.preferenceChanged.emit(key)
+            if preference.getValue() != preference.getDefault():
+                preference.setValue(preference.getDefault())
+                self.preferenceChanged.emit(key)
+        else:
+            Logger.log("w", "Tried to reset unknown setting %s", key)
 
-    def readFromFile(self, file):
+    def readFromFile(self, file: Union[str, IO[str]]) -> None:
         self._loadFile(file)
-
-        if not self._parser:
-            return
-
         self.__initializeSettings()
 
-    def __initializeSettings(self):
+    def __initializeSettings(self) -> None:
+        if self._parser is None:
+            Logger.log("w", "Read the preferences file before initializing settings!")
+            return
+
         for group, group_entries in self._parser.items():
             if group == "DEFAULT":
                 continue
@@ -111,7 +138,7 @@ class Preferences:
                 self._preferences[group][key].setValue(value)
                 self.preferenceChanged.emit("{0}/{1}".format(group, key))
 
-    def writeToFile(self, file):
+    def writeToFile(self, file: Union[str, IO[str]]) -> None:
         parser = configparser.ConfigParser(interpolation = None) #pylint: disable=bad-whitespace
         for group, group_entries in self._preferences.items():
             parser[group] = {}
@@ -123,23 +150,17 @@ class Preferences:
 
         try:
             if hasattr(file, "read"):  # If it already is a stream like object, write right away
-                parser.write(file)
+                parser.write(file) #type: ignore #Can't convince MyPy that it really is an IO object now.
             else:
                 with SaveFile(file, "wt") as save_file:
                     parser.write(save_file)
         except Exception as e:
             Logger.log("e", "Failed to write preferences to %s: %s", file, str(e))
 
-    preferenceChanged = Signal()
+    # A lot of things listen in on the preference changed signal, so always queue it for the next frame.
+    preferenceChanged = Signal(Signal.Queued)
 
-    @classmethod
-    def getInstance(cls) -> "Preferences":
-        if not cls._instance:
-            cls._instance = Preferences()
-
-        return cls._instance
-
-    def _splitKey(self, key):
+    def _splitKey(self, key: str) -> Tuple[str, str]:
         group = "general"
         key = key
 
@@ -148,9 +169,9 @@ class Preferences:
             group = parts[0]
             key = parts[1]
 
-        return (group, key)
+        return group, key
 
-    def _findPreference(self, key):
+    def _findPreference(self, key: str) -> Optional[Any]:
         group, key = self._splitKey(key)
 
         if group in self._preferences:
@@ -159,9 +180,7 @@ class Preferences:
 
         return None
 
-    def _loadFile(self, file):
-        if self._file and self._file == file:
-            return self._parser
+    def _loadFile(self, file: Union[str, IO[str]]) -> None:
         try:
             self._parser = configparser.ConfigParser(interpolation = None) #pylint: disable=bad-whitespace
             if hasattr(file, "read"):
@@ -174,20 +193,24 @@ class Preferences:
                 self._parser = None
                 return
         except Exception:
-            Logger.logException("e", "An exception occured while trying to read preferences file")
+            Logger.logException("e", "An exception occurred while trying to read preferences file")
             self._parser = None
             return
 
         del self._parser["general"]["version"]
 
-    _instance = None  # type: Preferences
+    def deserialize(self, serialized: str) -> None:
+        """Extract data from string and store it in the Configuration parser."""
 
-    ##  Extract data from string and store it in the Configuration parser.
-    def deserialize(self, serialized: str) -> str:
         updated_preferences = self.__updateSerialized(serialized)
-        self._parser = configparser.ConfigParser(interpolation=None)
-        self._parser.read_string(updated_preferences)
-        has_version = "version" in self._parser["general"]
+        self._parser = configparser.ConfigParser(interpolation = None)
+        try:
+            self._parser.read_string(updated_preferences)
+        except (configparser.MissingSectionHeaderError, configparser.DuplicateOptionError, configparser.DuplicateSectionError, configparser.ParsingError, configparser.InterpolationError) as e:
+            Logger.log("w", "Could not deserialize preferences file: {error}".format(error = str(e)))
+            self._parser = None
+            return
+        has_version = "general" in self._parser and "version" in self._parser["general"]
 
         if has_version:
             if self._parser["general"]["version"] != str(Preferences.Version):
@@ -199,44 +222,40 @@ class Preferences:
 
         self.__initializeSettings()
 
-    ##  Updates the given serialized data to the latest version.
     def __updateSerialized(self, serialized: str) -> str:
+        """Updates the given serialized data to the latest version."""
+
         configuration_type = "preferences"
 
-        version = None
         try:
-            import UM.VersionUpgradeManager
-            version = UM.VersionUpgradeManager.VersionUpgradeManager.getInstance().getFileVersion(configuration_type,
-                                                                                                  serialized)
+            from UM.VersionUpgradeManager import VersionUpgradeManager
+            version = VersionUpgradeManager.getInstance().getFileVersion(configuration_type, serialized)
             if version is not None:
-                from UM.VersionUpgradeManager import VersionUpgradeManager
-                result = VersionUpgradeManager.getInstance().updateFilesData(configuration_type, version,
-                                                                             [serialized], [""])
+                result = VersionUpgradeManager.getInstance().updateFilesData(configuration_type, version, [serialized], [""])
                 if result is not None:
                     serialized = result.files_data[0]
-            return serialized
+        except:
+            Logger.logException("d", "An exception occurred while trying to update the preferences.")
+        return serialized
 
-        except Exception as e:
-            Logger.log("d", "Could not get version from serialized: %s", e)
-            pass
 
 class _Preference:
-    def __init__(self, name, default = None, value = None): #pylint: disable=bad-whitespace
+    def __init__(self, name: str, default: Any = None, value: Any = None) -> None:
         self._name = name
         self._default = default
         self._value = default if value is None else value
 
-    def getName(self):
+    def getName(self) -> str:
         return self._name
 
-    def getValue(self):
+    def getValue(self) -> Any:
         return self._value
 
-    def getDefault(self):
+    def getDefault(self) -> Any:
         return self._default
 
-    def setDefault(self, default):
+    def setDefault(self, default: Any) -> None:
         self._default = default
 
-    def setValue(self, value):
+    def setValue(self, value: Any) -> None:
         self._value = value

@@ -3,7 +3,7 @@
 
 from PyQt5.QtQml import qmlRegisterType, qmlRegisterSingletonType, qmlRegisterUncreatableType
 
-from UM.Qt.Bindings import StageModel
+from UM.Qt.Bindings import StageModel, FileProviderModel, ProjectOutputDevicesModel
 from UM.Qt.Duration import Duration, DurationFormat
 
 from . import MainWindow
@@ -12,7 +12,6 @@ from . import ToolModel
 from . import ApplicationProxy
 from . import ControllerProxy
 from . import BackendProxy
-from . import SceneProxy
 from . import ResourcesProxy
 from . import OperationStackProxy
 from UM.Mesh.MeshFileHandler import MeshFileHandler
@@ -22,16 +21,13 @@ from . import Theme
 from . import OpenGLContextProxy
 from . import PointingRectangle
 from . import ActiveToolProxy
-from . import ActiveViewProxy
 from . import OutputDevicesModel
 from . import SelectionProxy
 from . import OutputDeviceManagerProxy
 from . import i18nCatalogProxy
 from . import ExtensionModel
-from . import PluginsModel
 from . import VisibleMessagesModel
-
-from . import MeshListModel
+from . import Utilities
 
 from UM.Settings.Models.SettingDefinitionsModel import SettingDefinitionsModel
 from UM.Settings.Models.DefinitionContainersModel import DefinitionContainersModel
@@ -56,10 +52,6 @@ class Bindings:
         return BackendProxy.BackendProxy()
 
     @classmethod
-    def createSceneProxy(self, engine, script_engine):
-        return SceneProxy.SceneProxy()
-
-    @classmethod
     def createResourcesProxy(cls, engine, script_engine):
         return ResourcesProxy.ResourcesProxy()
 
@@ -78,21 +70,18 @@ class Bindings:
         qmlRegisterType(ToolModel.ToolModel, "UM", 1, 0, "ToolModel")
         qmlRegisterType(PointingRectangle.PointingRectangle, "UM", 1, 0, "PointingRectangle")
         qmlRegisterType(ExtensionModel.ExtensionModel, "UM", 1, 0, "ExtensionModel")
-        qmlRegisterType(PluginsModel.PluginsModel, "UM", 1, 0, "PluginsModel")
         qmlRegisterType(VisibleMessagesModel.VisibleMessagesModel, "UM", 1, 0, "VisibleMessagesModel")
 
         # Singleton proxy objects
         qmlRegisterSingletonType(ControllerProxy.ControllerProxy, "UM", 1, 0, "Controller", Bindings.createControllerProxy)
         qmlRegisterSingletonType(ApplicationProxy.ApplicationProxy, "UM", 1, 0, "Application", Bindings.createApplicationProxy)
         qmlRegisterSingletonType(BackendProxy.BackendProxy, "UM", 1, 0, "Backend", Bindings.createBackendProxy)
-        qmlRegisterSingletonType(SceneProxy.SceneProxy, "UM", 1, 0, "Scene", Bindings.createSceneProxy)
         qmlRegisterSingletonType(ResourcesProxy.ResourcesProxy, "UM", 1, 0, "Resources", Bindings.createResourcesProxy)
         qmlRegisterSingletonType(OperationStackProxy.OperationStackProxy, "UM", 1, 0, "OperationStack", Bindings.createOperationStackProxy)
         qmlRegisterSingletonType(MeshFileHandler, "UM", 1, 0, "MeshFileHandler", MeshFileHandler.getInstance)
         qmlRegisterSingletonType(PreferencesProxy.PreferencesProxy, "UM", 1, 0, "Preferences", PreferencesProxy.createPreferencesProxy)
         qmlRegisterSingletonType(Theme.Theme, "UM", 1, 0, "Theme", Theme.createTheme)
         qmlRegisterSingletonType(ActiveToolProxy.ActiveToolProxy, "UM", 1, 0, "ActiveTool", ActiveToolProxy.createActiveToolProxy)
-        qmlRegisterSingletonType(ActiveViewProxy.ActiveViewProxy, "UM", 1, 0, "ActiveView", ActiveViewProxy.createActiveViewProxy)
         qmlRegisterSingletonType(SelectionProxy.SelectionProxy, "UM", 1, 0, "Selection", SelectionProxy.createSelectionProxy)
 
         qmlRegisterUncreatableType(Duration, "UM", 1, 0, "Duration", "")
@@ -112,7 +101,6 @@ class Bindings:
         qmlRegisterType(SettingPropertyProvider, "UM", 1, 2, "SettingPropertyProvider")
         qmlRegisterType(SettingPreferenceVisibilityHandler, "UM", 1, 2, "SettingPreferenceVisibilityHandler")
         qmlRegisterType(ContainerPropertyProvider, "UM", 1, 2, "ContainerPropertyProvider")
-        qmlRegisterType(MeshListModel.MeshListModel, "UM", 1, 2, "MeshListModel")
 
         # Additions after 2.3;
         qmlRegisterSingletonType(WorkspaceFileHandler, "UM", 1, 3, "WorkspaceFileHandler", WorkspaceFileHandler.getInstance)
@@ -120,3 +108,14 @@ class Bindings:
 
         # Additions after 3.1
         qmlRegisterType(StageModel.StageModel, "UM", 1, 4, "StageModel")
+
+        # Additions after 4.6
+        qmlRegisterSingletonType(Utilities.UrlUtil, "UM", 1, 5, "UrlUtil", Utilities.createUrlUtil)
+
+        # Additions after 4.9
+        qmlRegisterType(FileProviderModel.FileProviderModel, "UM", 1, 6, "FileProviderModel")
+        qmlRegisterType(ProjectOutputDevicesModel.ProjectOutputDevicesModel, "UM", 1, 6, "ProjectOutputDevicesModel")
+
+    @staticmethod
+    def addRegisterType(class_type: type, qml_import_name: str, major_version: int, minor_version: int, class_name: str) -> None:
+        qmlRegisterType(class_type, qml_import_name, major_version, minor_version, class_name)

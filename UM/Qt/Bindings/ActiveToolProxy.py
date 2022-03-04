@@ -1,24 +1,28 @@
-# Copyright (c) 2015 Ultimaker B.V.
+# Copyright (c) 2018 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
 
-from PyQt5.QtCore import pyqtSlot, pyqtProperty, pyqtSignal, QObject, QUrl
+from typing import Any
+from PyQt5.QtCore import pyqtSlot, pyqtProperty, pyqtSignal, QObject, QUrl, QVariant
 
 from UM.Application import Application
+from UM.Logger import Logger
 from UM.PluginRegistry import PluginRegistry
 
 from . import ContainerProxy
 
 import os.path
 
+
 class ActiveToolProxy(QObject):
     def __init__(self, parent = None):
         super().__init__(parent)
 
         self._active_tool = None
+        self._properties = {}
         Application.getInstance().getController().activeToolChanged.connect(self._onActiveToolChanged)
         self._onActiveToolChanged()
 
-        self._properties = { }
+
         self._properties_proxy = ContainerProxy.ContainerProxy(self._properties)
 
     activeToolChanged = pyqtSignal()
@@ -31,9 +35,8 @@ class ActiveToolProxy(QObject):
     def activeToolPanel(self):
         if not self._active_tool:
             return QUrl()
-
         try:
-            panel_file = PluginRegistry.getInstance().getMetaData(self._active_tool.getPluginId())["tool"]["tool_panel"]
+            panel_file = self._active_tool.getMetaData()["tool_panel"]
         except KeyError:
             return QUrl()
 
@@ -43,10 +46,32 @@ class ActiveToolProxy(QObject):
     def triggerAction(self, action):
         if not self._active_tool:
             return
+        if not hasattr(self._active_tool, action):
+            Logger.log("w", "Trying to call non-existing action {action} of tool {tool}.".format(action = action, tool = self._active_tool.getPluginId()))
+            return
 
         action = getattr(self._active_tool, action)
         if action:
             action()
+
+    @pyqtSlot(str, QVariant)
+    def triggerActionWithData(self, action: str, data: Any):
+        """Triggers one of the tools' actions and provides additional parameters to the action.
+
+        The additional data is passed as a parameter to the function call of the
+        action.
+        :param action: The action to trigger.
+        :param data: The additional data to call
+        """
+
+        if not self._active_tool:
+            return
+        if not hasattr(self._active_tool, action):
+            Logger.log("w", "Trying to call non-existing action {action} of tool {tool}.".format(action = action, tool = self._active_tool.getPluginId()))
+            return
+
+        if hasattr(self._active_tool, action):
+            getattr(self._active_tool, action)(data)
 
     propertiesChanged = pyqtSignal()
     @pyqtProperty(QObject, notify = propertiesChanged)

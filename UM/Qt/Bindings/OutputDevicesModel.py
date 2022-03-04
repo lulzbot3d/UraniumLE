@@ -1,28 +1,30 @@
-# Copyright (c) 2015 Ultimaker B.V.
+# Copyright (c) 2020 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
 
 from PyQt5.QtCore import Qt, pyqtSlot, pyqtProperty, pyqtSignal
 
 from UM.Application import Application
 from UM.Qt.ListModel import ListModel
-from UM.OutputDevice import OutputDeviceError
 
-import time
+from PyQt5.QtQml import QQmlEngine
 
-##  A list model providing a list of all registered OutputDevice instances.
-#
-#   This list model wraps OutputDeviceManager's list of OutputDevice instances.
-#   Additionally it provides a function to set OutputDeviceManager's active device.
-#
-#   Exposes the following roles:
-#   * id - The device ID
-#   * name - The human-readable name of the device
-#   * short_description - The short description of the device
-#   * description - The full description of the device
-#   * icon_name - The name of the icon used to identify the device
-#   * priority - The device priority
-#
+
 class OutputDevicesModel(ListModel):
+    """A list model providing a list of all registered OutputDevice instances.
+
+    This list model wraps OutputDeviceManager's list of OutputDevice instances.
+    Additionally it provides a function to set OutputDeviceManager's active device.
+
+    Exposes the following roles:
+    * id - The device ID
+    * name - The human-readable name of the device
+    * short_description - The short description of the device
+    * description - The full description of the device
+    * icon_name - The name of the icon used to identify the device
+    * priority - The device priority
+
+    """
+
     IdRole = Qt.UserRole + 1
     NameRole = Qt.UserRole + 2
     ShortDescriptionRole = Qt.UserRole + 3
@@ -32,6 +34,8 @@ class OutputDevicesModel(ListModel):
 
     def __init__(self, parent = None):
         super().__init__(parent)
+        # Ensure that this model doesn't get garbage collected (Now the bound object is destroyed when the wrapper is)
+        QQmlEngine.setObjectOwnership(self, QQmlEngine.CppOwnership)
         self._device_manager = Application.getInstance().getOutputDeviceManager()
 
         self.addRoleName(self.IdRole, "id")
@@ -56,13 +60,17 @@ class OutputDevicesModel(ListModel):
 
     @pyqtProperty(int, notify = outputDevicesChanged)
     def deviceCount(self):
-        return self.rowCount()
+        return self.count
 
     def _update(self):
-        self.beginResetModel()
+        try:
+            self.beginResetModel()
+        except RuntimeError:
+            # Don't break if the object was garbage collected.
+            return
 
         self._items.clear()
-        devices = self._device_manager.getOutputDevices()
+        devices = list(self._device_manager.getOutputDevices())[:]  # Make a copy here, because we could discover devices during iteration.
         for device in devices:
             self._items.append({
                 "id": device.getId(),

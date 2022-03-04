@@ -10,14 +10,10 @@ Uranium is released under the terms of the LGPLv3 or higher. A copy of this lice
 
 Dependencies
 ------------
-- Python 3
-- Qt 5 with QtQuick 2, QtQuick Controls
-- PyQt5
-- Numpy
-- Arcus
-
-Documentation
------------
-
-API documentation is available at http://ultimaker.github.io/Uranium/ .
-This documentation is updated daily.
+- [Qt 5](https://www.qt.io/qt5-10)
+- Python 3, with the following modules
+  - [PyQt5](https://www.riverbankcomputing.com/software/pyqt/download5)
+  - [Numpy](https://github.com/numpy/numpy)
+  - [Arcus](https://github.com/Ultimaker/libArcus)
+  - [Pyclipper](https://github.com/fonttools/pyclipper)
+  - [Scipy](https://github.com/scipy/scipy)

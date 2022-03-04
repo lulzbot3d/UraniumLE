@@ -8,8 +8,6 @@ from UM.Logger import Logger
 from UM.Resources import Resources
 from UM.Math.Vector import Vector
 from UM.Job import Job
-from UM.Mesh.MeshBuilder import MeshBuilder
-from UM.Scene.ToolHandle import ToolHandle
 
 from UM.View.GL.OpenGL import OpenGL
 
@@ -24,8 +22,6 @@ class Platform(SceneNode.SceneNode):
 
         self._load_platform_job = None
         self._shader = None
-        self._axis_shader = None
-        self._has_bed = False
         self._texture = None
         self._global_container_stack = None
         Application.getInstance().globalContainerStackChanged.connect(self._onGlobalContainerStackChanged)
@@ -33,20 +29,17 @@ class Platform(SceneNode.SceneNode):
         self.setCalculateBoundingBox(False)
 
     def render(self, renderer):
+        if not self.isVisible():
+            return True
         if not self._shader:
             self._shader = OpenGL.getInstance().createShaderProgram(Resources.getPath(Resources.Shaders, "platform.shader"))
             if self._texture:
                 self._shader.setTexture(0, self._texture)
             else:
                 self._updateTexture()
-        if not self._axis_shader:
-            self._axis_shader = OpenGL.getInstance().createShaderProgram(Resources.getPath(Resources.Shaders, "platform_axis_block.shader"))
 
         if self.getMeshData():
-            if self._has_bed:
-                renderer.queueNode(self, shader=self._shader, transparent = True, backface_cull = True, sort = -10)
-            else:
-                renderer.queueNode(self, shader=self._axis_shader, transparent=False, backface_cull=True, sort=-10)
+            renderer.queueNode(self, shader = self._shader, transparent = True, backface_cull = True, sort = -10)
             return True
 
     def _onGlobalContainerStackChanged(self):
@@ -73,8 +66,6 @@ class Platform(SceneNode.SceneNode):
                 self._load_platform_job.finished.connect(self._onPlatformLoaded)
                 self._load_platform_job.start()
 
-                self._has_bed = True
-
                 offset = container.getMetaDataEntry("platform_offset")
                 if offset:
                     if len(offset) == 3:
@@ -84,27 +75,6 @@ class Platform(SceneNode.SceneNode):
                         self.setPosition(Vector(0.0, 0.0, 0.0))
                 else:
                     self.setPosition(Vector(0.0, 0.0, 0.0))
-            else:
-                settings = Application.getInstance().getGlobalContainerStack()
-                machine_width = settings.getProperty("machine_width", "value")
-                machine_depth = settings.getProperty("machine_depth", "value")
-                line_len = 25
-                line_wid = 1
-                handle_size = 3
-                mb = MeshBuilder()
-
-                mb.addCube(line_wid, line_len, line_wid, Vector(-machine_width/2, line_len/2, machine_depth/2), ToolHandle.YAxisSelectionColor)
-                mb.addPyramid(handle_size, handle_size, handle_size, center=Vector(-machine_width/2, line_len, machine_depth/2), color=ToolHandle.YAxisSelectionColor)
-
-                mb.addCube(line_len, line_wid, line_wid, Vector(line_len/2-machine_width/2, 0, machine_depth/2), ToolHandle.XAxisSelectionColor)
-                mb.addPyramid(handle_size, handle_size, handle_size, center=Vector(line_len-machine_width/2, 0, machine_depth/2), color=ToolHandle.XAxisSelectionColor, axis = Vector.Unit_Z, angle = 90)
-
-                mb.addCube(line_wid, line_wid, line_len, Vector(-machine_width/2, 0, -line_len/2+machine_depth/2), ToolHandle.ZAxisSelectionColor)
-                mb.addPyramid(handle_size, handle_size, handle_size, center=Vector(-machine_width/2, 0, -line_len+machine_depth/2), color=ToolHandle.ZAxisSelectionColor, axis = Vector.Unit_X, angle = 90)
-
-                self.setMeshData(mb.build())
-                self.setPosition(Vector(0.0, 0.0, 0.0))
-                self._has_bed = False
 
     def _updateTexture(self):
         if not self._global_container_stack or not OpenGL.getInstance():
@@ -112,10 +82,13 @@ class Platform(SceneNode.SceneNode):
 
         self._texture = OpenGL.getInstance().createTexture()
 
-        container = self._global_container_stack.findContainer({"platform_texture":"*"})
+        container = self._global_container_stack.findContainer({"platform_texture": "*"})
         if container:
             texture_file = container.getMetaDataEntry("platform_texture")
-            self._texture.load(Resources.getPath(Resources.Images, texture_file))
+            try:
+                self._texture.load(Resources.getPath(Resources.Images, texture_file))
+            except FileNotFoundError:
+                Logger.log("w", "Unable to find platform texture [%s] as specified in the definition", texture_file)
         # Note: if no texture file is specified, a 1 x 1 pixel transparent image is created
         # by UM.GL.QtTexture to prevent rendering issues
 
@@ -130,6 +103,9 @@ class Platform(SceneNode.SceneNode):
             return
 
         node = job.getResult()
+        if isinstance(node, list):  # Some model readers return lists of models. Some (e.g. STL) return a list SOMETIMES but not always.
+            nodelist = [actual_node for subnode in node for actual_node in DepthFirstIterator(subnode) if actual_node.getMeshData()]
+            node = max(nodelist, key = lambda n: n.getMeshData().getFaceCount())  # Select the node with the most faces. Sometimes the actual node is a child node of something. We can only have one node as platform mesh.
         if node.getMeshData():
             self.setMeshData(node.getMeshData())
 
@@ -139,6 +115,8 @@ class Platform(SceneNode.SceneNode):
 
 ##  Protected class that ensures that the mesh for the machine platform is loaded.
 class _LoadPlatformJob(Job):
+    """Protected class that ensures that the mesh for the machine platform is loaded."""
+
     def __init__(self, file_name):
         super().__init__()
         self._file_name = file_name

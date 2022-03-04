@@ -2,28 +2,32 @@
 # Copyright (c) 2013 David Braam
 # Uranium is released under the terms of the LGPLv3 or higher.
 
-from UM.Mesh.MeshWriter import MeshWriter
-from UM.Scene.SceneNode import SceneNode
-from UM.Scene.Iterator.BreadthFirstIterator import BreadthFirstIterator
-from UM.Logger import Logger
-
-import time
 import struct
-import os
+import time
+
+from UM.Logger import Logger
+from UM.Mesh.MeshWriter import MeshWriter
+from UM.i18n import i18nCatalog
+
+catalog = i18nCatalog("uranium")
 
 class STLWriter(MeshWriter):
-    ##  Write the specified sequence of nodes to a stream in the STL format.
-    #
-    #   \param stream The output stream to write to.
-    #   \param nodes A sequence of scene nodes to write to the output stream.
-    #   \param mode The output mode to use for writing scene nodes. Text mode
-    #   causes the writer to write in STL's ASCII format. Binary mode causes the
-    #   writer to write in STL's binary format. Any other mode is invalid.
     def write(self, stream, nodes, mode = MeshWriter.OutputMode.TextMode):
+        """Write the specified sequence of nodes to a stream in the STL format.
+
+        :param stream: The output stream to write to.
+        :param nodes: A sequence of scene nodes to write to the output stream.
+        :param mode: The output mode to use for writing scene nodes. Text mode
+        causes the writer to write in STL's ASCII format. Binary mode causes the
+        writer to write in STL's binary format. Any other mode is invalid.
+        """
+
         try:
             MeshWriter._meshNodes(nodes).__next__()
-        except:
-            return False #Don't try to write a file if there is no mesh.
+        except StopIteration:
+            Logger.log("e", "There is no mesh to write.")
+            self.setInformation(catalog.i18nc("@error:no mesh", "There is no mesh to write."))
+            return False  # Don't try to write a file if there is no mesh.
 
         if mode == MeshWriter.OutputMode.TextMode:
             self._writeAscii(stream, MeshWriter._meshNodes(nodes))
@@ -31,6 +35,7 @@ class STLWriter(MeshWriter):
             self._writeBinary(stream, MeshWriter._meshNodes(nodes))
         else:
             Logger.log("e", "Unsupported output mode writing STL to stream")
+            self.setInformation(catalog.i18nc("@error:not supported", "Unsupported output mode writing STL to stream."))
             return False
 
         return True
@@ -61,7 +66,7 @@ class STLWriter(MeshWriter):
                     stream.write("endfacet\n")
             else:
                 num_verts = mesh_data.getVertexCount()
-                for index in range(0, num_verts - 1, 3):
+                for index in range(0, num_verts - 2, 3):
                     stream.write("facet normal 0.0 0.0 0.0\n")
                     stream.write("  outer loop\n")
                     v1 = verts[index]

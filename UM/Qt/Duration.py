@@ -1,5 +1,6 @@
 # Copyright (c) 2017 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
+from typing import Optional
 
 from PyQt5.QtCore import QObject, pyqtProperty, Q_ENUMS, pyqtSignal
 from UM.FlameProfiler import pyqtSlot
@@ -7,6 +8,7 @@ from UM.FlameProfiler import pyqtSlot
 from datetime import timedelta
 import math
 
+from UM.Logger import Logger
 from UM.i18n import i18nCatalog
 i18n_catalog = i18nCatalog("uranium")
 
@@ -18,17 +20,22 @@ class DurationFormat(QObject):
         ISO8601 = 3
     Q_ENUMS(Format)
 
-##  A class representing a time duration.
-#
-#   This is primarily used as a value type to QML so we can report things
-#   like "How long will this print take" without needing a bunch of logic
-#   in the QML.
+
 class Duration(QObject):
-    ##  Create a duration object.
-    #
-    #   \param duration The duration in seconds. If this is None (the default), an invalid Duration object will be created.
-    #   \param parent The QObject parent.
-    def __init__(self, duration = None, parent = None):
+    """A class representing a time duration.
+
+    This is primarily used as a value type to QML so we can report things
+    like "How long will this print take" without needing a bunch of logic
+    in the QML.
+    """
+
+    def __init__(self, duration: Optional[int] = None, parent = None) -> None:
+        """Create a duration object.
+
+        :param duration: The duration in seconds. If this is None (the default), an invalid Duration object will be created.
+        :param parent: The QObject parent.
+        """
+
         super().__init__(parent)
 
         self._days = -1
@@ -36,7 +43,7 @@ class Duration(QObject):
         self._minutes = -1
         self._seconds = -1
 
-        if duration != None:
+        if duration is not None:
             self.setDuration(duration)
 
     durationChanged = pyqtSignal()
@@ -65,25 +72,32 @@ class Duration(QObject):
     def isTotalDurationZero(self):
         return self._days == 0 and self._hours == 0 and self._minutes == 0 and self._seconds == 0
 
-    ##  Set the duration in seconds.
-    #
-    #   This will convert the given amount of seconds into an amount of days, hours, minutes and seconds.
-    #   Note that this is mostly a workaround for issues with PyQt, as a value type this class should not
-    #   really have a setter.
-    def setDuration(self, duration):
+    def setDuration(self, duration: int) -> None:
+        """Set the duration in seconds.
+
+        This will convert the given amount of seconds into an amount of days, hours, minutes and seconds.
+        Note that this is mostly a workaround for issues with PyQt, as a value type this class should not
+        really have a setter.
+        """
+
         if duration < 0:
             self._days = -1
             self._hours = -1
             self._minutes = -1
             self._seconds = -1
         else:
-            duration = round(duration)
+            try:
+                duration = round(duration)
+            except OverflowError:
+                Logger.log("w", "Duration was too large to convert, so resetting it.")
+                duration = 0
             # If a Python int goes above the upper bound of C++ int, which is 2^16 - 1, you will get a error when Qt
             # tries to convert the Python int to C++ int:
             #    TypeError: unable to convert a Python 'int' object to a C++ 'int' instance
             # So we make sure here that the number won't exceed the limit due to CuraEngine bug or whatever, and
             # Cura won't crash.
             if int(duration) >= (2**31):
+                Logger.log("w", "Duration was too large to convert, so resetting it.")
                 duration = 0
 
             self._days = math.floor(duration / (3600 * 24))
@@ -101,6 +115,14 @@ class Duration(QObject):
     #   This is not called toString() primarily because that conflicts with JavaScript"s toString()
     @pyqtSlot(int, result = str)
     def getDisplayString(self, display_format = DurationFormat.Format.Short):
+        """Get a string representation of this object that can be used to display
+        in interfaces.
+
+        This is not called toString() primarily because that conflicts with
+        JavaScript's toString().
+        :return: A human-readable string representation of this duration.
+        """
+
         if display_format == DurationFormat.Format.Seconds:
             return str(((self._days * 24 + self._hours)* 60 + self._minutes) * 60 + self._seconds )
         elif display_format == DurationFormat.Format.Short:
@@ -120,6 +142,12 @@ class Duration(QObject):
 
         return ""
 
-    @pyqtProperty(int, notify=durationChanged)
-    def totalSeconds(self):
+    def __int__(self):
+        """Get an integer representation of this duration.
+
+        The integer contains the number of seconds in the duration. Convert it
+        back to a Duration instance by providing the number of seconds to the
+        constructor.
+        """
+
         return self._days * 3600 * 24 + self._hours * 3600 + self._minutes * 60 + self._seconds

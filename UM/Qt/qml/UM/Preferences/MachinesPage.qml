@@ -1,4 +1,4 @@
-// Copyright (c) 2015 Ultimaker B.V.
+// Copyright (c) 2018 Ultimaker B.V.
 // Uranium is released under the terms of the LGPLv3 or higher.
 
 import QtQuick 2.1
@@ -10,10 +10,10 @@ ManagementPage {
     id: base;
 
     title: catalog.i18nc("@title:tab", "Printers");
-    property int numInstances: model.rowCount();
+    property int numInstances: model.count
     model: UM.MachineInstancesModel
     {
-        onDataChanged: numInstances = model.rowCount()
+        onDataChanged: numInstances = model.count
     }
 
     onAddObject: model.requestAddMachine();
@@ -31,13 +31,20 @@ ManagementPage {
 
         Label {
             text: base.currentItem && base.currentItem.name ? base.currentItem.name : ""
-            font: UM.Theme.getFont("large")
+            font: UM.Theme.getFont("large_bold")
             width: parent.width
             elide: Text.ElideRight
         }
 
-        Label { text: catalog.i18nc("@label", "Type"); width: (parent.width * 0.2) | 0; }
-        Label { text: base.currentItem && base.currentItem.typeName ? base.currentItem.typeName : ""; width: (parent.width * 0.7) | 0; }
+        Label {
+            text: catalog.i18nc("@label", "Type");
+            width: Math.round(parent.width * 0.2);
+        }
+
+        Label {
+            text: base.currentItem && base.currentItem.typeName ? base.currentItem.typeName : "";
+            width: Math.round(parent.width * 0.7);
+        }
 
         UM.I18nCatalog { id: catalog; name: "uranium"; }
 

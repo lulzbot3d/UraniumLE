@@ -6,10 +6,11 @@ import QtQuick.Layouts 1.1
 import QtQuick.Controls 1.1
 import QtQuick.Controls.Styles 1.1
 
-import UM 1.2 as UM
+import UM 1.5 as UM
 
 Item {
     // Use the depth of the model to move the item, but also leave space for the visibility / enabled exclamation mark.
+
     x: definition ? (definition.depth + 1)* UM.Theme.getSize("default_margin").width : UM.Theme.getSize("default_margin").width
     UM.TooltipArea
     {
@@ -54,10 +55,10 @@ Item {
         UM.RecolorImage
         {
             anchors.centerIn: parent
-            width: (check.height * 0.75) | 0
+            width: Math.round(check.height * 0.75) | 0
             height: width
 
-            source: UM.Theme.getIcon("notice")
+            source: UM.Theme.getIcon("Information")
 
             color: palette.buttonText
         }
@@ -72,7 +73,7 @@ Item {
         width: childrenRect.width;
         height: childrenRect.height;
         id: checkboxTooltipArea
-        CheckBox
+        UM.CheckBox
         {
             id: check
 
@@ -80,9 +81,11 @@ Item {
             checked: definition ? definition.visible: false
             enabled: definition ? !definition.prohibited: false
 
-            MouseArea {
-                anchors.fill: parent;
-                onClicked: definitionsModel.setVisible(definition.key, !check.checked);
+            MouseArea
+            {
+                anchors.fill: parent
+
+                onClicked: definitionsModel.setVisible(definition.key, !check.checked)
             }
         }
     }

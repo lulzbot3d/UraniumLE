@@ -4,11 +4,17 @@
 import configparser
 import io
 import copy
-from typing import Any, Dict, List, Optional
+import os
+from typing import Any, cast, Dict, List, Optional, Set, Tuple
 
 from PyQt5.QtCore import QObject, pyqtProperty, pyqtSignal
+from PyQt5.QtQml import QQmlEngine #To take ownership of this class ourselves.
 
+from UM.FastConfigParser import FastConfigParser
+from UM.Trust import Trust
+from UM.Decorators import override
 from UM.Settings.Interfaces import DefinitionContainerInterface
+from UM.Settings.PropertyEvaluationContext import PropertyEvaluationContext #For typing.
 from UM.Signal import Signal, signalemitter
 from UM.PluginObject import PluginObject
 from UM.Logger import Logger
@@ -16,6 +22,7 @@ from UM.MimeTypeDatabase import MimeTypeDatabase, MimeType
 
 from UM.Settings.Interfaces import ContainerInterface, ContainerRegistryInterface
 from UM.Settings.SettingInstance import SettingInstance
+import re
 
 class InvalidInstanceError(Exception):
     pass
@@ -42,11 +49,19 @@ MimeTypeDatabase.addMimeType(
 class InstanceContainer(QObject, ContainerInterface, PluginObject):
     Version = 2
 
-    ##  Constructor
-    #
-    #   \param container_id A unique, machine readable/writable ID for this container.
-    def __init__(self, container_id: str, *args, **kwargs):
-        super().__init__(parent = None, *args, **kwargs)
+    Version = 4
+    version_regex = re.compile("\nversion ?= ?(\d+)")
+    setting_version_regex = re.compile("\nsetting_version ?= ?(\d+)")
+    type_regex = re.compile("\ntype ?= ?(\w+)")
+
+    def __init__(self, container_id: str, parent: QObject = None, *args: Any, **kwargs: Any) -> None:
+        """Constructor
+
+        :param container_id: A unique, machine readable/writable ID for this container.
+        """
+
+        super().__init__()
+        QQmlEngine.setObjectOwnership(self, QQmlEngine.CppOwnership)
 
         self._metadata = {
             "id": container_id,
@@ -55,35 +70,37 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
             "container_type": InstanceContainer
         }                               # type: Dict[str, Any]
         self._instances = {}            # type: Dict[str, SettingInstance]
-        self._read_only = False
-        self._dirty = False
-        self._path = ""
-        self._postponed_emits = []
+        self._read_only = False  # type: bool
+        self._dirty = False  # type: bool
+        self._path = ""  # type: str
+        self._postponed_emits = []  # type: List[Tuple[Signal, Tuple[str, str]]]
+        self._definition = None  # type: Optional[DefinitionContainerInterface]
 
-        self._cached_values = None
+        self._cached_values = None  # type: Optional[Dict[str, Any]]
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         # We need to re-implement the hash, because we defined the __eq__ operator.
         # According to some, returning the ID is technically not right, as objects with the same value should return
         # the same hash. The way we use it, it is acceptable for objects with the same value to return a different hash.
         return id(self)
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo: Dict[int, object]) -> "InstanceContainer":
         new_container = self.__class__(self.getId())
-        new_container._metadata = copy.deepcopy(self._metadata, memo)
-        new_container._instances = copy.deepcopy(self._instances, memo)
+        new_container._metadata = cast(Dict[str, Any], copy.deepcopy(self._metadata, memo))
+        new_container._instances = cast(Dict[str, SettingInstance], copy.deepcopy(self._instances, memo))
         for instance in new_container._instances.values(): #Set the back-links of the new instances correctly to the copied container.
             instance._container = new_container
             instance.propertyChanged.connect(new_container.propertyChanged)
         new_container._read_only = self._read_only
         new_container._dirty = self._dirty
-        new_container._path = copy.deepcopy(self._path, memo)
-        new_container._cached_values = copy.deepcopy(self._cached_values, memo)
+        new_container._path = cast(str, copy.deepcopy(self._path, memo))
+        new_container._cached_values = cast(Optional[Dict[str, Any]], copy.deepcopy(self._cached_values, memo))
         return new_container
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if type(self) != type(other):
             return False  # Type mismatch
+        other = cast(InstanceContainer, other)
 
         self._instantiateCachedValues()
         other._instantiateCachedValues()
@@ -109,19 +126,22 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
                 return False  # Other has an instance that this object does not have.
         return True
 
-    def __ne__(self, other):
+    def __ne__(self, other: object) -> bool:
         return not (self == other)
 
-    ##  For pickle support
-    def __getnewargs__(self):
+    def __getnewargs__(self) -> Tuple[str]:
+        """For pickle support"""
+
         return (self.getId(),)
 
-    ##  For pickle support
-    def __getstate__(self):
+    def __getstate__(self) -> Dict[str, Any]:
+        """For pickle support"""
+
         return self.__dict__
 
-    ##  For pickle support
-    def __setstate__(self, state):
+    def __setstate__(self, state: Dict[str, Any]) -> None:
+        """For pickle support"""
+
         self.__dict__.update(state)
 
     ##  \copydoc ContainerInterface::getId
@@ -132,7 +152,7 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
 
     id = pyqtProperty(str, fget = getId, constant = True)
 
-    def setCachedValues(self, cached_values):
+    def setCachedValues(self, cached_values: Dict[str, Any]) -> None:
         if not self._instances:
             self._cached_values = cached_values
         else:
@@ -142,16 +162,20 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
     def getLoadingPriority(cls) -> int:
         return 1
 
-    ##  \copydoc ContainerInterface::getPath.
-    #
-    #   Reimplemented from ContainerInterface
-    def getPath(self):
+    def getPath(self) -> str:
+        """:copydoc ContainerInterface::getPath.
+
+        Reimplemented from ContainerInterface
+        """
+
         return self._path
 
-    ##  \copydoc ContainerInterface::setPath
-    #
-    #   Reimplemented from ContainerInterface
-    def setPath(self, path):
+    def setPath(self, path: str) -> None:
+        """:copydoc ContainerInterface::setPath
+
+        Reimplemented from ContainerInterface
+        """
+
         self._path = path
 
     ##  \copydoc ContainerInterface::getName
@@ -160,7 +184,7 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
     def getName(self) -> str:
         return self._metadata["name"]
 
-    def setName(self, name):
+    def setName(self, name: str) -> None:
         if name != self.getName():
             self._metadata["name"] = name
             self._dirty = True
@@ -183,16 +207,21 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
     name = pyqtProperty(str, fget = getName, fset = setName, notify = pyqtNameChanged)
 
     def getReadOnly(self) -> bool:
-        return _containerRegistry.isReadOnly(self.getId())
+        return _containerRegistry.isReadOnly(self.getId())  # TODO???: Why not also take self._read_only into account?
     readOnly = pyqtProperty(bool, fget = getReadOnly)
 
-    ##  \copydoc ContainerInterface::getMetaData
-    #
-    #   Reimplemented from ContainerInterface
-    def getMetaData(self):
+    def getNumInstances(self) -> int:
+        return len(self._instances)
+
+    def getMetaData(self) -> Dict[str, Any]:
+        """:copydoc ContainerInterface::getMetaData
+
+        Reimplemented from ContainerInterface
+        """
+
         return self._metadata
 
-    def setMetaData(self, metadata):
+    def setMetaData(self, metadata: Dict[str, Any]) -> None:
         if metadata == self._metadata:
             return #No need to do anything or even emit the signal.
 
@@ -202,7 +231,8 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
             "id": self.getId(),
             "name": self.getName(),
             "definition": self.getMetaData().get("definition"),
-            "version": self.getMetaData().get("version", 0)
+            "version": self.getMetaData().get("version", 0),
+            "container_type": InstanceContainer
         }
         self._metadata.update(metadata)
         self._dirty = True
@@ -211,10 +241,12 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
     metaDataChanged = pyqtSignal(QObject)
     metaData = pyqtProperty("QVariantMap", fget = getMetaData, fset = setMetaData, notify = metaDataChanged)
 
-    ##  \copydoc ContainerInterface::getMetaDataEntry
-    #
-    #   Reimplemented from ContainerInterface
-    def getMetaDataEntry(self, entry, default = None):
+    def getMetaDataEntry(self, entry: str, default = None) -> Any:
+        """:copydoc ContainerInterface::getMetaDataEntry
+
+        Reimplemented from ContainerInterface
+        """
+
         return self._metadata.get(entry, default)
 
     ##  Add a new entry to the metadata of this container.
@@ -255,10 +287,15 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
         else:
             self._dirty = dirty
 
-    ##  \copydoc ContainerInterface::getProperty
-    #
-    #   Reimplemented from ContainerInterface
-    def getProperty(self, key, property_name, context = None):
+    def getProperty(self, key: str, property_name: str, context: PropertyEvaluationContext = None) -> Any:
+        """:copydoc ContainerInterface::getProperty
+
+        Reimplemented from ContainerInterface
+        """
+
+        # Instance containers can only set value, state & validationstate, so if someone asks for anything else, quit early.
+        if property_name not in ["value", "state", "validationState"]:
+            return None
         self._instantiateCachedValues()
         if key in self._instances:
             try:
@@ -268,10 +305,12 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
 
         return None
 
-    ##  \copydoc ContainerInterface::hasProperty
-    #
-    #   Reimplemented from ContainerInterface.
-    def hasProperty(self, key, property_name):
+    def hasProperty(self, key: str, property_name: str) -> bool:
+        """:copydoc ContainerInterface::hasProperty
+
+        Reimplemented from ContainerInterface.
+        """
+
         # --- Kinda a hack:
         # When we check if a property exists, it is not necessary to flush the cache because we simply want to know
         # whether it is there. Flushing the cache can cause propertyChanged signals being emitted, and, as a result,
@@ -286,41 +325,48 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
             return True
         return key in self._instances and hasattr(self._instances[key], property_name)
 
-    ##  Creates SettingInstances that are missing in this InstanceContainer from the cache if any.
-    #   This function will **ONLY instantiate SettingInstances. The cached values will not be applied.**
-    def _instantiateMissingSettingInstancesInCache(self):
+    def _instantiateMissingSettingInstancesInCache(self) -> None:
+        """Creates SettingInstances that are missing in this InstanceContainer from the cache if any.
+        This function will **ONLY instantiate SettingInstances. The cached values will not be applied.**
+        """
+
         if not self._cached_values:
             return
 
         for key, value in self._cached_values.items():
             if key not in self._instances:
                 if not self.getDefinition():
-                    Logger.log("w", "Tried to set value of setting %s that has no instance in container %s and the container has no definition", key, self.getName())
+                    Logger.log("w", "Tried to set value of setting %s that has no SettingInstance in the InstanceContainer %s and the InstanceContainer has no SettingDefinition either", key, self.getName())
                     return
 
                 setting_definition = self.getDefinition().findDefinitions(key = key)
                 if not setting_definition:
-                    Logger.log("w", "Tried to set value of setting %s that has no instance in container %s or its definition %s", key, self.getName(), self.getDefinition().getName())
+                    Logger.log("w", "Tried to set value of the setting %s, but it has no SettingInstance in this InstanceContainer %s or its SettingDefinition %s", key, self.getName(), self.getDefinition().getName())
                     return
 
                 instance = SettingInstance(setting_definition[0], self)
                 instance.propertyChanged.connect(self.propertyChanged)
                 self._instances[instance.definition.key] = instance
 
-    ##  Set the value of a property of a SettingInstance.
-    #
-    #   This will set the value of the specified property on the SettingInstance corresponding to key.
-    #   If no instance has been created for the specified key, a new one will be created and inserted
-    #   into this instance.
-    #
-    #   \param key \type{string} The key of the setting to set a property of.
-    #   \param property_name \type{string} The name of the property to set.
-    #   \param property_value The new value of the property.
-    #   \param container The container to use for retrieving values when changing the property triggers property updates. Defaults to None, which means use the current container.
-    #   \param set_from_cache Flag to indicate that the property was set from cache. This triggers the behavior that the read_only and setDirty are ignored.
-    #
-    #   \note If no definition container is set for this container, new instances cannot be created and this method will do nothing.
-    def setProperty(self, key, property_name, property_value, container = None, set_from_cache = False):
+    def setProperty(self, key: str, property_name: str, property_value: Any, container: ContainerInterface = None, set_from_cache: bool = False) -> None:
+        """Set the value of a property of a SettingInstance.
+
+        This will set the value of the specified property on the SettingInstance corresponding to key.
+        If no instance has been created for the specified key, a new one will be created and inserted
+        into this instance.
+
+        :param key: The key of the setting to set a property of.
+        :param property_name:  The name of the property to set.
+        :param property_value: The new value of the property.
+        :param container: The container to use for retrieving values when changing the property triggers property
+        updates. Defaults to None, which means use the current container.
+        :param set_from_cache: Flag to indicate that the property was set from cache. This triggers the behavior that
+        the read_only and setDirty are ignored.
+
+        :note If no definition container is set for this container, new instances cannot be created and this method
+        will do nothing.
+        """
+
         if self._read_only and not set_from_cache:
             Logger.log(
                 "w",
@@ -328,49 +374,57 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
                     property_name, property_value, key, self.id))
             return
         if key not in self._instances:
-            if not self.getDefinition():
-                Logger.log("w", "Tried to set value of setting %s that has no instance in container %s and the container has no definition", key, self.getName())
+            try:
+                definition = self.getDefinition()
+            except DefinitionNotFoundError:
+                Logger.log("w", "Tried to set value of setting %s when the InstanceContainer has no SettingDefinition. "
+                                "This is not supported. Either manually add the SettingInstance or ensure that a SettingDefinition is set.", key)
                 return
-
-            setting_definition = self.getDefinition().findDefinitions(key = key)
+            setting_definition = definition.findDefinitions(key = key)
             if not setting_definition:
-                Logger.log("w", "Tried to set value of setting %s that has no instance in container %s or its definition %s", key, self.getName(), self.getDefinition().getName())
+                Logger.log("w", "Tried to set value of the setting %s, but it has no SettingInstance in this InstanceContainer %s or its SettingDefinition %s", key, self.getName(), self.getDefinition().getName())
                 return
 
             instance = SettingInstance(setting_definition[0], self)
             instance.propertyChanged.connect(self.propertyChanged)
             self._instances[instance.definition.key] = instance
 
-        self._instances[key].setProperty(property_name, property_value, self)
+        self._instances[key].setProperty(property_name, property_value, container)
 
         if not set_from_cache:
             self.setDirty(True)
 
     propertyChanged = Signal()
 
-    ##  Remove all instances from this container.
-    def clear(self):
+    def clear(self) -> None:
+        """Remove all instances from this container."""
+
         self._instantiateCachedValues()
         all_keys = self._instances.copy()
         for key in all_keys:
             self.removeInstance(key, postpone_emit=True)
         self.sendPostponedEmits()
 
-    ##  Get all the keys of the instances of this container
-    #   \returns list of keys
-    def getAllKeys(self):
+    def getAllKeys(self) -> Set[str]:
+        """Get all the keys of the instances of this container
+        :returns: list of keys
+        """
+
+        keys = set(key for key in self._instances)
         if self._cached_values:
             # If we only want the keys and the actual values are still cached, just get the keys from the cache.
-            return self._cached_values.keys()
-        return [key for key in self._instances]
+            keys.update(self._cached_values.keys())
+        return keys
 
-    ##  Create a new InstanceContainer with the same contents as this container
-    #
-    #   \param new_id \type{str} The new ID of the container
-    #   \param new_name \type{str} The new name of the container. Defaults to None to indicate the name should not change.
-    #
-    #   \return A new InstanceContainer with the same contents as this container.
-    def duplicate(self, new_id: str, new_name: str = None):
+    def duplicate(self, new_id: str, new_name: str = None) -> "InstanceContainer":
+        """Create a new InstanceContainer with the same contents as this container
+
+        :param new_id: The new ID of the container
+        :param new_name: The new name of the container. Defaults to None to indicate the name should not change.
+
+        :return: A new InstanceContainer with the same contents as this container.
+        """
+
         self._instantiateCachedValues()
         new_container = self.__class__(new_id)
         new_metadata = copy.deepcopy(self._metadata)
@@ -396,15 +450,19 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
         new_container._read_only = False
         return new_container
 
-    ##  \copydoc ContainerInterface::serialize
-    #
-    #   Reimplemented from ContainerInterface
-    def serialize(self, ignored_metadata_keys: Optional[set] = None) -> str:
+    def serialize(self, ignored_metadata_keys: Optional[Set[str]] = None) -> str:
+        """:copydoc ContainerInterface::serialize
+
+        Reimplemented from ContainerInterface
+        """
+
         self._instantiateCachedValues()
         parser = configparser.ConfigParser(interpolation = None)
 
-        if not self.getDefinition():
-            Logger.log("w", "Tried to serialize an instance container without definition, this is not supported")
+        try:
+            self.getDefinition()
+        except DefinitionNotFoundError:
+            Logger.log("w", "Tried to serialize an InstanceContainer without SettingDefinition, this is not supported")
             return ""
 
         parser["general"] = {}
@@ -434,14 +492,15 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
         return stream.getvalue()
 
     @classmethod
-    def _readAndValidateSerialized(self, serialized: str) -> configparser.ConfigParser:
-        parser = configparser.ConfigParser(interpolation=None, comment_prefixes=('#',))
-
+    def _readAndValidateSerialized(cls, serialized: str) -> configparser.ConfigParser:
+        # Disable comments in the ini files, so text values can start with a ;
+        # without being removed as a comment
+        parser = configparser.ConfigParser(interpolation=None, comment_prefixes = ())
         parser.read_string(serialized)
 
         has_general = "general" in parser
-        has_version = "version" in parser["general"]
-        has_definition = "definition" in parser["general"]
+        has_version = has_general and "version" in parser["general"]
+        has_definition = has_general and "definition" in parser["general"]
 
         if not has_general or not has_version or not has_definition:
             exception_string = "Missing the required"
@@ -456,39 +515,72 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
 
     @classmethod
     def getConfigurationTypeFromSerialized(cls, serialized: str) -> Optional[str]:
-        configuration_type = None
-        try:
-            parser = cls._readAndValidateSerialized(serialized)
-            configuration_type = parser["metadata"].get("type")
-        except Exception as e:
-            Logger.log("d", "Could not get configuration type: %s", e)
+        regex_result = cls.type_regex.search(serialized)
+        configuration_type = ""
+        if regex_result is not None:
+            configuration_type = str(regex_result.groups()[-1])
+
         return configuration_type
 
     @classmethod
-    def getVersionFromSerialized(cls, serialized: str) -> Optional[int]:
-        configuration_type = cls.getConfigurationTypeFromSerialized(serialized)
-        # get version
-        version = None
-        try:
-            import UM.VersionUpgradeManager
-            version = UM.VersionUpgradeManager.VersionUpgradeManager.getInstance().getFileVersion(configuration_type,
-                                                                                                  serialized)
-        except Exception as e:
-            #Logger.log("d", "Could not get version from serialized: %s", e)
-            pass
-        return version
+    def getVersionFromSerialized(cls, serialised: str) -> int:
+        """
+        Gets the version number from a config file.
 
-    ##  \copydoc ContainerInterface::deserialize
-    #
-    #   Reimplemented from ContainerInterface
+        In all config files that concern this version upgrade, the version number is stored in general/version, so get
+        the data from that key.
+
+        :param serialised: The contents of a config file.
+        :return: The version number of that config file.
+        """
+        format_version = 1
+        setting_version = 0
+
+        regex_result = cls.version_regex.search(serialised)
+        if regex_result is not None:
+            format_version = int(regex_result.groups()[-1])
+
+        regex_result = cls.setting_version_regex.search(serialised)
+        if regex_result is not None:
+            setting_version = int(regex_result.groups()[-1])
+
+        return format_version * 1000000 + setting_version
+
+    @override(ContainerInterface)
+    def _trustHook(self, file_name: Optional[str]) -> bool:
+        # NOTE: In an enterprise environment, if there _is_ a signature file for an unbundled package, verify it.
+        #       (Note that this is a different behaviour w.r.t. the plugins, where the check is not just verification!)
+        #       (Note that there shouldn't be a check if trust has to be here, since it'll continue on 'no signature'.)
+        if file_name is None:
+            return True
+        trust_instance = Trust.getInstanceOrNone()
+        if trust_instance is not None:
+            from UM.Application import Application
+            install_prefix = os.path.abspath(Application.getInstallPrefix())
+            try:
+                common_path = os.path.commonpath([install_prefix, file_name])
+            except ValueError:
+                common_path = ""
+            if common_path == "" or not common_path.startswith(install_prefix):
+                if trust_instance.signatureFileExistsFor(file_name):
+                    _containerRegistry.setExplicitReadOnly(self.getId())  # TODO???: self._read_only = True
+                    if not trust_instance.signedFileCheck(file_name):
+                        raise Exception("Can't validate file {0}".format(file_name))
+        return True
+
     def deserialize(self, serialized: str, file_name: Optional[str] = None) -> str:
+        """:copydoc ContainerInterface::deserialize
+
+        Reimplemented from ContainerInterface
+        """
+
         # update the serialized data first
         serialized = super().deserialize(serialized, file_name)
         parser = self._readAndValidateSerialized(serialized)
 
         try:
             parser_version = int(parser["general"]["version"])
-        except ValueError: #Version number is not integer.
+        except ValueError:  # Version number is not integer.
             raise IncorrectInstanceVersionError("Reported version {0} is not an integer.".format(parser["general"]["version"]))
         if parser_version != self.Version:
             raise IncorrectInstanceVersionError("Reported version {0} but expected version {1}".format(str(parser_version), self.Version))
@@ -539,28 +631,31 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
             metadata["name"] = parser["general"]["name"]
             metadata["version"] = parser["general"]["version"]
             metadata["definition"] = parser["general"]["definition"]
-        except KeyError: #One of the keys or the General section itself is missing.
-            return []
+        except KeyError as e: #One of the keys or the General section itself is missing.
+            raise InvalidInstanceError("Missing required fields: {error_msg}".format(error_msg = str(e)))
 
         if "metadata" in parser:
             metadata = {**metadata, **parser["metadata"]}
 
         return [metadata]
 
-    ##  Instance containers are lazy loaded. This function ensures that it happened.
-    def _instantiateCachedValues(self):
+    def _instantiateCachedValues(self) -> None:
+        """Instance containers are lazy loaded. This function ensures that it happened."""
+
         if not self._cached_values:
             return
-
+        definition = self.getDefinition()
         for key, value in self._cached_values.items():
-            self.setProperty(key, "value", value, self.getDefinition(), set_from_cache=True)
+            self.setProperty(key, "value", value, definition, set_from_cache=True)
 
         self._cached_values = None
 
-    ##  Find instances matching certain criteria.
-    #
-    #   \param kwargs \type{dict} A dictionary of keyword arguments with key-value pairs that should match properties of the instances.
-    def findInstances(self, **kwargs) -> List[SettingInstance]:
+    def findInstances(self, **kwargs: Any) -> List[SettingInstance]:
+        """Find instances matching certain criteria.
+
+        :param kwargs: A dictionary of keyword arguments with key-value pairs that should match properties of the instances.
+        """
+
         self._instantiateCachedValues()
         result = []
         for setting_key, instance in self._instances.items():
@@ -592,9 +687,12 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
         instance.propertyChanged.emit(key, "value")
         self._instances[key] = instance
 
-    ##  Remove an instance from this container.
-    #   /param postpone_emit postpone emit until calling sendPostponedEmits
-    def removeInstance(self, key: str, postpone_emit: bool=False) -> None:
+    def removeInstance(self, key: str, postpone_emit: bool = False) -> None:
+        """Remove an instance from this container.
+
+        :param postpone_emit: postpone emit until calling sendPostponedEmits
+        """
+
         self._instantiateCachedValues()
         if key not in self._instances:
             return
@@ -641,14 +739,26 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
             raise DefinitionNotFoundError("Could not find definition {0} required for instance {1}".format(self._metadata["definition"], self.getId()))
         return definitions[0]
 
-    ##  Set the DefinitionContainer to use for new instance creation.
-    #
-    #   Since SettingInstance needs a SettingDefinition to work properly, we need some
-    #   way of figuring out what SettingDefinition to use when creating a new SettingInstance.
-    def setDefinition(self, definition_id: str):
+        if self._definition is None:
+            definitions = _containerRegistry.findDefinitionContainers(id = self._metadata.get("definition", ""))
+            if not definitions:
+                raise DefinitionNotFoundError("Could not find definition {0} required for instance {1}".format(self._metadata.get("definition", ""), self.getId()))
+            self._definition = definitions[0]
+        return self._definition
+
+    def setDefinition(self, definition_id: str) -> None:
+        """Set the DefinitionContainer to use for new instance creation.
+
+        Since SettingInstance needs a SettingDefinition to work properly, we need some
+        way of figuring out what SettingDefinition to use when creating a new SettingInstance.
+        """
+
         self._metadata["definition"] = definition_id
 
-    def __lt__(self, other):
+    def __lt__(self, other: object) -> bool:
+        if type(other) != type(self):
+            return True
+        other = cast(InstanceContainer, other)
         own_weight = int(self.getMetaDataEntry("weight", 0))
         other_weight = int(other.getMetaDataEntry("weight", 0))
 
@@ -657,20 +767,27 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
 
         return self.getName() < other.getName()
 
-    ##  Simple string representation for debugging.
-    def __str__(self):
-        return "<InstanceContainer '{container_id}' ('{name}')>".format(container_id = self.getId(), name = self.getName())
+    def __str__(self) -> str:
+        """Simple string representation for debugging."""
+        return "<InstContainer '{container_id}'>".format(container_id = self.getId())
 
-    ##  Send postponed emits
-    #   These emits are collected from the option postpone_emit.
-    #   Note: the option can be implemented for all functions modifying the container.
-    def sendPostponedEmits(self):
+    def __repr__(self) -> str:
+        return str(self)
+
+    def sendPostponedEmits(self) -> None:
+        """Send the postponed emits
+
+        These emits are collected from the option postpone_emit.
+        Note: the option can be implemented for all functions modifying the container.
+        """
+
         while self._postponed_emits:
             signal, signal_arg = self._postponed_emits.pop(0)
             signal.emit(*signal_arg)
 
 
-_containerRegistry = None   # type:  ContainerRegistryInterface
+_containerRegistry = ContainerRegistryInterface()  # type:  ContainerRegistryInterface
+
 
 def setContainerRegistry(registry: ContainerRegistryInterface) -> None:
     global _containerRegistry

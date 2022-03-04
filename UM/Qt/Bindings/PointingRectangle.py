@@ -1,10 +1,11 @@
 # Copyright (c) 2015 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
 
-from PyQt5.QtCore import pyqtSlot, pyqtProperty, pyqtSignal, PYQT_VERSION
+from PyQt5.QtCore import pyqtProperty, pyqtSignal
 from PyQt5.QtCore import QPoint
 from PyQt5.QtGui import QColor
-from PyQt5.QtQuick import QQuickItem, QSGGeometryNode, QSGGeometry, QSGFlatColorMaterial, QSGSimpleRectNode
+from PyQt5.QtQuick import QQuickItem, QSGGeometryNode, QSGGeometry, QSGFlatColorMaterial
+
 
 class PointingRectangle(QQuickItem):
     def __init__(self, parent = None):
@@ -102,7 +103,7 @@ class PointingRectangle(QQuickItem):
         vertex_data[5].set(0, 0)
         vertex_data[6].set(0, 0)
 
-        target_offset = self._target - QPoint(self.x(), self.y())
+        target_offset = self._target - QPoint(round(self.x()), round(self.y()))
 
         arrow_on_side = -1 # no arrow
         arrow_size = 0
@@ -161,8 +162,9 @@ class PointingRectangle(QQuickItem):
 
         if self._border_width > 0:
             if paint_node.childCount() == 0:
-                paint_node.appendChildNode(QSGGeometryNode())
-            border_node = paint_node.firstChild()
+                border_node = QSGGeometryNode()
+            else:
+                border_node = paint_node.firstChild()
 
             border_vertices = []
             border_vertices.append((0, 0))
@@ -203,6 +205,9 @@ class PointingRectangle(QQuickItem):
             border_material.setColor(self._border_color)
 
             border_node.setMaterial(border_material)
+
+            if paint_node.childCount() == 0:
+                paint_node.appendChildNode(border_node)
         else:
             border_node = None
             border_geometry = None
