@@ -1,47 +1,43 @@
-# Copyright (c) 2017 Ultimaker B.V.
+# Copyright (c) 2021 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
 
-import threading
 import argparse
 import os
 import sys
+import threading
 
 from UM.Controller import Controller
 from UM.FileProvider import FileProvider
 from UM.Message import Message #For typing.
 from UM.PackageManager import PackageManager
 from UM.PluginRegistry import PluginRegistry
-from UM.Mesh.MeshFileHandler import MeshFileHandler
+from UM.Qt.Bindings.FileProviderModel import FileProviderModel
 from UM.Resources import Resources
 from UM.Operations.OperationStack import OperationStack
 from UM.Event import CallFunctionEvent
-from UM.Settings.ContainerRegistry import ContainerRegistry
+import UM.Settings
 import UM.Settings.ContainerStack
 import UM.Settings.InstanceContainer
-from UM.Signal import Signal, signalemitter, SignalQueue
+from UM.Settings.ContainerRegistry import ContainerRegistry
+from UM.Signal import Signal, signalemitter
 from UM.Logger import Logger
 from UM.Preferences import Preferences
+from UM.View.Renderer import Renderer #For typing.
 from UM.OutputDevice.OutputDeviceManager import OutputDeviceManager
+from UM.Workspace.WorkspaceMetadataStorage import WorkspaceMetadataStorage
 from UM.i18n import i18nCatalog
-from UM.Workspace.WorkspaceFileHandler import WorkspaceFileHandler
-
-import UM.Settings
+from UM.Version import Version
 
 from typing import TYPE_CHECKING, List, Callable, Any, Optional
 if TYPE_CHECKING:
+    from UM.Backend.Backend import Backend
     from UM.Settings.ContainerStack import ContainerStack
-    from UM.Backend import Backend
     from UM.Extension import Extension
 
-##  Central object responsible for running the main event loop and creating other central objects.
-#
-#   The Application object is a central object for accessing other important objects. It is also
-#   responsible for starting the main event loop. It is passed on to plugins so it can be easily
-#   used to access objects required for those plugins.
+
 @signalemitter
 class Application:
     """Central object responsible for running the main event loop and creating other central objects.
-
     The Application object is a central object for accessing other important objects. It is also
     responsible for starting the main event loop. It is passed on to plugins so it can be easily
     used to access objects required for those plugins.
@@ -49,7 +45,6 @@ class Application:
 
     def __init__(self, name: str, version: str, api_version: str, app_display_name: str = "", build_type: str = "", is_debug_mode: bool = False, **kwargs) -> None:
         """Init method
-
         :param name: :type{string} The name of the application.
         :param version: :type{string} Version, formatted as major.minor.rev
         :param build_type: Additional version info on the type of build this is, such as "master".
@@ -188,12 +183,7 @@ class Application:
         if not hasattr(sys, "frozen"):
             Resources.addSearchPath(os.path.join(os.path.abspath(os.path.dirname(__file__)), "..", "resources"))
 
-        self._main_thread = threading.current_thread()
-
-        super().__init__()  # Call super to make multiple inheritance work.
         i18nCatalog.setApplication(self)
-
-        self._renderer = None
 
         PluginRegistry.addType("backend", self.setBackend)
         PluginRegistry.addType("logger", Logger.addLogger)
@@ -207,12 +197,6 @@ class Application:
         self._preferences.addPreference("general/disabled_plugins", "")
 
         self._controller = Controller(self)
-        self._mesh_file_handler = MeshFileHandler.getInstance()
-        self._mesh_file_handler.setApplication(self)
-        self._workspace_file_handler = WorkspaceFileHandler.getInstance()
-        self._workspace_file_handler.setApplication(self)
-        self._extensions = []
-        self._backend = None
         self._output_device_manager = OutputDeviceManager()
 
         self._operation_stack = OperationStack(self._controller)
@@ -245,12 +229,6 @@ class Application:
         UM.Settings.InstanceContainer.setContainerRegistry(self._container_registry)
         UM.Settings.ContainerStack.setContainerRegistry(self._container_registry)
 
-        self._command_line_parser = parser
-        self._parsed_command_line = parsed_command_line
-        self.parseCommandLine()
-
-        self._visible_messages = []
-        self._message_lock = threading.Lock()
         self.showMessageSignal.connect(self.showMessage)
         self.hideMessageSignal.connect(self.hideMessage)
 
@@ -313,8 +291,6 @@ class Application:
     def showToastMessage(self, title: str, message: str) -> None:
         raise NotImplementedError
 
-    ##  Get the version of the application
-    #   \returns version \type{string}
     def getVersion(self) -> str:
         """Get the version of the application"""
 
@@ -323,9 +299,6 @@ class Application:
     def getBuildType(self) -> str:
         """Get the build type of the application"""
 
-    ##  Get the buildtype of the application
-    #   \returns version \type{string}
-    def getBuildType(self) -> str:
         return self._build_type
 
     def getIsDebugMode(self) -> bool:
@@ -427,8 +400,6 @@ class Application:
 
         self._backend = backend
 
-    ##  Get the backend of the application (the program that does the heavy lifting).
-    #   \returns Backend \type{Backend}
     def getBackend(self) -> "Backend":
         """Get the backend of the application (the program that does the heavy lifting).
         :returns: Backend
@@ -436,8 +407,6 @@ class Application:
 
         return self._backend
 
-    ##  Get the PluginRegistry of this application.
-    #   \returns PluginRegistry \type{PluginRegistry}
     def getPluginRegistry(self) -> PluginRegistry:
         """Get the PluginRegistry of this application.
         :returns: PluginRegistry
@@ -445,22 +414,12 @@ class Application:
 
         return self._plugin_registry
 
-    ##  Get the Controller of this application.
-    #   \returns Controller \type{Controller}
     def getController(self) -> Controller:
         """Get the Controller of this application.
         :returns: Controller
         """
 
         return self._controller
-
-    ##  Get the MeshFileHandler of this application.
-    #   \returns MeshFileHandler \type{MeshFileHandler}
-    def getMeshFileHandler(self) -> MeshFileHandler:
-        return self._mesh_file_handler
-
-    def getWorkspaceFileHandler(self) -> WorkspaceFileHandler:
-        return self._workspace_file_handler
 
     def getOperationStack(self) -> OperationStack:
         return self._operation_stack
@@ -473,20 +432,10 @@ class Application:
         :exception NotImplementedError
         """
 
-    ##  Run the main event loop.
-    #   This method should be re-implemented by subclasses to start the main event loop.
-    #   \exception NotImplementedError
-    def run(self):
-        raise NotImplementedError("Run must be implemented by application")
-
-    ##  Return an application-specific Renderer object.
-    #   \exception NotImplementedError
-    def getRenderer(self):
         raise NotImplementedError("getRenderer must be implemented by subclasses.")
 
     def functionEvent(self, event: CallFunctionEvent) -> None:
         """Post a function event onto the event loop.
-
         This takes a CallFunctionEvent object and puts it into the actual event loop.
         :exception NotImplementedError
         """
@@ -495,7 +444,6 @@ class Application:
 
     def callLater(self, func: Callable[..., Any], *args, **kwargs) -> None:
         """Call a function the next time the event loop runs.
-
         You can't get the result of this function directly. It won't block.
         :param func: The function to call.
         :param args: The positional arguments to pass to the function.

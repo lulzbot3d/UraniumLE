@@ -4,13 +4,16 @@
 import sys
 import os
 import signal
-from typing import Dict, Optional
+from typing import List
+from typing import Any, cast, Dict, Optional
 
+from PyQt5.QtCore import Qt, QCoreApplication, QEvent, QUrl, pyqtProperty, pyqtSignal, QT_VERSION_STR, PYQT_VERSION_STR
 
-from PyQt5.QtCore import Qt, QCoreApplication, QEvent, QUrl, pyqtProperty, pyqtSignal, pyqtSlot, QLocale, QTranslator, QLibraryInfo, QT_VERSION_STR, PYQT_VERSION_STR
-from PyQt5.QtQml import QQmlApplicationEngine, QQmlComponent, QQmlContext
+from UM.FileProvider import FileProvider
+from UM.FlameProfiler import pyqtSlot
+from PyQt5.QtQml import QQmlApplicationEngine, QQmlComponent, QQmlContext, QQmlError
 from PyQt5.QtWidgets import QApplication, QSplashScreen, QMessageBox, QSystemTrayIcon
-from PyQt5.QtGui import QGuiApplication, QIcon, QPixmap, QFontMetrics
+from PyQt5.QtGui import QIcon, QPixmap, QFontMetrics, QSurfaceFormat
 from PyQt5.QtCore import QTimer
 
 from UM.Backend.Backend import Backend #For typing.
@@ -47,14 +50,11 @@ from UM.Scene.Selection import Selection #To clear the selection after clearing 
 import UM.Settings.InstanceContainer  # For version upgrade to know the version number.
 import UM.Settings.ContainerStack  # For version upgrade to know the version number.
 import UM.Preferences  # For version upgrade to know the version number.
-import UM.VersionUpgradeManager
 from UM.Mesh.ReadMeshJob import ReadMeshJob
 
 import UM.Qt.Bindings.Theme
 from UM.PluginRegistry import PluginRegistry
-MYPY = False
-if MYPY:
-    from PyQt5.QtCore import QObject
+from PyQt5.QtCore import QObject
 
 
 # Raised when we try to use an unsupported version of a dependency.
@@ -68,9 +68,10 @@ if int(major) < 5 or (int(major) == 5 and int(minor) < 9):
     raise UnsupportedVersionError("This application requires at least PyQt 5.9.0")
 
 
-##  Application subclass that provides a Qt application object.
 @signalemitter
 class QtApplication(QApplication, Application):
+    """Application subclass that provides a Qt application object."""
+
     pluginsLoaded = Signal()
     applicationRunning = Signal()
 
@@ -96,7 +97,7 @@ class QtApplication(QApplication, Application):
         os.environ["QSG_RENDER_LOOP"] = "basic"
 
         super().__init__(sys.argv, **kwargs) # type: ignore
-        self._qml_engine_initialized = False
+
         self._qml_import_paths = [] #type: List[str]
         self._main_qml = "main.qml" #type: str
         self._qml_engine = None #type: Optional[QQmlApplicationEngine]
@@ -177,15 +178,6 @@ class QtApplication(QApplication, Application):
         if not self.getIsHeadLess():
             OpenGLContext.setDefaultFormat(major_version, minor_version, profile = profile)
 
-        self._plugins_loaded = False  # Used to determine when it's safe to use the plug-ins.
-        self._main_qml = "main.qml"
-        self._engine = None
-        self._renderer = None
-        self._main_window = None
-        self._theme = None
-
-        self._shutting_down = False
-        self._qml_import_paths = []
         self._qml_import_paths.append(os.path.join(os.path.dirname(sys.executable), "qml"))
         self._qml_import_paths.append(os.path.join(self.getInstallPrefix(), "Resources", "qml"))
 
@@ -195,9 +187,6 @@ class QtApplication(QApplication, Application):
 
         Logger.log("i", "Initializing version upgrade manager ...")
         self._version_upgrade_manager = VersionUpgradeManager(self)
-
-    def isQmlEngineInitialized(self) -> bool:
-        return self._qml_engine_initialized
 
     def _displayLoadingPluginSplashMessage(self, plugin_id: Optional[str]) -> None:
         message = i18nCatalog("uranium").i18nc("@info:progress", "Loading plugins...")
@@ -281,7 +270,6 @@ class QtApplication(QApplication, Application):
         for file_name in file_names:
             if not os.path.isfile(file_name):
                 continue
-
             self._recent_files.append(QUrl.fromLocalFile(file_name))
 
         if not self.getIsHeadLess():
@@ -329,7 +317,6 @@ class QtApplication(QApplication, Application):
         i18n_catalog = i18nCatalog("uranium")
         self.showSplashMessage(i18n_catalog.i18nc("@info:progress", "Loading UI..."))
         self._qml_engine.load(self._main_qml)
-        self._qml_engine_initialized = True
         self.engineCreatedSignal.emit()
 
     recentFilesChanged = pyqtSignal()
@@ -404,29 +391,7 @@ class QtApplication(QApplication, Application):
     def setMainQml(self, path: str) -> None:
         self._main_qml = path
 
-    def initializeEngine(self):
-        # TODO: Document native/qml import trickery
-        Bindings.register()
-
-        self._engine = QQmlApplicationEngine()
-        self._engine.setOutputWarningsToStandardError(False)
-        self._engine.warnings.connect(self.__onQmlWarning)
-
-        for path in self._qml_import_paths:
-            self._engine.addImportPath(path)
-
-        if not hasattr(sys, "frozen"):
-            self._engine.addImportPath(os.path.join(os.path.dirname(__file__), "qml"))
-
-        self._engine.rootContext().setContextProperty("QT_VERSION_STR", QT_VERSION_STR)
-        self._engine.rootContext().setContextProperty("screenScaleFactor", self._screenScaleFactor())
-
-        self.registerObjects(self._engine)
-
-        self._engine.load(self._main_qml)
-        self.engineCreatedSignal.emit()
-    
-    def exec_(self, *args, **kwargs):
+    def exec_(self, *args: Any, **kwargs: Any) -> None:
         self.applicationRunning.emit()
         super().exec_(*args, **kwargs)
 
@@ -470,18 +435,7 @@ class QtApplication(QApplication, Application):
         if not self._renderer:
             self._renderer = QtRenderer()
 
-        return self._renderer
-
-    @classmethod
-    def addCommandLineOptions(self, parser, parsed_command_line = {}):
-        super().addCommandLineOptions(parser, parsed_command_line = parsed_command_line)
-        parser.add_argument("--disable-textures",
-                            dest="disable-textures",
-                            action="store_true",
-                            default=False,
-                            help="Disable Qt texture loading as a workaround for certain crashes.")
-        parser.add_argument("-qmljsdebugger",
-                            help="For Qt's QML debugger compatibility")
+        return cast(QtRenderer, self._renderer)
 
     mainWindowChanged = Signal()
 
@@ -496,7 +450,6 @@ class QtApplication(QApplication, Application):
             self._main_window = window
             if self._main_window is not None:
                 self._main_window.windowStateChanged.connect(self._onMainWindowStateChanged)
-
             self.mainWindowChanged.emit()
 
     def setVisible(self, visible: bool) -> None:
@@ -568,26 +521,17 @@ class QtApplication(QApplication, Application):
         else:
             return False
 
-    ##  Get the backend of the application (the program that does the heavy lifting).
-    #   The backend is also a QObject, which can be used from qml.
-    #   \returns Backend \type{Backend}
     @pyqtSlot(result = "QObject*")
     def getBackend(self) -> Backend:
         """Get the backend of the application (the program that does the heavy lifting).
-
         The backend is also a QObject, which can be used from qml.
         """
 
         return self._backend
 
-    ##  Property used to expose the backend
-    #   It is made static as the backend is not supposed to change during runtime.
-    #   This makes the connection between backend and QML more reliable than the pyqtSlot above.
-    #   \returns Backend \type{Backend}
     @pyqtProperty("QVariant", constant = True)
     def backend(self) -> Backend:
         """Property used to expose the backend
-
         It is made static as the backend is not supposed to change during runtime.
         This makes the connection between backend and QML more reliable than the pyqtSlot above.
         :returns: Backend :type{Backend}
@@ -693,7 +637,6 @@ class QtApplication(QApplication, Application):
     @classmethod
     def getInstance(cls, *args, **kwargs) -> "QtApplication":
         """Gets the instance of this application.
-
         This is just to further specify the type of Application.getInstance().
         :return: The instance of this application.
         """
@@ -719,127 +662,14 @@ class QtApplication(QApplication, Application):
     def applicationDisplayName(self) -> str:
         return self.getApplicationDisplayName()
 
-        # Else, try and get the current language from preferences
-        lang = Preferences.getInstance().getValue("general/language")
-        if lang:
-            try:
-                return Resources.getPath(Resources.i18n, lang, "LC_MESSAGES", file_name + ".qm")
-            except FileNotFoundError:
-                pass
 
 class _QtFunctionEvent(QEvent):
     """Internal.
-
     Wrapper around a FunctionEvent object to make Qt handle the event properly.
     """
 
-        # First, try and find a directory for any of the provided languages
-        for lang in locale.uiLanguages():
-            try:
-                return Resources.getPath(Resources.i18n, lang, "LC_MESSAGES", file_name + ".qm")
-            except FileNotFoundError:
-                pass
-
-        # If that fails, see if we can extract a language code from the
-        # preferred language, regardless of the country code. This will turn
-        # "en-GB" into "en" for example.
-        lang = locale.uiLanguages()[0]
-        lang = lang[0:lang.find("-")]
-        for subdirectory in os.path.listdir(Resources.getPath(Resources.i18n)):
-            if subdirectory == "en_7S": #Never automatically go to Pirate.
-                continue
-            if not os.path.isdir(Resources.getPath(Resources.i18n, subdirectory)):
-                continue
-            if subdirectory.startswith(lang + "_"): #Only match the language code, not the country code.
-                return Resources.getPath(Resources.i18n, lang, "LC_MESSAGES", file_name + ".qm")
-
-        return None
-
-    def preventComputerFromSleeping(self, prevent):
-        """
-        Function used to prevent the computer from going into sleep mode.
-        :param prevent: True = Prevent the system from going to sleep from this point on.
-        :param prevent: False = No longer prevent the system from going to sleep.
-        """
-        Logger.log("d", "Prevent computer from sleeping? " + str(prevent))
-
-        if sys.platform.startswith('win'): # Windows
-            try:
-                ES_CONTINUOUS = 0x80000000
-                ES_SYSTEM_REQUIRED = 0x00000001
-                ES_AWAYMODE_REQUIRED = 0x00000040
-                #SetThreadExecutionState returns 0 when failed, which is ignored. The function should be supported from windows XP and up.
-                if prevent:
-                    # For Vista and up we use ES_AWAYMODE_REQUIRED to prevent a print from failing if the PC does go to sleep
-                    # As it's not supported on XP, we catch the error and fallback to using ES_SYSTEM_REQUIRED only
-                    if ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_AWAYMODE_REQUIRED) == 0:
-                        ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED)
-                else:
-                    ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS)
-            except:
-                Logger.log("w", "Failed to prevent from sleeping")
-                pass
-        elif sys.platform.startswith('darwin'): # Mac OS
-            try:
-                from ctypes import cdll, c_void_p, c_uint32, POINTER, byref
-                from CoreFoundation import CFStringCreateWithCString, kCFStringEncodingASCII
-                from objc import pyobjc_id
-
-                libIOKit = cdll.LoadLibrary('/System/Library/Frameworks/IOKit.framework/IOKit')
-                libIOKit.IOPMAssertionCreateWithName.argtypes = [c_void_p, c_uint32, c_void_p, POINTER(c_uint32)]
-                libIOKit.IOPMAssertionRelease.argtypes = [c_uint32]
-
-                def CFSTR(py_string):
-                    return CFStringCreateWithCString(None, py_string, kCFStringEncodingASCII)
-
-                def raw_ptr(pyobjc_string):
-                    return pyobjc_id(pyobjc_string.nsstring())
-
-                def IOPMAssertionCreateWithName(assert_name, assert_level, assert_msg):
-                    assertID = c_uint32(0)
-                    p_assert_name = raw_ptr(CFSTR(assert_name))
-                    p_assert_msg = raw_ptr(CFSTR(assert_msg))
-                    errcode = libIOKit.IOPMAssertionCreateWithName(p_assert_name, assert_level, p_assert_msg, byref(assertID))
-                    return (errcode, assertID)
-
-                IOPMAssertionRelease = libIOKit.IOPMAssertionRelease
-
-                kIOPMAssertionTypeNoIdleSleep = b"NoIdleSleepAssertion"
-                kIOPMAssertionLevelOn = 255
-                reason = b"cura-lulzbot is printing"
-
-                if prevent:
-                    errcode, self.assertID = IOPMAssertionCreateWithName(kIOPMAssertionTypeNoIdleSleep, kIOPMAssertionLevelOn, reason)
-                else:
-                    errcode = IOPMAssertionRelease(self.assertID)
-                    self.assertID = 0
-            except:
-                Logger.log("w", "Failed to prevent from sleeping")
-                pass
-        else: # Linux
-            import os
-            import subprocess
-            try:
-                id = self.getMainWindow().winId()
-                if os.path.isfile("/usr/bin/xdg-screensaver"):
-                    try:
-                        cmd = ['xdg-screensaver', 'suspend' if prevent else 'resume', str(int(id))]
-                        subprocess.call(cmd)
-                    except:
-                        Logger.log("w", "Call to /usr/bin/xdg-screensaver failed, unable to prevent sleep")
-                        pass
-                else:
-                    Logger.log("w", "No /usr/bin/xdg-screensaver found, unable to prevent sleep")
-            except:
-                Logger.log("w", "Failed to prevent from sleeping")
-                pass
-##  Internal.
-#
-#   Wrapper around a FunctionEvent object to make Qt handle the event properly.
-class _QtFunctionEvent(QEvent):
     QtFunctionEvent = QEvent.User + 1
 
     def __init__(self, fevent: QEvent) -> None:
         super().__init__(self.QtFunctionEvent)
         self._function_event = fevent
-

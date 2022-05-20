@@ -1,32 +1,33 @@
-# Copyright (c) 2017 Ultimaker B.V.
-# Uranium is released under the terms of the LGPLv3 or higher.
 from typing import Optional, List, Set, Any
 
-from PyQt5.QtCore import QObject, pyqtProperty, pyqtSignal
+from PyQt5.QtCore import QObject, QTimer, pyqtProperty, pyqtSignal
 from PyQt5.QtQml import QQmlPropertyMap
 from UM.FlameProfiler import pyqtSlot
 
 from UM.Logger import Logger
 from UM.Application import Application
+from UM.Settings.ContainerStack import ContainerStack
 from UM.Settings.SettingFunction import SettingFunction
 from UM.Settings.ContainerRegistry import ContainerRegistry
 from UM.Settings.DefinitionContainer import DefinitionContainer
 from UM.Settings.InstanceContainer import InstanceContainer
-from UM.Settings.Interfaces import PropertyEvaluationContext
+from UM.Settings.Interfaces import PropertyEvaluationContext, ContainerInterface
 from UM.Settings.SettingInstance import InstanceState
 from UM.Settings.SettingRelation import RelationType
 from UM.Settings.SettingDefinition import SettingDefinition
+from UM.Settings.Validator import Validator
 
-##  This class provides the value and change notifications for the properties of a single setting
-#
-#   Since setting values and other properties are provided by a stack, we need some way to
-#   query the stack from QML to provide us with those values. This class takes care of that.
-#
-#   This class provides the property values through QObject dynamic properties so that they
-#   are available from QML.
+
 class SettingPropertyProvider(QObject):
-    def __init__(self, parent = None, *args, **kwargs):
-        super().__init__(parent = parent, *args, **kwargs)
+    """This class provides the value and change notifications for the properties of a single setting
+    Since setting values and other properties are provided by a stack, we need some way to
+    query the stack from QML to provide us with those values. This class takes care of that.
+    This class provides the property values through QObject dynamic properties so that they
+    are available from QML.
+    """
+
+    def __init__(self, parent = None) -> None:
+        super().__init__(parent = parent)
 
         self._property_map = QQmlPropertyMap(self)
 
@@ -84,12 +85,20 @@ class SettingPropertyProvider(QObject):
     containerStackIdChanged = pyqtSignal()
     """Emitted when the containerStackId property changes."""
 
-    ##  Emitted when the containerStackId property changes.
-    containerStackIdChanged = pyqtSignal()
-    ##  The ID of the container stack we should query for property values.
     @pyqtProperty(str, fset = setContainerStackId, notify = containerStackIdChanged)
-    def containerStackId(self):
-        return self._stack_id
+    def containerStackId(self) -> str:
+        """The ID of the container stack we should query for property values."""
+
+        if self._stack:
+            return self._stack.id
+
+        return ""
+
+    containerStackChanged = pyqtSignal()
+
+    @pyqtProperty(QObject, fset=setContainerStack, notify=containerStackChanged)
+    def containerStack(self) -> Optional[ContainerInterface]:
+        return self._stack
 
     removeUnusedValueChanged = pyqtSignal()
 
@@ -110,11 +119,13 @@ class SettingPropertyProvider(QObject):
             self._updateDelayed()
             self.watchedPropertiesChanged.emit()
 
-    ##  Emitted when the watchedProperties property changes.
     watchedPropertiesChanged = pyqtSignal()
-    ##  A list of property names that should be watched for changes.
-    @pyqtProperty("QVariantList", fset = setWatchedProperties, notify = watchedPropertiesChanged)
-    def watchedProperties(self):
+    """Emitted when the watchedProperties property changes."""
+
+    @pyqtProperty("QStringList", fset = setWatchedProperties, notify = watchedPropertiesChanged)
+    def watchedProperties(self) -> List[str]:
+        """A list of property names that should be watched for changes."""
+
         return self._watched_properties
 
     def setKey(self, key: str) -> None:
@@ -126,11 +137,13 @@ class SettingPropertyProvider(QObject):
             self._updateDelayed()
             self.keyChanged.emit()
 
-    ##  Emitted when the key property changes.
     keyChanged = pyqtSignal()
-    ##  The key of the setting that we should provide property values for.
+    """Emitted when the key property changes."""
+
     @pyqtProperty(str, fset = setKey, notify = keyChanged)
     def key(self):
+        """The key of the setting that we should provide property values for."""
+
         return self._key
 
     propertiesChanged = pyqtSignal()
@@ -154,20 +167,22 @@ class SettingPropertyProvider(QObject):
 
     stackLevelChanged = pyqtSignal()
 
-    ##  At what levels in the stack does the value(s) for this setting occur?
     @pyqtProperty("QVariantList", notify = stackLevelChanged)
     def stackLevels(self):
+        """At what levels in the stack does the value(s) for this setting occur?"""
+
         if not self._stack:
             return [-1]
         return self._stack_levels
 
-    ##  Set the value of a property.
-    #
-    #   \param stack_index At which level in the stack should this property be set?
-    #   \param property_name The name of the property to set.
-    #   \param property_value The value of the property to set.
     @pyqtSlot(str, "QVariant")
     def setPropertyValue(self, property_name, property_value):
+        """Set the value of a property.
+        :param stack_index: At which level in the stack should this property be set?
+        :param property_name: The name of the property to set.
+        :param property_value: The value of the property to set.
+        """
+
         if not self._stack or not self._key:
             return
 
@@ -186,6 +201,12 @@ class SettingPropertyProvider(QObject):
                     old_value = self.getPropertyValue(property_name, index)
 
                     key_state = str(self._stack.getContainer(self._store_index).getProperty(self._key, "state"))
+
+                    # The old_value might be a SettingFunction, like round(), sum(), etc.
+                    #  In this case retrieve the value to compare
+                    if isinstance(old_value, SettingFunction):
+                        old_value = old_value(self._stack)
+
                     # sometimes: old value is int, property_value is float
                     # (and the container is not removed, so the revert button appears)
                     if str(old_value) == str(property_value) and key_state != "InstanceState.Calculated":
@@ -204,13 +225,15 @@ class SettingPropertyProvider(QObject):
 
         container.setProperty(self._key, property_name, property_value)
 
-    ##  Manually request the value of a property.
-    #   The most notable difference with the properties is that you have more control over at what point in the stack
-    #   you want the setting to be retrieved (instead of always taking the top one)
-    #   \param property_name The name of the property to get the value from.
-    #   \param stack_level the index of the container to get the value from.
     @pyqtSlot(str, int, result = "QVariant")
-    def getPropertyValue(self, property_name, stack_level):
+    def getPropertyValue(self, property_name: str, stack_level: int) -> Any:
+        """Manually request the value of a property.
+        The most notable difference with the properties is that you have more control over at what point in the stack
+        you want the setting to be retrieved (instead of always taking the top one)
+        :param property_name: The name of the property to get the value from.
+        :param stack_level: the index of the container to get the value from.
+        """
+
         try:
             # Because we continue to count if there are multiple linked stacks, we need to check what stack is targeted
             current_stack = self._stack
@@ -290,9 +313,7 @@ class SettingPropertyProvider(QObject):
         self._value_used = relation_count == 0 or (relation_count > 0 and value_used_count != 0)
         return self._value_used
 
-    # protected:
-
-    def _onPropertiesChanged(self, key, property_names):
+    def _onPropertiesChanged(self, key: str, property_names: List[str]) -> None:
         if key != self._key:
             if key in self._relations:
                 self._value_used = None

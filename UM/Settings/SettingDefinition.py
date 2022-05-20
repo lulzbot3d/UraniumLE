@@ -169,7 +169,7 @@ class SettingDefinition:
     def serialize(self) -> str:
         pass
 
-   def getAllKeys(self) -> Set[str]:
+    def getAllKeys(self) -> Set[str]:
         """Gets the key of this setting definition and of all its descendants.
 
         :return: A set of the key in this definition and all its descendants.

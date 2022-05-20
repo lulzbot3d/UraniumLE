@@ -1,7 +1,7 @@
 # Copyright (c) 2021 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
 
-from UM.Application import Application
+#from UM.Application import Application
 from UM.Signal import Signal, signalemitter
 from UM.Logger import Logger
 from enum import IntEnum
