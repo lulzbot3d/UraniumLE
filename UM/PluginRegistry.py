@@ -500,7 +500,7 @@ class PluginRegistry(QObject):
                     self._addPluginObject(plugin_object, plugin_id, plugin_type)
 
             self._plugins[plugin_id] = plugin
-            self.addActivePlugin(plugin_id)
+            self.enablePlugin(plugin_id)
             Logger.log("i", "Loaded plugin %s", plugin_id)
 
         except Exception:
