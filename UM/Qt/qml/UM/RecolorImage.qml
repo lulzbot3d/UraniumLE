@@ -22,8 +22,15 @@ Item
         sourceSize.height: parent.height
     }
 
+    ColorOverlay {
+        id: overlay
+        anchors.fill: parent
+        source: img
+        color: "#fff"
+    }
 
-    ShaderEffect {
+
+    /*ShaderEffect {
         id: shader;
         anchors.fill: parent;
 
@@ -76,5 +83,5 @@ Item
                 frag_color = vec4(color.r * alpha, color.g * alpha, color.b * alpha, alpha);
             }
             "
-    }
+    }*/
 }
