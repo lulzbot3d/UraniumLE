@@ -862,30 +862,44 @@ class SceneNode:
         for child in self._children:
             child._transformChanged()
 
-    def _updateTransformation(self):
-        #self.LOG_VECTOR( "before decompose:  self._mirror", self._mirror )
-        scale, shear, euler_angles, translation, mirror = self._transformation.decompose()
-        self._position = translation
-        self._scale = scale
-        self._shear = shear
-        self._mirror = mirror
-        #self.LOG_VECTOR( "after decompose:  self._mirror", self._mirror )
-        orientation = Quaternion()
-        euler_angle_matrix = Matrix()
-        euler_angle_matrix.setByEuler(euler_angles.x, euler_angles.y, euler_angles.z)
-        orientation.setByMatrix(euler_angle_matrix)
-        self._orientation = orientation
+    # def _updateTransformation(self):
+    #     #self.LOG_VECTOR( "before decompose:  self._mirror", self._mirror )
+    #     scale, shear, euler_angles, translation, mirror = self._transformation.decompose()
+    #     self._position = translation
+    #     self._scale = scale
+    #     self._shear = shear
+    #     self._mirror = mirror
+    #     #self.LOG_VECTOR( "after decompose:  self._mirror", self._mirror )
+    #     orientation = Quaternion()
+    #     euler_angle_matrix = Matrix()
+    #     euler_angle_matrix.setByEuler(euler_angles.x, euler_angles.y, euler_angles.z)
+    #     orientation.setByMatrix(euler_angle_matrix)
+    #     self._orientation = orientation
+    #     if self._parent:
+    #         self._world_transformation = self._parent.getWorldTransformation().multiply(self._transformation, copy = True)
+    #     else:
+    #         self._world_transformation = self._transformation
+
+    #     world_scale, world_shear, world_euler_angles, world_translation, world_mirror = self._world_transformation.decompose()
+    #     self._derived_position = world_translation
+    #     self._derived_scale = world_scale
+
+    #     world_euler_angle_matrix = Matrix()
+    #     world_euler_angle_matrix.setByEuler(world_euler_angles.x, world_euler_angles.y, world_euler_angles.z)
+    #     self._derived_orientation.setByMatrix(world_euler_angle_matrix)
+
+    def _updateLocalTransformation(self) -> None:
+        self._position, euler_angle_matrix, self._scale, self._shear = self._transformation.decompose()
+
+        self._orientation.setByMatrix(euler_angle_matrix)
+
+    def _updateWorldTransformation(self) -> None:
         if self._parent:
-            self._world_transformation = self._parent.getWorldTransformation().multiply(self._transformation, copy = True)
+            self._world_transformation = self._parent.getWorldTransformation().multiply(self._transformation)
         else:
             self._world_transformation = self._transformation
 
-        world_scale, world_shear, world_euler_angles, world_translation, world_mirror = self._world_transformation.decompose()
-        self._derived_position = world_translation
-        self._derived_scale = world_scale
-
-        world_euler_angle_matrix = Matrix()
-        world_euler_angle_matrix.setByEuler(world_euler_angles.x, world_euler_angles.y, world_euler_angles.z)
+        self._derived_position, world_euler_angle_matrix, self._derived_scale, world_shear = self._world_transformation.decompose()
         self._derived_orientation.setByMatrix(world_euler_angle_matrix)
 
     def _updateTransformation(self) -> None:
