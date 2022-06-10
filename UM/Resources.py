@@ -23,7 +23,6 @@ class UnsupportedStorageTypeError(Exception):
     pass
 
 
-##  Class to look up any form of resource used by Uranium or an application using Uranium
 class Resources:
     """Class to look up any form of resource used by Uranium or an application using Uranium"""
 
@@ -178,7 +177,6 @@ class Resources:
         if cls.__config_storage_path is None or cls.__data_storage_path is None:
             cls.__initializeStoragePaths()
 
-        path = None
         # Special casing for Linux, since configuration should be stored in ~/.config but data should be stored in ~/.local/share
         if resource_type == cls.Preferences:
             path = cls.__config_storage_path
@@ -363,7 +361,6 @@ class Resources:
     @classmethod
     def _getConfigStorageRootPath(cls) -> str:
         # Returns the path where we store different versions of app configurations
-        config_path = None
         if Platform.isWindows():
             config_path = os.getenv("APPDATA")
             if not config_path: # Protect if the getenv function returns None (it should never happen)
@@ -443,7 +440,6 @@ class Resources:
         if cls.ApplicationVersion == "master" or cls.ApplicationVersion == "unknown":
             storage_dir_name = os.path.join(cls.ApplicationIdentifier, cls.ApplicationVersion)
         else:
-            from UM.Version import Version
             version = Version(cls.ApplicationVersion)
             storage_dir_name = os.path.join(cls.ApplicationIdentifier, "%s.%s" % (version.getMajor(), version.getMinor()))
 
@@ -607,8 +603,6 @@ class Resources:
                 if isinstance(match_dir_version_list[0]["dir_name"], str):
                     latest_config_path = os.path.join(search_path, match_dir_version_list[0]["dir_name"])  # type: ignore
 
-                    latest_config_path = os.path.join(search_path, dir_name)
-                    break
             if latest_config_path is not None:
                 break
 
@@ -637,14 +631,14 @@ class Resources:
     def addExpectedDirNameInData(cls, dir_name: str) -> None:
         cls.__expected_dir_names_in_data.append(dir_name)
 
-    __expected_dir_names_in_data = []  # type: List[str]
+    __expected_dir_names_in_data: List[str] = []
 
-    __config_storage_path = None    # type: str
-    __data_storage_path = None      # type: str
-    __cache_storage_path = None     # type: str
+    __config_storage_path: str = None
+    __data_storage_path: str = None
+    __cache_storage_path: str = None
 
-    __paths = []    # type: List[str]
-    __types = {
+    __paths: List[str] = []
+    __types: Dict[str, str] = {
         Resources: "",
         Preferences: "",
         Cache: "",
@@ -659,8 +653,8 @@ class Resources:
         Plugins: "plugins",
         BundledPackages: "bundled_packages",
         Texts: "texts",
-    } #type: Dict[int, str]
-    __types_storage = {
+    }
+    __types_storage: Dict[int, str] = {
         Resources: "",
         Preferences: "",
         Cache: "",
@@ -669,4 +663,4 @@ class Resources:
         ContainerStacks: "stacks",
         Themes: "themes",
         Plugins: "plugins",
-    } #type: Dict[int, str]
+    }

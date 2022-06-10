@@ -10,13 +10,7 @@ import stat  # For setting file permissions correctly;
 import time
 import types
 import zipfile
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TYPE_CHECKING
-import sys
-
-from UM.Preferences import Preferences
-from UM.PluginError import PluginNotFoundError, InvalidMetaDataError
-from UM.Logger import Logger
-from typing import Callable, Any, Optional, types, Dict, List
+from typing import Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 from PyQt5.QtCore import QCoreApplication
 from PyQt5.QtCore import QObject, pyqtSlot, QUrl, pyqtProperty, pyqtSignal
@@ -28,13 +22,10 @@ from UM.Platform import Platform
 from UM.PluginError import PluginNotFoundError, InvalidMetaDataError
 from UM.PluginObject import PluginObject  # For type hinting
 from UM.Resources import Resources
-from UM.PluginObject import PluginObject  # For type hinting
-from UM.Platform import Platform
 from UM.Trust import Trust, TrustBasics, TrustException
 from UM.Version import Version
-
 from UM.i18n import i18nCatalog
-import json
+
 i18n_catalog = i18nCatalog("uranium")
 
 if TYPE_CHECKING:
@@ -97,7 +88,7 @@ class PluginRegistry(QObject):
         self._checked_plugin_ids: List[str] = []
         self._distrusted_plugin_ids: List[str] = []
         self._trust_checker: Optional[Trust] = None
-        self._changed_activated_plugins_current_session: Set[str] = set()
+        # self._changed_activated_plugins_current_session: Set[str] = set()
 
     pluginRemoved = pyqtSignal(str)
 
@@ -222,17 +213,17 @@ class PluginRegistry(QObject):
                 return False
         return True
 
-    pluginsEnabledOrDisabledChanged = pyqtSignal()
+    # pluginsEnabledOrDisabledChanged = pyqtSignal()
 
     #   Remove plugin from the list of enabled plugins and save to preferences:
     def disablePlugin(self, plugin_id: str) -> None:
         if plugin_id not in self._disabled_plugins:
             self._disabled_plugins.append(plugin_id)
-            if plugin_id not in self._changed_activated_plugins_current_session:
-                self._changed_activated_plugins_current_session.add(plugin_id)
-            else:
-                self._changed_activated_plugins_current_session.remove(plugin_id)
-            self.pluginsEnabledOrDisabledChanged.emit()
+            # if plugin_id not in self._changed_activated_plugins_current_session:
+            #     self._changed_activated_plugins_current_session.add(plugin_id)
+            # else:
+            #     self._changed_activated_plugins_current_session.remove(plugin_id)
+            # self.pluginsEnabledOrDisabledChanged.emit()
         self._savePluginData()
 
     #   Add plugin to the list of enabled plugins and save to preferences:
@@ -276,10 +267,10 @@ class PluginRegistry(QObject):
     def getDisabledPlugins(self) -> List[str]:
         return self._disabled_plugins
 
-    def getCurrentSessionActivationChangedPlugins(self) -> Set[str]:
-        """Returns a set a plugins whom have changed their activation status in the current session, toggled between
-        en-/disabled after the last start-up status"""
-        return self._changed_activated_plugins_current_session
+    # def getCurrentSessionActivationChangedPlugins(self) -> Set[str]:
+    #     """Returns a set a plugins whom have changed their activation status in the current session, toggled between
+    #     en-/disabled after the last start-up status"""
+    #     return self._changed_activated_plugins_current_session
 
     #   Get a list of installed plugins:
     #   NOTE: These are plugins which have already been registered. This list is
@@ -370,7 +361,7 @@ class PluginRegistry(QObject):
             result = self._locatePlugin(plugin_id, plugin_dir)
             if result:
                 is_bundled = True
-                break
+                # break
         self._bundled_plugin_cache[plugin_id] = is_bundled
         return is_bundled
 
@@ -835,7 +826,7 @@ class PluginRegistry(QObject):
             Logger.log("w", "Could not find plugin %s", plugin_id)
             return False
 
-        meta_data = None
+        # meta_data = None
 
         location = None
         for folder in self._plugin_locations:
@@ -957,10 +948,11 @@ class PluginRegistry(QObject):
 
         if not plugin:
             return None
-        file_name = self._plugins[plugin_id].__file__
-        if file_name is None:
-            file_name = ""
-        path = os.path.dirname(file_name)
+        # file_name = self._plugins[plugin_id].__file__
+        # if file_name is None:
+        #     file_name = ""
+        # path = os.path.dirname(file_name)
+        path = os.path.dirname(self._plugins[plugin_id].__file__)
         if os.path.isdir(path):
             return path
 

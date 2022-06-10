@@ -47,7 +47,6 @@ MimeTypeDatabase.addMimeType(
 #
 @signalemitter
 class InstanceContainer(QObject, ContainerInterface, PluginObject):
-    Version = 2
 
     Version = 4
     version_regex = re.compile("\nversion ?= ?(\d+)")
@@ -249,39 +248,27 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
 
         return self._metadata.get(entry, default)
 
-    ##  Add a new entry to the metadata of this container.
-    #
-    #   \param key \type{str} The key of the new entry.
-    #   \param value The value of the new entry.
-    #
-    #   \note This does nothing if the key already exists.
-    def addMetaDataEntry(self, key, value):
-        if key not in self._metadata:
+    
+    def setMetaDataEntry(self, key: str, value: Any) -> None:
+        """Set a metadata entry to a certain value.
+        
+        :param key: The key of the metadata entry to set.
+        :param value: The new value of the metadata.
+        
+        :note This does nothing if the key is not already added to the metadata.
+        """
+        
+        if key not in self._metadata or self._metadata[key] != value:
             self._metadata[key] = value
             self._dirty = True
             self.metaDataChanged.emit(self)
-        else:
-            Logger.log("w", "Meta data with key %s was already added.", key)
-
-    ##  Set a metadata entry to a certain value.
-    #
-    #   \param key The key of the metadata entry to set.
-    #   \param value The new value of the metadata.
-    #
-    #   \note This does nothing if the key is not already added to the metadata.
-    def setMetaDataEntry(self, key, value):
-        if key in self._metadata:
-            self._metadata[key] = value
-            self._dirty = True
-            self.metaDataChanged.emit(self)
-        else:
-            Logger.log("w", "Meta data with key %s was not found. Unable to change.", key)
-
+        
+    
     ##  Check if this container is dirty, that is, if it changed from deserialization.
-    def isDirty(self):
+    def isDirty(self) -> bool:
         return self._dirty
 
-    def setDirty(self, dirty):
+    def setDirty(self, dirty: bool) -> None:
         if self._read_only:
             Logger.log("w", "Tried to set dirty on read-only object.")
         else:
@@ -320,9 +307,9 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
         # **WITHOUT** applying the cached values. This way there won't be any property changed signals when we are
         # just checking if a property exists.
         #
-        self._instantiateMissingSettingInstancesInCache()
         if self._cached_values and key in self._cached_values and property_name == "value":
             return True
+        self._instantiateMissingSettingInstancesInCache()
         return key in self._instances and hasattr(self._instances[key], property_name)
 
     def _instantiateMissingSettingInstancesInCache(self) -> None:
@@ -336,12 +323,12 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
         for key, value in self._cached_values.items():
             if key not in self._instances:
                 if not self.getDefinition():
-                    Logger.log("w", "Tried to set value of setting %s that has no SettingInstance in the InstanceContainer %s and the InstanceContainer has no SettingDefinition either", key, self.getName())
+                    Logger.log("w", "Tried to set value of setting %s that has no instance in the container %s and the container has no definition", key, self.getName())
                     return
 
                 setting_definition = self.getDefinition().findDefinitions(key = key)
                 if not setting_definition:
-                    Logger.log("w", "Tried to set value of the setting %s, but it has no SettingInstance in this InstanceContainer %s or its SettingDefinition %s", key, self.getName(), self.getDefinition().getName())
+                    Logger.log("w", "Tried to set value of setting %s that has no instance in this container %s or its definition %s", key, self.getName(), self.getDefinition().getName())
                     return
 
                 instance = SettingInstance(setting_definition[0], self)
@@ -389,7 +376,8 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
             instance.propertyChanged.connect(self.propertyChanged)
             self._instances[instance.definition.key] = instance
 
-        self._instances[key].setProperty(property_name, property_value, container)
+        # Do not emit any signal if the value is set from cache
+        self._instances[key].setProperty(property_name, property_value, container, emit_signals = not set_from_cache)
 
         if not set_from_cache:
             self.setDirty(True)
@@ -492,11 +480,10 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
         return stream.getvalue()
 
     @classmethod
-    def _readAndValidateSerialized(cls, serialized: str) -> configparser.ConfigParser:
+    def _readAndValidateSerialized(cls, serialized: str) -> FastConfigParser:
         # Disable comments in the ini files, so text values can start with a ;
         # without being removed as a comment
-        parser = configparser.ConfigParser(interpolation=None, comment_prefixes = ())
-        parser.read_string(serialized)
+        parser = FastConfigParser(serialized)
 
         has_general = "general" in parser
         has_version = has_general and "version" in parser["general"]
@@ -620,8 +607,7 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
     @classmethod
     def deserializeMetadata(cls, serialized: str, container_id: str) -> List[Dict[str, Any]]:
         serialized = cls._updateSerialized(serialized) #Update to most recent version.
-        parser = configparser.ConfigParser(interpolation = None)
-        parser.read_string(serialized)
+        parser = FastConfigParser(serialized)
 
         metadata = {
             "id": container_id,
@@ -721,7 +707,7 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
         instance.updateRelations(self)
 
     ##  Update all instances from this container.
-    def update(self):
+    def update(self) -> None:
         self._instantiateCachedValues()
         for key, instance in self._instances.items():
             instance.propertyChanged.emit(key, "value")
@@ -734,10 +720,6 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
 
     ##  Get the DefinitionContainer used for new instance creation.
     def getDefinition(self) -> DefinitionContainerInterface:
-        definitions = _containerRegistry.findDefinitionContainers(id = self._metadata["definition"])
-        if not definitions:
-            raise DefinitionNotFoundError("Could not find definition {0} required for instance {1}".format(self._metadata["definition"], self.getId()))
-        return definitions[0]
 
         if self._definition is None:
             definitions = _containerRegistry.findDefinitionContainers(id = self._metadata.get("definition", ""))
@@ -754,6 +736,7 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
         """
 
         self._metadata["definition"] = definition_id
+        self._definition = None
 
     def __lt__(self, other: object) -> bool:
         if type(other) != type(self):

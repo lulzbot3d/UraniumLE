@@ -32,10 +32,11 @@ class DefinitionPropertyType(enum.IntEnum):
     Function = 4  ## Value is a python function. It is passed to SettingFunction's constructor which will parse and analyze it.
 
 
-## Conversion of string to float.
 def _toFloatConversion(value: str) -> float:
-    ## Ensure that all , are replaced with . (so they are seen as floats)
+    """Conversion of string to float."""
+    
     value = value.replace(",", ".")
+    """Ensure that all , are replaced with . (so they are seen as floats)"""
 
     def stripLeading0(matchobj: Match[str]) -> str:
         return matchobj.group(0).lstrip("0")
@@ -43,7 +44,7 @@ def _toFloatConversion(value: str) -> float:
     ## Literal eval does not like "02" as a value, but users see this as "2".
     ## We therefore look numbers with leading "0", provided they are not used in variable names
     ## example: "test02 * 20" should not be changed, but "test * 02 * 20" should be changed (into "test * 2 * 20")
-    regex_pattern = '(?<!\.|\w|\d)0+(\d+)'
+    regex_pattern = r"(?<!\.|\w|\d)0+(\d+)"
     value = re.sub(regex_pattern, stripLeading0, value)
 
     try:
@@ -51,6 +52,15 @@ def _toFloatConversion(value: str) -> float:
     except:
         return 0
 
+
+def _toIntConversion(value):
+    """Conversion from string to integer.
+    :param value: The string representation of an integer.
+    """
+    try:
+        return ast.literal_eval(value)
+    except SyntaxError:
+        return 0
 
 ##  Defines a single Setting with its properties.
 #
@@ -114,19 +124,32 @@ class SettingDefinition:
 
         super().__setattr__(name, value)
 
-    ##  For Pickle support.
-    #
-    #   This should be identical to Pickle's default behaviour but the default
-    #   behaviour doesn't combine well with a non-default __getattr__.
+    def __hash__(self):
+        """Ensure that the SettingDefinition is hashable, so it can be used in a set."""
+        return hash(str(self))
+
+    
     def __getstate__(self):
+        """For Pickle support.
+        This should be identical to Pickle's default behaviour but the default
+        behaviour doesn't combine well with a non-default __getattr__.
+        """
         return self.__dict__
 
-    ##  For Pickle support.
-    #
-    #   This should be identical to Pickle's default behaviour but the default
-    #   behaviour doesn't combine well with a non-default __getattr__.
+    
     def __setstate__(self, state):
+        """For Pickle support.
+    
+        This should be identical to Pickle's default behaviour but the default
+        behaviour doesn't combine well with a non-default __getattr__.
+        """
         self.__dict__.update(state)
+        # For 4.0 we added the _all_keys property, but the pickling fails to restore this.
+        # This is just there to prevent issues for developers, since only releases ignore caches.
+        # If you're reading this after that. Remove this.
+        if not hasattr(self, "_all_keys"):
+            self._all_keys = set()
+
 
     ##  The key of this setting.
     #
@@ -262,27 +285,37 @@ class SettingDefinition:
         # First check for translated labels.
         keywords = kwargs.copy()
         if "i18n_label" in keywords:
-            try:
-                property_value = getattr(self, "label")
-            except AttributeError:
-                # If we do not have the attribute, we do not match
+            # try:
+            #     property_value = getattr(self, "label")
+            # except AttributeError:
+            #     # If we do not have the attribute, we do not match
+            if not self._matches1l8nProperty("label", keywords["i18n_label"], keywords.get("i18n_catalog")):
                 return False
 
-            if "i18n_catalog" in keywords:
-                catalog = keywords["i18n_catalog"]
-                if catalog:
-                    property_value = catalog.i18nc(self._key + " label", property_value)
+            # if "i18n_catalog" in keywords:
+            #     catalog = keywords["i18n_catalog"]
+            #     if catalog:
+            #         property_value = catalog.i18nc(self._key + " label", property_value)
+            # value = keywords["i18n_label"]
 
-            value = keywords["i18n_label"]
             del keywords["i18n_label"]
-            if not isinstance(value, str):
-                return False
-            if value != property_value:
-                if "*" not in value:
-                    return False
+            # if not isinstance(value, str):
+            #     return False
+            # if value != property_value:
+            #     if "*" not in value:
+            #         return False
 
-                value = value.strip("* ").lower()
-                if value not in property_value.lower():
+                # value = value.strip("* ").lower()
+                # if value not in property_value.lower():
+        # There is a special case where we want to filter on either the label and the description.
+        # For the sake of keeping this code simple, I've just hardcoded this option. If we ever want to have multiple
+        # keywords that can be searched as an optional filter (eg; value matches either paramA or paramB, we should
+        # consider refactoring this.
+        # Note that this match will be called a lot, so keep an eye out for performance
+        if "i18n_label|i18n_description" in keywords:
+            matches_label = self._matches1l8nProperty("label", keywords["i18n_label|i18n_description"], keywords.get("i18n_catalog"))
+            if not matches_label:
+                if not self._matches1l8nProperty("description", keywords["i18n_label|i18n_description"], keywords.get("i18n_catalog")):    
                     return False
             del keywords["i18n_label|i18n_description"]
 
@@ -324,16 +357,16 @@ class SettingDefinition:
 
         return True
 
-    ##  Find all definitions matching certain criteria.
-    #
-    #   This will search this definition and its children for definitions matching the search criteria.
-    #
-    #   \param kwargs \type{dict} A dictionary of keyword arguments that need to match properties of the children.
-    #
-    #   \return \type{list} A list of children matching the search criteria. The list will be empty if no children were found.
+    
     def findDefinitions(self, **kwargs: Any) -> List["SettingDefinition"]:
-        definitions = []    # type: List["SettingDefinition"]
-
+        """Find all definitions matching certain criteria.
+    
+        This will search this definition and its children for definitions matching the search criteria.
+    
+        :param kwargs :type{dict} A dictionary of keyword arguments that need to match properties of the children.
+    
+        :return :type{list} A list of children matching the search criteria. The list will be empty if no children were found.
+        """
         if not self.__descendants:
             self.__descendants = self._updateDescendants()
 
@@ -424,11 +457,6 @@ class SettingDefinition:
         cls.__property_definitions[name] = {"type": property_type, "required": required, "read_only": read_only,
                                             "default": default, "depends_on": depends_on}
 
-    ##  Get the names of all supported properties.
-    #
-    #   \param type \type{DefinitionPropertyType} The type of property to get the name of. Defaults to None which means all properties.
-    #
-    #   \return A list of all the names of supported properties.
     @classmethod
     def getPropertyNames(cls, def_type: DefinitionPropertyType = None) -> List[str]:
         """Get the names of all supported properties.
@@ -485,15 +513,16 @@ class SettingDefinition:
             return cls.__property_definitions[name]["read_only"]
         return False
 
-    ##  Check if the specified property depends on another property
-    #
-    #   The value of certain properties can change if the value of another property changes. This is used to signify that relation.
-    #
-    #   \param name \type{string} The name of the property to check if it depends on another setting.
-    #
-    #   \return \type{string} The property it depends on or None if it does not depend on another property.
     @classmethod
-    def dependsOnProperty(cls, name: str) -> str:
+    def dependsOnProperty(cls, name: str) -> Optional[str]:
+        """Check if the specified property depends on another property
+    
+        The value of certain properties can change if the value of another property changes. This is used to signify that relation.
+    
+        :param name :type{string} The name of the property to check if it depends on another setting.
+    
+        :return :type{string} The property it depends on or None if it does not depend on another property.
+        """
         if name in cls.__property_definitions:
             return cls.__property_definitions[name]["depends_on"]
         return None
@@ -539,11 +568,13 @@ class SettingDefinition:
     def settingValueToString(cls, type_name: str, value: Any) -> str:
         if type_name not in cls.__type_definitions:
             raise ValueError("Unknown setting type {0}".format(type_name))
-
         convert_function = cls.__type_definitions[type_name]["from"]
         if convert_function:
-            return convert_function(value)
-
+            try:
+                return convert_function(value)
+            except Exception:
+                Logger.logException("w", "UM.Settings: Error converting from %s with value %s: %s", type_name, str(value))
+                raise
         return value
 
     ##  Get the validator type for a certain setting type.
@@ -554,10 +585,11 @@ class SettingDefinition:
 
         return cls.__type_definitions[type_name]["validator"]
 
-    ## protected:
-
-    # Deserialize from a dictionary
     def _deserialize_dict(self, serialized: Dict[str, Any]) -> None:
+        """protected:
+
+        Deserialize from a dictionary
+        """
         self._children = []
         self._relations = []
 
@@ -662,33 +694,33 @@ class SettingDefinition:
         "error_value": {"type": DefinitionPropertyType.Function, "required": False, "read_only": True, "default": None, "depends_on": None},
     }   # type: Dict[str, Dict[str, Any]]
 
-    ##  Conversion from string to integer.
-    #
-    #   \param value The string representation of an integer.
-    def _toIntConversion(value):
-        try:
-            return ast.literal_eval(value)
-        except SyntaxError:
-            return 0
+    # ##  Conversion from string to integer.
+    # #
+    # #   \param value The string representation of an integer.
+    # def _toIntConversion(value):
+    #     try:
+    #         return ast.literal_eval(value)
+    #     except SyntaxError:
+    #         return 0
 
-    ## Conversion of string to float.
-    def _toFloatConversion(value):
-        ## Ensure that all , are replaced with . (so they are seen as floats)
-        value = value.replace(",", ".")
+    # ## Conversion of string to float.
+    # def _toFloatConversion(value):
+    #     ## Ensure that all , are replaced with . (so they are seen as floats)
+    #     value = value.replace(",", ".")
 
-        def stripLeading0(matchobj):
-            return matchobj.group(0).lstrip("0")
+    #     def stripLeading0(matchobj):
+    #         return matchobj.group(0).lstrip("0")
 
-        ## Literal eval does not like "02" as a value, but users see this as "2".
-        ## We therefore look numbers with leading "0", provided they are not used in variable names
-        ## example: "test02 * 20" should not be changed, but "test * 02 * 20" should be changed (into "test * 2 * 20")
-        regex_pattern = '(?<!\.|\w|\d)0+(\d+)'
-        value = re.sub(regex_pattern, stripLeading0 ,value)
+    #     ## Literal eval does not like "02" as a value, but users see this as "2".
+    #     ## We therefore look numbers with leading "0", provided they are not used in variable names
+    #     ## example: "test02 * 20" should not be changed, but "test * 02 * 20" should be changed (into "test * 2 * 20")
+    #     regex_pattern = '(?<!\.|\w|\d)0+(\d+)'
+    #     value = re.sub(regex_pattern, stripLeading0 ,value)
 
-        try:
-            return ast.literal_eval(value)
-        except:
-            return 0
+    #     try:
+    #         return ast.literal_eval(value)
+    #     except:
+    #         return 0
 
     __type_definitions = {
         # An integer value
@@ -702,7 +734,7 @@ class SettingDefinition:
         # An enumeration
         "enum": {"from": None, "to": None, "validator": None},
         # A floating point value
-        "float": {"from": lambda v: str(round(v, 4)) if v is not None else "", "to": _toFloatConversion, "validator": Validator},
+        "float": {"from": lambda v: str(round(float(v), 4)) if v is not None else "", "to": _toFloatConversion, "validator": Validator},
         # A list of 2D points
         "polygon": {"from": str, "to": ast.literal_eval, "validator": None},
         # A list of polygons
