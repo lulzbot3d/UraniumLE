@@ -8,6 +8,7 @@ from UM.Logger import Logger
 from UM.Resources import Resources
 from UM.Math.Vector import Vector
 from UM.Job import Job
+from UM.Scene.Iterator.DepthFirstIterator import DepthFirstIterator
 
 from UM.View.GL.OpenGL import OpenGL
 
