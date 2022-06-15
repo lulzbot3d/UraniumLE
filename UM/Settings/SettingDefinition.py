@@ -666,6 +666,7 @@ class SettingDefinition:
         "error_description": {"type": DefinitionPropertyType.TranslatedString, "required": False, "read_only": True, "default": "", "depends_on" : None},
         # The default value of the setting. Used when no value function is defined.
         "default_value": {"type": DefinitionPropertyType.Any, "required": False, "read_only": True,  "default": 0, "depends_on" : None},
+        "default_value_from_file": {"type": DefinitionPropertyType.Any, "required": False, "read_only": True, "default": None, "depends_on": None},
         # A function used to calculate the value of the setting.
         "value": {"type": DefinitionPropertyType.Function, "required": False, "read_only": False,  "default": None, "depends_on" : None},
         # A function that should evaluate to a boolean to indicate whether or not the setting is enabled.

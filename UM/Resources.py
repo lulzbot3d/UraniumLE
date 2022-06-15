@@ -55,7 +55,8 @@ class Resources:
     Texts = 14
     """Location of text files"""
 
-    ## Any custom resource types should be greater than this to prevent collisions with standard types.
+    GCodes = 127
+
     UserType = 128
     """Any custom resource types should be greater than this to prevent collisions with standard types."""
 
@@ -653,6 +654,7 @@ class Resources:
         Plugins: "plugins",
         BundledPackages: "bundled_packages",
         Texts: "texts",
+        GCodes: "gcodes"
     }
     __types_storage: Dict[int, str] = {
         Resources: "",
