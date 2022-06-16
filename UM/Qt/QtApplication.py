@@ -316,7 +316,6 @@ class QtApplication(QApplication, Application):
 
         i18n_catalog = i18nCatalog("uranium")
         self.showSplashMessage(i18n_catalog.i18nc("@info:progress", "Loading UI..."))
-        print("Heeheehoohoo: " + self._main_qml)
         self._qml_engine.load(self._main_qml)
         self.engineCreatedSignal.emit()
 
