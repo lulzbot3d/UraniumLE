@@ -166,7 +166,7 @@ class SettingInstance:
                     if not container:
                         container = self._container
                     ## If state changed, emit the signal
-                    if self._state != InstanceState.User and container.getMetaDataEntry("type") == "user":
+                    if self._state != InstanceState.User:
                         self._state = InstanceState.User
                         if emit_signals:
                             self.propertyChanged.emit(self._definition.key, "state")

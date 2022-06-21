@@ -35,7 +35,6 @@ class Controller:
 
         self._scene = Scene()
         self._application = application
-        self._is_model_rendering_enabled = True
 
         self._active_view = None  # type: Optional[View]
         self._views = {}  # type: Dict[str, View]
@@ -72,9 +71,6 @@ class Controller:
         else:
             Logger.log("w", "%s was already added to view list. Unable to add it again.", name)
 
-    ##  Request view by name. Returns None if no view is found.
-    #   \param name \type{string} Unique identifier of view (usually the plugin name)
-    #   \return View \type{View} if name was found, none otherwise.
     def getView(self, name: str) -> Optional[View]:
         """Request view by name. Returns None if no view is found.
 
@@ -87,8 +83,6 @@ class Controller:
             Logger.log("e", "Unable to find %s in view list", name)
             return None
 
-    ##  Return all views.
-    #   \return views \type{dict}
     def getAllViews(self) -> Dict[str, View]:
         """Return all views.
 
@@ -97,8 +91,6 @@ class Controller:
 
         return self._views
 
-    ##  Request active view. Returns None if there is no active view
-    #   \return view \type{View} if an view is active, None otherwise.
     def getActiveView(self) -> Optional[View]:
         """Request active view. Returns None if there is no active view
 
@@ -146,9 +138,6 @@ class Controller:
             self._stages[name] = stage
             self.stagesChanged.emit()
 
-    ##  Request stage by name. Returns None if no stage is found.
-    #   \param name \type{string} Unique identifier of stage (usually the plugin name)
-    #   \return Stage \type{Stage} if name was found, none otherwise.
     def getStage(self, name: str) -> Optional[Stage]:
         """Request stage by name. Returns None if no stage is found.
 
@@ -162,8 +151,6 @@ class Controller:
             Logger.log("e", "Unable to find %s in stage list", name)
             return None
 
-    ##  Return all stages.
-    #   \return stages \type{dict}
     def getAllStages(self) -> Dict[str, Stage]:
         """Return all stages.
 
@@ -172,8 +159,6 @@ class Controller:
 
         return self._stages
 
-    ##  Request active stage. Returns None if there is no active stage
-    #   \return stage \type{Stage} if an stage is active, None otherwise.
     def getActiveStage(self) -> Optional[Stage]:
         """Request active stage. Returns None if there is no active stage
 
@@ -205,11 +190,9 @@ class Controller:
         except Exception as e:
             Logger.logException("e", "An exception occurred while switching stages: %s", str(e))
 
-    ##  Emitted when the list of stages changes.
     stagesChanged = Signal()
     """Emitted when the list of stages changes."""
 
-    ##  Emitted when the active stage changes.
     activeStageChanged = Signal()
     """Emitted when the active stage changes."""
 
@@ -226,9 +209,6 @@ class Controller:
         else:
             Logger.log("w", "%s was already added to input device list. Unable to add it again." % name)
 
-    ##  Request input device by name. Returns None if no device is found.
-    #   \param name \type{string} Unique identifier of input device (usually the plugin name)
-    #   \return input \type{InputDevice} device if name was found, none otherwise.
     def getInputDevice(self, name: str) -> Optional[InputDevice]:
         """Request input device by name. Returns None if no device is found.
 
@@ -316,8 +296,6 @@ class Controller:
             self._tool_operation_active = False
             self.toolOperationStopped.emit(tool)
 
-    ##  Gets whether a tool is currently in use
-    #   \return \type{bool} true if a tool current being used.
     def isToolOperationActive(self) -> bool:
         """Gets whether a tool is currently in use
 
@@ -372,22 +350,15 @@ class Controller:
             Selection.clearFace()
             self.activeToolChanged.emit()
 
-    ##  Emitted when the list of tools changes.
     toolsChanged = Signal()
     """Emitted when the list of tools changes."""
 
-    ##  Emitted when a tool changes its enabled state.
     toolEnabledChanged = Signal()
     """Emitted when a tool changes its enabled state."""
 
-    ##  Emitted when the active tool changes.
     activeToolChanged = Signal()
     """Emitted when the active tool changes."""
 
-    ##  Emitted whenever a tool starts a longer operation.
-    #
-    #   \param tool The tool that started the operation.
-    #   \sa Tool::startOperation
     toolOperationStarted = Signal()
     """Emitted whenever a tool starts a longer operation.
 
@@ -410,11 +381,6 @@ class Controller:
 
         return self._scene
 
-    ##  Process an event
-    #   \param event \type{Event} event to be handle.
-    #   The event is first passed to the camera tool, then active tool and finally selection tool.
-    #   If none of these events handle it (when they return something that does not evaluate to true)
-    #   a context menu signal is emitted.
     def event(self, event: Event):
         """Process an event
 
@@ -441,13 +407,6 @@ class Controller:
                 for key, tool in self._tools.items():
                     if tool.getShortcutKey() is not None and event.key == tool.getShortcutKey():
                         self.setActiveTool(tool)
-
-        if self._selection_tool and self._selection_tool.event(event):
-            return
-
-        # If we are not doing camera control, pass the event to the active tool.
-        if self._active_tool and self._active_tool.event(event):
-            return
 
         if self._active_view:
             self._active_view.event(event)
@@ -553,9 +512,6 @@ class Controller:
         else:
             # for comparison is == used, because might not store them at the same location
             # https://stackoverflow.com/questions/1504717/why-does-comparing-strings-in-python-using-either-or-is-sometimes-produce
-            camera.setPosition(Vector(0, 0, 700))
-            camera.setPerspective(True)
-            camera.lookAt(Vector(0, 100, 0))
 
             if coordinate == "x":
                 camera.setPosition(Vector(0, 100, 700))

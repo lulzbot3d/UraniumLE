@@ -5,7 +5,6 @@ from typing import Union
 from PyQt5.QtCore import Qt, QUrl
 
 from UM.Application import Application
-from PyQt5.QtCore import Qt
 from UM.FlameProfiler import pyqtSlot
 from UM.Qt.ListModel import ListModel
 

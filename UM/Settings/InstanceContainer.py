@@ -1,4 +1,4 @@
-# Copyright (c) 2017 Ultimaker B.V.
+# Copyright (c) 2019 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
 
 import configparser
@@ -42,11 +42,9 @@ MimeTypeDatabase.addMimeType(
 )
 
 
-##  A container for SettingInstance objects.
-#
-#
 @signalemitter
 class InstanceContainer(QObject, ContainerInterface, PluginObject):
+    """A container for SettingInstance objects."""
 
     Version = 4
     version_regex = re.compile("\nversion ?= ?(\d+)")
@@ -143,10 +141,12 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
 
         self.__dict__.update(state)
 
-    ##  \copydoc ContainerInterface::getId
-    #
-    #   Reimplemented from ContainerInterface
     def getId(self) -> str:
+        """:copydoc ContainerInterface::getId
+        
+        Reimplemented from ContainerInterface
+        """
+
         return self._metadata["id"]
 
     id = pyqtProperty(str, fget = getId, constant = True)
@@ -177,10 +177,12 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
 
         self._path = path
 
-    ##  \copydoc ContainerInterface::getName
-    #
-    #   Reimplemented from ContainerInterface
     def getName(self) -> str:
+        """:copydoc ContainerInterface::getName
+        
+        Reimplemented from ContainerInterface
+        """
+        
         return self._metadata["name"]
 
     def setName(self, name: str) -> None:

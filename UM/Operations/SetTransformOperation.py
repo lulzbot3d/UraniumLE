@@ -5,7 +5,6 @@ from . import Operation
 from UM.Math.Matrix import Matrix
 from UM.Math.Vector import Vector
 
-##  Operation that translates, rotates and scales a node all at once.
 class SetTransformOperation(Operation.Operation):
     """Operation that translates, rotates and scales a node all at once."""
 
@@ -52,43 +51,22 @@ class SetTransformOperation(Operation.Operation):
         else:
             self._new_shear = node.getShear()
 
-        if mirror:
-            self._new_mirror = mirror
-        else:
-            # Scale will either be negative or positive. If it's negative, we need to use the inverse mirror.
-            if self._node.getScale().x < 0:
-                self._new_mirror = Vector(-node.getMirror().x, -node.getMirror().y, -node.getMirror().z)
-            else:
-                self._new_mirror = node.getMirror()
-
+        self._new_mirror = Vector(1, 1, 1)
         self._new_transformation = Matrix()
 
         euler_orientation = self._new_orientation.toMatrix().getEuler()
         self._new_transformation.compose(scale = self._new_scale, shear = self._new_shear, angles = euler_orientation, translate = self._new_translation, mirror = self._new_mirror)
 
-    ##  Undoes the transformation, restoring the node to the old state.
     def undo(self):
         """Undoes the transformation, restoring the node to the old state."""
 
         self._node.setTransformation(self._old_transformation)
 
-    ##  Re-applies the transformation after it has been undone.
     def redo(self):
         """Re-applies the transformation after it has been undone."""
 
         self._node.setTransformation(self._new_transformation)
 
-    ##  Merges this operation with another TransformOperation.
-    #
-    #   This prevents the user from having to undo multiple operations if they
-    #   were not his operations.
-    #
-    #   You should ONLY merge this operation with an older operation. It is NOT
-    #   symmetric.
-    #
-    #   \param other The older operation with which to merge this operation.
-    #   \return A combination of the two operations, or False if the merge
-    #   failed.
     def mergeWith(self, other):
         """Merges this operation with another TransformOperation.
 
@@ -113,9 +91,6 @@ class SetTransformOperation(Operation.Operation):
         op._new_transformation = self._new_transformation
         return op
 
-    ##  Returns a programmer-readable representation of this operation.
-    #
-    #   A programmer-readable representation of this operation.
     def __repr__(self):
         """Returns a programmer-readable representation of this operation.
 

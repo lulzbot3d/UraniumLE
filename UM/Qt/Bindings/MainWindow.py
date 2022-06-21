@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Ultimaker B.V.
+# Copyright (c) 2020 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
 
 from PyQt5.QtCore import pyqtProperty, Qt, QCoreApplication, pyqtSignal, pyqtSlot, QMetaObject, QRectF, QRect
@@ -10,18 +10,11 @@ from UM.Math.Matrix import Matrix
 from UM.Qt.QtMouseDevice import QtMouseDevice
 from UM.Qt.QtKeyDevice import QtKeyDevice
 from UM.Application import Application
-from UM.Preferences import Preferences
 from UM.Scene.Selection import Selection
 from UM.Signal import Signal, signalemitter
 from UM.Scene.Camera import Camera
-
 from typing import Optional
 
-MYPY = False
-if MYPY:
-    from PyQt5.QtQuick import QQuickItem
-
-##  QQuickWindow subclass that provides the main window.
 @signalemitter
 class MainWindow(QQuickWindow):
     """QQuickWindow subclass that provides the main window."""
@@ -283,10 +276,7 @@ class MainWindow(QQuickWindow):
             self._preferences.setValue("general/window_height", self.height())
             self._preferences.setValue("general/window_left", self.x())
             self._preferences.setValue("general/window_top", self.y())
-            self._preferences.setValue("general/window_state", Qt.WindowNoState)
-        elif self.windowState() == Qt.WindowMaximized:
-            self._preferences.setValue("general/window_state", Qt.WindowMaximized)
-
+            
         if self.windowState() in (Qt.WindowNoState, Qt.WindowMaximized):
             self._preferences.setValue("general/window_state", self.windowState())
 
@@ -299,13 +289,6 @@ class MainWindow(QQuickWindow):
 
             if camera.getAutoAdjustViewPort():
                 camera.setViewportSize(view_width, view_height)
-                projection_matrix = Matrix()
-                if camera.isPerspective():
-                    if view_width is not 0:
-                        projection_matrix.setPerspective(30, view_width / view_height, 1, 500)
-                else:
-                    projection_matrix.setOrtho(-view_width / 2, view_width / 2, -view_height / 2, view_height / 2, -500, 500)
-                camera.setProjectionMatrix(projection_matrix)
-
+    
         self._app.getRenderer().setViewportSize(view_width, view_height)
         self._app.getRenderer().setWindowSize(width, height)

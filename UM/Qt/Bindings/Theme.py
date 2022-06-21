@@ -1,10 +1,7 @@
 # Copyright (c) 2022 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
 
-from PyQt5.QtCore import QObject, pyqtProperty, pyqtSignal, QCoreApplication, QUrl, QSizeF
-from PyQt5.QtGui import QColor, QFont, QFontMetrics, QFontDatabase, QFontInfo
-from PyQt5.QtQml import QQmlComponent, QQmlContext
-from UM.FlameProfiler import pyqtSlot
+from gettext import install
 import json
 import os
 import os.path
@@ -20,9 +17,7 @@ import UM.Application
 from UM.FlameProfiler import pyqtSlot
 from UM.Logger import Logger
 from UM.Resources import Resources
-from UM.Preferences import Preferences
-from UM.Application import Application
-from UM.Decorators import deprecated
+from UM.Trust import TrustBasics
 
 class Theme(QObject):
     def __init__(self, engine, parent = None) -> None:
@@ -53,6 +48,7 @@ class Theme(QObject):
 
         self._initializeDefaults()
 
+        self._check_if_trusted = False
         self.reload()
 
     themeLoaded = pyqtSignal()
@@ -75,11 +71,19 @@ class Theme(QObject):
             theme_path = Resources.getPath(Resources.Themes, application.getPreferences().getValue("general/theme"))
             self.load(theme_path)
 
+    def setCheckIfTrusted(self, check_if_trusted: bool):
+        """Set: Can themes from unbundled locations be selected, or only the ones packaged with the app?"""
+        self._check_if_trusted = check_if_trusted
 
     @pyqtSlot(result = "QVariantList")
     def getThemes(self) -> List[Dict[str, str]]:
+        install_prefix = os.path.abspath(UM.Application.Application.getInstance().getInstallPrefix())
+
         themes = []
         for path in Resources.getAllPathsForType(Resources.Themes):
+            if self._check_if_trusted and not TrustBasics.isPathInLocation(install_prefix, path):
+                Logger.warning("Skipped indexing Theme from outside bundled folders: ", path)
+                continue
             try:
                 for file in os.listdir(path):
                     folder = os.path.join(path, file)
@@ -180,31 +184,6 @@ class Theme(QObject):
     @pyqtProperty(QObject, notify = themeLoaded)
     def styles(self):
         return self._styles
-
-    @pyqtProperty("QVariantMap", notify = themeLoaded)
-    @deprecated("Use getIcon for performance reasons", "2.1")
-    def icons(self):
-        return self._icons
-
-    @pyqtProperty("QVariantMap", notify = themeLoaded)
-    @deprecated("Use getImage for performance reasons", "2.1")
-    def images(self):
-        return self._images
-
-    @pyqtProperty("QVariantMap", notify = themeLoaded)
-    @deprecated("Use getColor for performance reasons", "2.1")
-    def colors(self):
-        return self._colors
-
-    @pyqtProperty("QVariantMap", notify = themeLoaded)
-    @deprecated("Use getFont for performance reasons", "2.1")
-    def fonts(self):
-        return self._fonts
-
-    @pyqtProperty("QVariantMap", notify = themeLoaded)
-    @deprecated("Use getSize for performance reasons", "2.1")
-    def sizes(self):
-        return self._sizes
 
     @pyqtSlot(str)
     def load(self, path: str, is_first_call: bool = True) -> None:
@@ -318,7 +297,6 @@ class Theme(QObject):
                     Logger.log("e", error.toString())
 
         Logger.log("d", "Loaded theme %s", path)
-        Logger.info(f"System's em size is {self._em_height}px.")
         self._path = path
 
         # only emit the theme loaded signal once after all the themes in the inheritance chain have been loaded
@@ -341,7 +319,6 @@ class Theme(QObject):
             "line": QSizeF(self._em_width, self._em_height)
         }
 
-    ##  Get the singleton instance for this class.
     @classmethod
     def getInstance(cls, engine = None) -> "Theme":
         """Get the singleton instance for this class."""
@@ -356,4 +333,3 @@ class Theme(QObject):
 
 def createTheme(engine, script_engine = None):
     return Theme.getInstance(engine)
-
