@@ -10,14 +10,12 @@ from UM.Scene.SceneNode import SceneNode
 
 from UM.Operations.GroupedOperation import GroupedOperation
 
-import copy
-
-
-##    This class is responsible for keeping track of what objects are selected
-#     It uses signals to notify others of changes in the selection
-#     It also has a convenience function that allows it to apply a single operation
-#     to all selected objects.
 class Selection:
+    """This class is responsible for keeping track of what objects are selected
+    It uses signals to notify others of changes in the selection
+    It also has a convenience function that allows it to apply a single operation
+    to all selected objects.
+    """
     @classmethod
     def add(cls, object: SceneNode) -> None:
         if object not in cls.__selection:
@@ -101,9 +99,6 @@ class Selection:
     def getBoundingBox(cls) -> AxisAlignedBox:
         bounding_box = None  # don't start with an empty bounding box, because that includes (0,0,0)
         for node in cls.__selection:
-            if not isinstance(node, SceneNode):
-                continue
-
             if not bounding_box:
                 bounding_box = node.getBoundingBox()
             else:
@@ -163,20 +158,21 @@ class Selection:
             cls.__selection_center = cls.getBoundingBox().center
         return cls.__selection_center
 
-    ##  Apply an operation to the entire selection
-    #
-    #   This will create and push an operation onto the operation stack. Dependent
-    #   on whether there is one item selected or multiple it will be just the
-    #   operation or a grouped operation containing the operation for each selected
-    #   node.
-    #
-    #   \param operation \type{Class} The operation to create and push. It should take a SceneNode as first positional parameter.
-    #   \param args The additional positional arguments passed along to the operation constructor.
-    #   \param kwargs The additional keyword arguments that will be passed along to the operation constructor.
-    #
-    #   \return list of instantiated operations
     @classmethod
     def applyOperation(cls, operation, *args, **kwargs):
+        """Apply an operation to the entire selection
+
+        This will create and push an operation onto the operation stack. Dependent
+        on whether there is one item selected or multiple it will be just the
+        operation or a grouped operation containing the operation for each selected
+        node.
+
+        :param operation: :type{Class} The operation to create and push. It should take a SceneNode as first positional parameter.
+        :param args: The additional positional arguments passed along to the operation constructor.
+        :param kwargs: The additional keyword arguments that will be passed along to the operation constructor.
+        
+        :return: list of instantiated operations
+        """
         if not cls.__selection:
             return
 
@@ -198,14 +194,8 @@ class Selection:
         return operations
 
     @classmethod
-    def _onTransformationChanged(cls, node):
-        cls.__selection_center = Vector.Null
-
-        for object in cls.__selection:
-            cls.__selection_center = cls.__selection_center + object.getWorldPosition()
-
-        cls.__selection_center = cls.__selection_center / len(cls.__selection)
-
+    def _onTransformationChanged(cls, _) -> None:
+        cls.__selection_center = None
         cls.selectionCenterChanged.emit()
 
     __selection = []    # type: List[SceneNode]

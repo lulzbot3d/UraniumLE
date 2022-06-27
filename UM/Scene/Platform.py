@@ -1,4 +1,4 @@
-# Copyright (c) 2015 Ultimaker B.V.
+# Copyright (c) 2020 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
 
 from . import SceneNode
@@ -12,12 +12,13 @@ from UM.Scene.Iterator.DepthFirstIterator import DepthFirstIterator
 
 from UM.View.GL.OpenGL import OpenGL
 
-
-##  Platform is a special case of Scene node. It renders a specific model as the platform of the machine.
-#   A specialised class is used due to the differences in how it needs to rendered and the fact that a platform
-#   can have a Texture.
-#   It also handles the re-loading of the mesh when the active machine is changed.
 class Platform(SceneNode.SceneNode):
+    """Platform is a special case of Scene node. It renders a specific model as the platform of the machine.
+    A specialised class is used due to the differences in how it needs to rendered and the fact that a platform
+    can have a Texture.
+    It also handles the re-loading of the mesh when the active machine is changed.
+    """
+
     def __init__(self, parent):
         super().__init__(parent)
 
@@ -114,7 +115,6 @@ class Platform(SceneNode.SceneNode):
             Application.getInstance().callLater(self._updateTexture)
 
 
-##  Protected class that ensures that the mesh for the machine platform is loaded.
 class _LoadPlatformJob(Job):
     """Protected class that ensures that the mesh for the machine platform is loaded."""
 
