@@ -1,6 +1,5 @@
 # Copyright (c) 2021 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
-from typing import List, Optional
 
 from copy import deepcopy
 from typing import Any, cast, Dict, List, Optional, TYPE_CHECKING
@@ -13,13 +12,9 @@ from UM.Math.Matrix import Matrix
 from UM.Math.Quaternion import Quaternion
 from UM.Math.Vector import Vector
 from UM.Mesh.MeshBuilder import MeshBuilder
-from UM.Math.Quaternion import Quaternion
-from UM.Math.AxisAlignedBox import AxisAlignedBox
 from UM.Mesh.MeshData import MeshData
 from UM.Scene.SceneNodeDecorator import SceneNodeDecorator
 from UM.Signal import Signal, signalemitter
-from UM.Mesh.MeshBuilder import MeshBuilder
-from UM.Logger import Logger
 
 if TYPE_CHECKING:
     from UM.MimeTypeDatabase import MimeType
@@ -101,7 +96,6 @@ class SceneNode:
         self._settings = {}  # type: Dict[str, Any]
 
         ## Signals
-        self.boundingBoxChanged.connect(self.calculateBoundingBoxMesh)
         self.parentChanged.connect(self._onParentChanged)
 
         if parent:
@@ -136,8 +130,6 @@ class SceneNode:
         for child in self._children:
             child.setCenterPosition(center)
 
-    ##  \brief Get the parent of this node. If the node has no parent, it is the root node.
-    #   \returns SceneNode if it has a parent and None if it's the root node.
     def getParent(self) -> Optional["SceneNode"]:
         """Get the parent of this node.
 
@@ -154,8 +146,6 @@ class SceneNode:
     def setMirror(self, vector) -> None:
         self._mirror = vector
 
-    ##  Get the MeshData of the bounding box
-    #   \returns \type{MeshData} Bounding box mesh.
     def getBoundingBoxMesh(self) -> Optional[MeshData]:
         """Get the MeshData of the bounding box
 
@@ -231,7 +221,6 @@ class SceneNode:
         for child in self.getChildren():
             child.parentChanged.emit(self)
 
-    ##  Signal for when a \type{SceneNodeDecorator} is added / removed.
     decoratorsChanged = Signal()
     """Signal for when a :type{SceneNodeDecorator} is added / removed."""
 
@@ -252,8 +241,6 @@ class SceneNode:
         self._decorators.append(decorator)
         self.decoratorsChanged.emit(self)
 
-    ##  Get all SceneNodeDecorators that decorate this SceneNode.
-    #   \return list of all SceneNodeDecorators.
     def getDecorators(self) -> List[SceneNodeDecorator]:
         """Get all SceneNodeDecorators that decorate this SceneNode.
 
@@ -273,7 +260,6 @@ class SceneNode:
                 return decorator
         return None
 
-    ##  Remove all decorators
     def removeDecorators(self):
         """Remove all decorators"""
 
@@ -312,8 +298,6 @@ class SceneNode:
                     Logger.logException("e", "Exception calling decoration %s: %s", str(function), str(e))
                     return None
 
-    ##  Does this SceneNode have a certain Decoration (as defined by a Decorator)
-    #   \param \type{string} function the function to check for.
     def hasDecoration(self, function: str) -> bool:
         """Does this SceneNode have a certain Decoration (as defined by a Decorator)
         :param :type{string} function the function to check for.
@@ -358,12 +342,9 @@ class SceneNode:
         if scene_node:
             scene_node.addChild(self)
 
-    ##  Emitted whenever the parent changes.
     parentChanged = Signal()
     """Emitted whenever the parent changes."""
 
-    ##  \brief Get the visibility of this node. The parents visibility overrides the visibility.
-    #   TODO: Let renderer actually use the visibility to decide whether to render or not.
     def isVisible(self) -> bool:
         """Get the visibility of this node.
         The parents visibility overrides the visibility.
@@ -380,8 +361,6 @@ class SceneNode:
 
         self._visible = visible
 
-    ##  \brief Get the (original) mesh data from the scene node/object.
-    #   \returns MeshData
     def getMeshData(self) -> Optional[MeshData]:
         """Get the (original) mesh data from the scene node/object.
 
@@ -390,9 +369,6 @@ class SceneNode:
 
         return self._mesh_data
 
-    ##  \brief Get the transformed mesh data from the scene node/object, based on the transformation of scene nodes wrt root.
-    #          If this node is a group, it will recursively concatenate all child nodes/objects.
-    #   \returns MeshData
     def getMeshDataTransformed(self) -> Optional[MeshData]:
         """Get the transformed mesh data from the scene node/object, based on the transformation of scene nodes wrt root.
 
@@ -452,7 +428,6 @@ class SceneNode:
         self._resetAABB()
         self.meshDataChanged.emit(self)
 
-    ##  Emitted whenever the attached mesh data object changes.
     meshDataChanged = Signal()
     """Emitted whenever the attached mesh data object changes."""
 
@@ -516,8 +491,6 @@ class SceneNode:
 
         self.childrenChanged.emit(self)
 
-    ##  \brief Get the list of direct children
-    #   \returns List of children
     def getChildren(self) -> List["SceneNode"]:
         """Get the list of direct children
 
@@ -529,8 +502,6 @@ class SceneNode:
     def hasChildren(self) -> bool:
         return True if self._children else False
 
-    ##  \brief Get list of all children (including it's children children children etc.)
-    #   \returns list ALl children in this 'tree'
     def getAllChildren(self) -> List["SceneNode"]:
         """Get list of all children (including it's children children children etc.)
 
@@ -543,8 +514,6 @@ class SceneNode:
             children.extend(child.getAllChildren())
         return children
 
-    ##  \brief Emitted whenever the list of children of this object or any child object changes.
-    #   \param object The object that triggered the change.
     childrenChanged = Signal()
     """Emitted whenever the list of children of this object or any child object changes.
 
@@ -594,7 +563,6 @@ class SceneNode:
         self._transformation = transformation.copy() # Make a copy to ensure we never change the given transformation
         self._transformChanged()
 
-    ##  Get the local orientation value.
     def getOrientation(self) -> Quaternion:
         """Get the local orientation value."""
 
@@ -635,7 +603,6 @@ class SceneNode:
         if not self._enabled or orientation == self._orientation:
             return
 
-        new_transform_matrix = Matrix()
         if transform_space == SceneNode.TransformSpace.World:
             if self.getWorldOrientation() == orientation:
                 return
@@ -650,7 +617,6 @@ class SceneNode:
         self._transformation = new_transform_matrix
         self._transformChanged()
 
-    ##  Get the local scaling value.
     def getScale(self) -> Vector:
         """Get the local scaling value."""
 
@@ -700,11 +666,9 @@ class SceneNode:
 
             self.scale(scale / self._scale, SceneNode.TransformSpace.World)
 
-    ##  Get the local position.
     def getPosition(self) -> Vector:
         return self._position
 
-    ##  Get the position of this scene node relative to the world.
     def getWorldPosition(self) -> Vector:
         return self._derived_position
 
@@ -724,7 +688,7 @@ class SceneNode:
         elif transform_space == SceneNode.TransformSpace.Parent:
             self._transformation.preMultiply(translation_matrix)
         elif transform_space == SceneNode.TransformSpace.World:
-            world_transformation = deepcopy(self._world_transformation)
+            world_transformation = self._world_transformation.copy()
             self._transformation.multiply(self._world_transformation.getInverse())
             self._transformation.multiply(translation_matrix)
             self._transformation.multiply(world_transformation)
@@ -746,8 +710,6 @@ class SceneNode:
                 return
             self.translate(position - self._derived_position, SceneNode.TransformSpace.World)
 
-    ##  Signal. Emitted whenever the transformation of this object or any child object changes.
-    #   \param object The object that caused the change.
     transformationChanged = Signal()
     """Signal. Emitted whenever the transformation of this object or any child object changes.
     :param object: The object that caused the change.
@@ -787,11 +749,19 @@ class SceneNode:
     #
     #   \return False if the view should render this node, True if we handle our own rendering.
     def render(self, renderer) -> bool:
+        """Can be overridden by child nodes if they need to perform special rendering.
+        If you need to handle rendering in a special way, for example for tool handles,
+        you can override this method and render the node. Return True to prevent the
+        view from rendering any attached mesh data.
+    
+        :param renderer The renderer object to use for rendering.
+    
+        :return False if the view should render this node, True if we handle our own rendering.
+        """
         return False
 
-    ##  Get whether this SceneNode is enabled, that is, it can be modified in any way.
     def isEnabled(self) -> bool:
-        return self._enabled
+        """Get whether this SceneNode is enabled, that is, it can be modified in any way."""
 
         if self._parent is not None and self._enabled:
             return self._parent.isEnabled()
@@ -807,10 +777,13 @@ class SceneNode:
 
         self._enabled = enable
 
-    ##  Get whether this SceneNode can be selected.
-    #
-    #   \note This will return false if isEnabled() returns false.
+
     def isSelectable(self) -> bool:
+        """Get whether this SceneNode can be selected.
+    
+        :note This will return false if isEnabled() returns false.
+        """
+
         return self._enabled and self._selectable
 
     def setSelectable(self, select: bool) -> None:
@@ -821,8 +794,8 @@ class SceneNode:
 
         self._selectable = select
 
-    ##  Get the bounding box of this node and its children.
     def getBoundingBox(self) -> Optional[AxisAlignedBox]:
+        """Get the bounding box of this node and its children"""
         if not self._calculate_aabb:
             return None
         if self._aabb is None:
@@ -861,32 +834,6 @@ class SceneNode:
 
         for child in self._children:
             child._transformChanged()
-
-    # def _updateTransformation(self):
-    #     #self.LOG_VECTOR( "before decompose:  self._mirror", self._mirror )
-    #     scale, shear, euler_angles, translation, mirror = self._transformation.decompose()
-    #     self._position = translation
-    #     self._scale = scale
-    #     self._shear = shear
-    #     self._mirror = mirror
-    #     #self.LOG_VECTOR( "after decompose:  self._mirror", self._mirror )
-    #     orientation = Quaternion()
-    #     euler_angle_matrix = Matrix()
-    #     euler_angle_matrix.setByEuler(euler_angles.x, euler_angles.y, euler_angles.z)
-    #     orientation.setByMatrix(euler_angle_matrix)
-    #     self._orientation = orientation
-    #     if self._parent:
-    #         self._world_transformation = self._parent.getWorldTransformation().multiply(self._transformation, copy = True)
-    #     else:
-    #         self._world_transformation = self._transformation
-
-    #     world_scale, world_shear, world_euler_angles, world_translation, world_mirror = self._world_transformation.decompose()
-    #     self._derived_position = world_translation
-    #     self._derived_scale = world_scale
-
-    #     world_euler_angle_matrix = Matrix()
-    #     world_euler_angle_matrix.setByEuler(world_euler_angles.x, world_euler_angles.y, world_euler_angles.z)
-    #     self._derived_orientation.setByMatrix(world_euler_angle_matrix)
 
     def _updateLocalTransformation(self) -> None:
         self._position, euler_angle_matrix, self._scale, self._shear = self._transformation.decompose()
