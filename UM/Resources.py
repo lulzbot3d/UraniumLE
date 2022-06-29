@@ -86,10 +86,6 @@ class Resources:
         except UnsupportedStorageTypeError:
             pass
 
-        paths = cls.__find(resource_type, *args)
-        if paths:
-            return paths[0]
-
         paths_secure = cls.__find(resource_type, True, *args)
 
         if paths_secure:
