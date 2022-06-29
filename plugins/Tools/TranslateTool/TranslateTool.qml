@@ -11,7 +11,7 @@ Item
     id: base
     width: childrenRect.width
     height: childrenRect.height
-    UM.I18nCatalog { id: catalog; name:"uranium"}
+    UM.I18nCatalog { id: catalog; name: "uranium"}
 
     property string xText
     property string yText
@@ -41,57 +41,12 @@ Item
         return output;
     }
 
-    function inc_dec(prop, event)
-    {
-        if (event.key == Qt.Key_Up) {
-            var t = parseFloat(UM.ActiveTool.properties.getValue(prop)) + 1.0;
-            UM.ActiveTool.setProperty(prop, t);
-            event.accepted = true;
-        }
-        if (event.key == Qt.Key_Down) {
-            var t = parseFloat(UM.ActiveTool.properties.getValue(prop)) - 1.0;
-            UM.ActiveTool.setProperty(prop, t);
-            event.accepted = true;
-        }
+    function selectTextInTextfield(selected_item){
+        selected_item.selectAll()
+        selected_item.focus = true
     }
 
-    Button
-    {
-        id: resetPositionButton
-
-        //: Reset position tool button
-        text: catalog.i18nc("@action:button","Center on Build Plate")
-        iconSource: UM.Theme.getIcon("scale_reset");
-
-        anchors.top: dropToBuildplateButton.bottom;
-        anchors.topMargin: UM.Theme.getSize("default_margin").height;
-        z: 1
-
-        style: UM.Theme.styles.tool_button;
-
-        onClicked: UM.ActiveTool.triggerAction("resetPosition");
-        visible: false
-
-        Keys.forwardTo: parent
-    }
-
-    Button
-    {
-        id: dropToBuildplateButton
-
-        //: Drop to build plate tool button
-        text: catalog.i18nc("@action:button","Drop to Build Plate");
-        iconSource: UM.Theme.getIcon("scale_reset");
-
-        anchors.top: parent.top;
-        z: 1
-
-        style: UM.Theme.styles.tool_button;
-        onClicked: UM.ActiveTool.triggerAction("dropToBuildplate")
-        visible: false
-
-        Keys.forwardTo: parent
-    }
+    
 
     Grid
     {
