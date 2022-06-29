@@ -353,7 +353,7 @@ class RotateTool(Tool):
         self._progress_message = Message(i18n_catalog.i18nc("@label","Laying object flat on buildplate..."),
                                         lifetime = 0,
                                         dismissable = False,
-                                        title = i18n_catalog.i18nc("@title", "Object Rotation")
+                                        title = i18n_catalog.i18nc("@title", "Object Rotation"))
         self._progress_message.setProgress(0)
 
         self._iterations = 0
@@ -407,7 +407,7 @@ class LayFlatJob(Job):
 
     The job is executed on its own thread, processing each operation in order, so it does not lock up the GUI.
     """
-    
+
     def __init__(self, operations):
         super().__init__()
 
