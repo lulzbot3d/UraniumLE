@@ -2,6 +2,7 @@
 # Uranium is released under the terms of the LGPLv3 or higher.
 
 import os  # For getting the IDs from a filename.
+import sys
 import pickle  # For caching definitions.
 import re  # To detect back-up files in the ".../old/#/..." folders.
 import urllib.parse  # For interpreting escape characters using unquote_plus.
@@ -291,12 +292,16 @@ class LocalContainerProvider(ContainerProvider):
 
         try:
             with open(cache_path, "wb") as f:
+                sys.setrecursionlimit(1200) # Looks like for whatever reason we need to increase the recursion limit slightly for our pickling to work.
                 pickle.dump(definition, f, pickle.HIGHEST_PROTOCOL)
-        except RecursionError:
+                Logger.log("i", "Pickled " + str(definition))
+                sys.setrecursionlimit(1000)
+        except RecursionError as err:
             # Sometimes a recursion error in pickling occurs here.
             # The cause is unknown. It must be some circular reference in the definition instances or definition containers.
             # Instead of saving a partial cache and raising an exception, simply fail to save the cache.
             # See CURA-4024.
+            print(err)
             Logger.log("w", "The definition cache for definition {definition_id} failed to pickle.".format(definition_id = definition.getId()))
             if os.path.exists(cache_path):
                 try:
