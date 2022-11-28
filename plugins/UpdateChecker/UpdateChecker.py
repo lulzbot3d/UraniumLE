@@ -32,7 +32,7 @@ class UpdateChecker(Extension):
     The plugin is currently only usable for applications maintained by Ultimaker. But it should be relatively easy
     to change it to work for other applications.
     """
-    url = "https://software.ultimaker.com/latest.json"
+    url = ""
 
     def __init__(self) -> None:
         super().__init__()
