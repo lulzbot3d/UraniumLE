@@ -60,6 +60,9 @@ class SceneNode:
         self._shear = Vector(0.0, 0.0, 0.0)  # type: Vector
         self._mirror = Vector(1.0, 1.0, 1.0)  # type: Vector
         self._orientation = Quaternion()  # type: Quaternion
+        self._rotationX = 0
+        self._rotationY = 0
+        self._rotationZ = 0
 
         # World transformation (from root to local)
         self._world_transformation = Matrix()  # type: Matrix
