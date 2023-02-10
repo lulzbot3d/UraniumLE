@@ -83,7 +83,7 @@ Item
         z: 1
 
         text: catalog.i18nc("@action:button","Scale to Max");
-        iconSource: UM.Theme.getIcon("ArrowReset");
+        iconSource: UM.Theme.getIcon("ScaleMax");
         style: UM.Theme.styles.tool_button;
         property bool needBorder: true;
 

@@ -19,7 +19,7 @@ class ScaleToBoundsOperation(Operation):
 
         bbox = self._node.getBoundingBox()
 
-        scale_factor = min(bounds.width / bbox.width,  bounds.height /bbox.height, bounds.depth / bbox.depth)
+        scale_factor = min(bounds.width / bbox.width, bounds.height / bbox.height, bounds.depth / bbox.depth)
 
         # Apply scale factor on all different sizes to respect the (non-uniform) scaling that already has been done by the user.
         self._new_scale = Vector(self._old_scale.x * scale_factor, self._old_scale.y * scale_factor, self._old_scale.z * scale_factor)
