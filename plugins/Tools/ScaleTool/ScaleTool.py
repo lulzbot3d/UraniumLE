@@ -13,6 +13,7 @@ from UM.Math.Vector import Vector
 from UM.Operations.GroupedOperation import GroupedOperation
 from UM.Operations.ScaleOperation import ScaleOperation
 from UM.Operations.SetTransformOperation import SetTransformOperation
+from UM.Operations.ScaleToBoundsOperation import ScaleToBoundsOperation
 from UM.Scene.Selection import Selection
 from UM.Scene.ToolHandle import ToolHandle
 from UM.Tool import Tool
@@ -208,6 +209,12 @@ class ScaleTool(Tool):
         """Reset scale of the selected objects"""
 
         Selection.applyOperation(SetTransformOperation, None, None, Vector(1.0, 1.0, 1.0), Vector(0, 0, 0))
+
+    def scaleToMax(self):
+        """Initialize and start a ScaleToBoundsOperation on the selected objects"""
+
+        if hasattr(self.getController().getScene(), "_maximum_bounds"):
+            Selection.applyOperation(ScaleToBoundsOperation, self.getController().getScene()._maximum_bounds)
 
     def getNonUniformScale(self):
         """Get non-uniform scaling flag
