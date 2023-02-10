@@ -496,8 +496,16 @@ class RotateTool(Tool):
 
         for node in self._getSelectedObjectsWithoutSelectedAncestors():
             node.setMirror(Vector(1, 1, 1))
+            node._rotationX = 0.0
+            node._rotationY = 0.0
+            node._rotationZ = 0.0
 
         Selection.applyOperation(SetTransformOperation, None, Quaternion(), None)
+
+        self._X_angle = 0
+        self._Y_angle = 0
+        self._Z_angle = 0
+        self.propertyChanged.emit()
 
     def layFlat(self):
         """Initialise and start a LayFlatOperation

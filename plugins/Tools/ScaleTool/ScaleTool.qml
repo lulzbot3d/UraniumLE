@@ -310,8 +310,8 @@ Item
             onEditingFinished:
                 lastEnteredValue = textfields.evaluateTextChange(text, lastEnteredValue, "ObjectWidth", "ScaleX")
             Keys.onBacktabPressed: selectTextInTextfield(widthTextField)
-            Keys.onTabPressed: selectTextInTextfield(depthTextField)                
-            
+            Keys.onTabPressed: selectTextInTextfield(depthTextField)
+
         }
         TextField
         {
