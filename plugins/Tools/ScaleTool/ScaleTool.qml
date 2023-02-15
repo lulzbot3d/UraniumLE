@@ -61,7 +61,7 @@ Item
         anchors.topMargin: UM.Theme.getSize("default_margin").height;
         anchors.left: textfields.left
         anchors.leftMargin: UM.Theme.getSize("default_margin").width;
-        z: 1
+        z: 2
 
         //: Reset scale tool button
         text: catalog.i18nc("@action:button","Reset")
@@ -73,12 +73,29 @@ Item
         onClicked: UM.ActiveTool.triggerAction("resetScale");
     }
 
+    Button
+    {
+        id: scaleToMaxButton
+        anchors.top: textfields.bottom
+        anchors.topMargin: UM.Theme.getSize("default_margin").height;
+        anchors.left: resetScaleButton.right;
+        anchors.leftMargin: UM.Theme.getSize("default_margin").width;
+        z: 1
 
-    Flow 
+        text: catalog.i18nc("@action:button","Scale to Max");
+        iconSource: UM.Theme.getIcon("ScaleMax");
+        style: UM.Theme.styles.tool_button;
+        property bool needBorder: true;
+
+        onClicked: UM.ActiveTool.triggerAction("scaleToMax")
+    }
+
+
+    Flow
     {
         id: checkboxes;
 
-        anchors.left: resetScaleButton.right;
+        anchors.left: scaleToMaxButton.right;
         anchors.leftMargin: UM.Theme.getSize("default_margin").width;
         anchors.right: parent.right;
         anchors.top: resetScaleButton.top;
@@ -310,8 +327,8 @@ Item
             onEditingFinished:
                 lastEnteredValue = textfields.evaluateTextChange(text, lastEnteredValue, "ObjectWidth", "ScaleX")
             Keys.onBacktabPressed: selectTextInTextfield(widthTextField)
-            Keys.onTabPressed: selectTextInTextfield(depthTextField)                
-            
+            Keys.onTabPressed: selectTextInTextfield(depthTextField)
+
         }
         TextField
         {
