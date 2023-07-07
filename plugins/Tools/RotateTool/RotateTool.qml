@@ -135,7 +135,7 @@ Item
             onEditingFinished:
             {
                 var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
-                UM.ActiveTool.setProperty("Y", modified_text);
+                UM.ActiveTool.setProperty("Z", modified_text);
             }
 
             onActiveFocusChanged:
@@ -165,7 +165,7 @@ Item
             onEditingFinished:
             {
                 var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
-                UM.ActiveTool.setProperty("Z", modified_text);
+                UM.ActiveTool.setProperty("Y", modified_text);
             }
 
             onActiveFocusChanged:
@@ -287,13 +287,13 @@ Item
     {
         target: base
         property: "yText"
-        value: base.roundFloat(UM.ActiveTool.properties.getValue("Y"), 4)
+        value: base.roundFloat(UM.ActiveTool.properties.getValue("Z"), 4)
     }
 
     Binding
     {
         target: base
         property: "zText"
-        value:base.roundFloat(UM.ActiveTool.properties.getValue("Z"), 4)
+        value:base.roundFloat(UM.ActiveTool.properties.getValue("Y"), 4)
     }
 }
