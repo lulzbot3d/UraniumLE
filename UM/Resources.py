@@ -376,7 +376,7 @@ class Resources:
         files = []
 
         paths = cls.__secure_paths if secure_paths_only else cls.__paths
-        
+
         for path in paths:
             file_path = os.path.join(path, suffix, *args)
             if os.path.exists(file_path):
