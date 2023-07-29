@@ -170,7 +170,7 @@ class Selection:
         :param operation: :type{Class} The operation to create and push. It should take a SceneNode as first positional parameter.
         :param args: The additional positional arguments passed along to the operation constructor.
         :param kwargs: The additional keyword arguments that will be passed along to the operation constructor.
-        
+
         :return: list of instantiated operations
         """
         if not cls.__selection:

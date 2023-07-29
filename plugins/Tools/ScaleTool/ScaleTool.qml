@@ -6,8 +6,7 @@ import QtQuick.Controls 1.2
 
 import UM 1.1 as UM
 
-Item
-{
+Item {
     id: base
     width: childrenRect.width
     height: childrenRect.height
@@ -23,7 +22,7 @@ Item
     property string depthText
     property string widthText
 
-    function getPercentage(scale){
+    function getPercentage(scale) {
         return scale * 100;
     }
 
@@ -33,29 +32,24 @@ Item
     //input:    The number to round.
     //decimals: The number of decimals (digits after the radix) to round to.
     //return:   The rounded number.
-    function roundFloat(input, decimals)
-    {
+    function roundFloat(input, decimals) {
         //First convert to fixed-point notation to round the number to 4 decimals and not introduce new floating point errors.
         //Then convert to a string (is implicit). The fixed-point notation will be something like "3.200".
         //Then remove any trailing zeroes and the radix.
-        if(input)
-        {
+        if(input) {
             return input.toFixed(decimals).replace(/\.?0*$/, ""); //Match on periods, if any ( \.? ), followed by any number of zeros ( 0* ), then the end of string ( $ ).
         }
-        else
-        {
+        else {
             return 0
         }
     }
 
-    function selectTextInTextfield(selected_item)
-    {
+    function selectTextInTextfield(selected_item) {
         selected_item.selectAll()
         selected_item.focus = true
     }
 
-    Button
-    {
+    Button {
         id: resetScaleButton
         anchors.top: textfields.bottom
         anchors.topMargin: UM.Theme.getSize("default_margin").height;
@@ -73,8 +67,7 @@ Item
         onClicked: UM.ActiveTool.triggerAction("resetScale");
     }
 
-    Button
-    {
+    Button {
         id: scaleToMaxButton
         anchors.top: textfields.bottom
         anchors.topMargin: UM.Theme.getSize("default_margin").height;
@@ -87,12 +80,11 @@ Item
         style: UM.Theme.styles.tool_button;
         property bool needBorder: true;
 
-        onClicked: UM.ActiveTool.triggerAction("scaleToMax")
+        onClicked: UM.ActiveTool.triggerAction("scaleToMax");
     }
 
 
-    Flow
-    {
+    Flow {
         id: checkboxes;
 
         anchors.left: scaleToMaxButton.right;
@@ -102,8 +94,7 @@ Item
 
         spacing: UM.Theme.getSize("default_margin").height;
 
-        CheckBox
-        {
+        CheckBox {
             id: snapScalingCheckbox
 
             width: parent.width //Use a width instead of anchors to allow the flow layout to resolve positioning.
@@ -111,11 +102,9 @@ Item
 
             style: UM.Theme.styles.checkbox;
             checked: UM.ActiveTool.properties.getValue("ScaleSnap");
-            onClicked: 
-            {
+            onClicked: {
                 UM.ActiveTool.setProperty("ScaleSnap", checked);
-                if (snapScalingCheckbox.checked)
-                {
+                if (snapScalingCheckbox.checked) {
                     UM.ActiveTool.setProperty("ScaleX", parseFloat(xPercentage.text) / 100);
                     UM.ActiveTool.setProperty("ScaleY", parseFloat(yPercentage.text) / 100);
                     UM.ActiveTool.setProperty("ScaleZ", parseFloat(zPercentage.text) / 100);
@@ -123,15 +112,13 @@ Item
             }
         }
 
-        Binding
-        {
+        Binding {
             target: snapScalingCheckbox
             property: "checked"
             value: UM.ActiveTool.properties.getValue("ScaleSnap")
         }
 
-        CheckBox
-        {
+        CheckBox {
             id: uniformScalingCheckbox
 
             width: parent.width //Use a width instead of anchors to allow the flow layout to resolve positioning.
@@ -142,16 +129,14 @@ Item
             onClicked: UM.ActiveTool.setProperty("NonUniformScale", !checked);
         }
 
-        Binding
-        {
+        Binding {
             target: uniformScalingCheckbox
             property: "checked"
             value: !UM.ActiveTool.properties.getValue("NonUniformScale")
         }
     }
 
-    Grid
-    {
+    Grid {
         id: textfields;
 
         anchors.top: parent.top;
@@ -160,8 +145,7 @@ Item
         flow: Grid.TopToBottom;
         spacing: Math.round(UM.Theme.getSize("default_margin").width / 2);
 
-        Label
-        {
+        Label {
             height: UM.Theme.getSize("setting_control").height;
             text: "X";
             font: UM.Theme.getFont("default");
@@ -171,8 +155,7 @@ Item
             width: Math.ceil(contentWidth) //Make sure that the grid cells have an integer width.
         }
 
-        Label
-        {
+        Label {
             height: UM.Theme.getSize("setting_control").height;
             text: "Y";
             font: UM.Theme.getFont("default");
@@ -182,8 +165,7 @@ Item
             width: Math.ceil(contentWidth) //Make sure that the grid cells have an integer width.
         }
 
-        Label
-        {
+        Label {
             height: UM.Theme.getSize("setting_control").height;
             text: "Z";
             font: UM.Theme.getFont("default");
@@ -192,69 +174,62 @@ Item
             renderType: Text.NativeRendering
             width: Math.ceil(contentWidth) //Make sure that the grid cells have an integer width.
         }
-        TextField
-        {
+
+        TextField {
             id: widthTextField
             width: UM.Theme.getSize("setting_control").width;
             height: UM.Theme.getSize("setting_control").height;
             property string unit: "mm";
             style: UM.Theme.styles.text_field;
             text: widthText
-            validator: DoubleValidator
-            {
+            validator: DoubleValidator {
                 bottom: 0.1
                 decimals: 4
                 locale: "en_US"
             }
 
-            onEditingFinished:
-            {
+            onEditingFinished: {
                 var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
                 UM.ActiveTool.setProperty("ObjectWidth", modified_text);
             }
             Keys.onBacktabPressed: selectTextInTextfield(yPercentage)
             Keys.onTabPressed: selectTextInTextfield(xPercentage)
         }
-        TextField
-        {
+
+        TextField {
             id: depthTextField
             width: UM.Theme.getSize("setting_control").width;
             height: UM.Theme.getSize("setting_control").height;
             property string unit: "mm";
             style: UM.Theme.styles.text_field;
             text: depthText
-            validator: DoubleValidator
-            {
+            validator: DoubleValidator {
                 bottom: 0.1
                 decimals: 4
                 locale: "en_US"
             }
 
-            onEditingFinished:
-            {
+            onEditingFinished: {
                 var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
                 UM.ActiveTool.setProperty("ObjectDepth", modified_text);
             }
             Keys.onBacktabPressed: selectTextInTextfield(xPercentage)
             Keys.onTabPressed: selectTextInTextfield(zPercentage)
         }
-        TextField
-        {
+        TextField {
             id: heightTextField
             width: UM.Theme.getSize("setting_control").width;
             height: UM.Theme.getSize("setting_control").height;
             property string unit: "mm";
             style: UM.Theme.styles.text_field;
             text: heightText
-            validator: DoubleValidator
-            {
+            validator: DoubleValidator {
                 bottom: 0.1
                 decimals: 4
                 locale: "en_US"
             }
 
-            onEditingFinished:
-            {
+            onEditingFinished: {
                 var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
                 UM.ActiveTool.setProperty("ObjectHeight", modified_text);
             }
@@ -265,28 +240,24 @@ Item
         // To ensure that the new size after scaling matches is still validate (size cannot be less than 0.1 mm).
         // This function checks that by applying the new scale to the original size and checks if the new size is
         // valid. If valid, the new size will be returned, otherwise -1 which means not valid.
-        function validateMinimumSize(newValue, lastValue, currentModelSize)
-        {
+        function validateMinimumSize(newValue, lastValue, currentModelSize) {
             var modifiedText = newValue.replace(",", ".") // User convenience. We use dots for decimal values
             var parsedNewValue = parseFloat(modifiedText)
             var originalSize = (100 * currentModelSize) / lastValue // model size without scaling
             var newSize = (parsedNewValue * originalSize) / 100
             const minAllowedSize = 0.1 // The new size cannot be lower than this value
 
-            if (newSize >= minAllowedSize)
-            {
+            if (newSize >= minAllowedSize) {
                 return parsedNewValue
             }
 
             return -1
         }
 
-        function evaluateTextChange(text, lastEnteredValue, valueName, scaleName)
-        {
+        function evaluateTextChange(text, lastEnteredValue, valueName, scaleName) {
             var currentModelSize = UM.ActiveTool.properties.getValue(valueName);
             var parsedValue = textfields.validateMinimumSize(text, lastEnteredValue, currentModelSize);
-            if (parsedValue > 0 && ! UM.ActiveTool.properties.getValue("NonUniformScale"))
-            {
+            if (parsedValue > 0 && ! UM.ActiveTool.properties.getValue("NonUniformScale")) {
                 var scale = parsedValue / lastEnteredValue;
                 var x = UM.ActiveTool.properties.getValue("ScaleX") * 100;
                 var y = UM.ActiveTool.properties.getValue("ScaleY") * 100;
@@ -297,61 +268,56 @@ Item
                     (y * scale).toString(), y, UM.ActiveTool.properties.getValue("ObjectHeight"));
                 var newZ = textfields.validateMinimumSize(
                     (z * scale).toString(), z, UM.ActiveTool.properties.getValue("ObjectDepth"));
-                if (newX <= 0 || newY <= 0 || newZ <= 0)
-                {
+                if (newX <= 0 || newY <= 0 || newZ <= 0) {
                     parsedValue = -1;
                 }
             }
-            if (parsedValue > 0)
-            {
+            if (parsedValue > 0) {
                 UM.ActiveTool.setProperty(scaleName, parsedValue / 100);
                 lastEnteredValue = parsedValue;
             } // 'else' the value is not valid (the object will become too small)
             return lastEnteredValue;
         }
 
-        TextField
-        {
+        TextField {
             id: xPercentage
             width: UM.Theme.getSize("setting_control").width;
             height: UM.Theme.getSize("setting_control").height;
             property string unit: "%";
             style: UM.Theme.styles.text_field;
             text: xPercentageText
-            validator: DoubleValidator
-            {
+            validator: DoubleValidator {
                 decimals: 4
                 locale: "en_US"
             }
             property var lastEnteredValue: parseFloat(xPercentageText)
-            onEditingFinished:
+            onEditingFinished: {
                 lastEnteredValue = textfields.evaluateTextChange(text, lastEnteredValue, "ObjectWidth", "ScaleX")
+            }
             Keys.onBacktabPressed: selectTextInTextfield(widthTextField)
             Keys.onTabPressed: selectTextInTextfield(depthTextField)
 
         }
-        TextField
-        {
+        TextField {
             id: zPercentage
             width: UM.Theme.getSize("setting_control").width;
             height: UM.Theme.getSize("setting_control").height;
             property string unit: "%";
             style: UM.Theme.styles.text_field;
             text: zPercentageText
-            validator: DoubleValidator
-            {
+            validator: DoubleValidator {
                 decimals: 4
                 locale: "en_US"
             }
             property var lastEnteredValue: parseFloat(yPercentageText)
-            onEditingFinished:
+            onEditingFinished: {
                 lastEnteredValue = textfields.evaluateTextChange(text, lastEnteredValue, "ObjectHeight", "ScaleY")
+            }
             Keys.onBacktabPressed: selectTextInTextfield(heightTextField)
             Keys.onTabPressed: selectTextInTextfield(widthTextField)
 
         }
-        TextField
-        {
+        TextField {
             id: yPercentage
             width: UM.Theme.getSize("setting_control").width;
             height: UM.Theme.getSize("setting_control").height;
@@ -359,16 +325,14 @@ Item
             style: UM.Theme.styles.text_field;
 
             text: yPercentageText
-            validator: DoubleValidator
-            {
+            validator: DoubleValidator {
                 // Validate to 0.1 mm
                 bottom: 100 * (0.1 / (UM.ActiveTool.properties.getValue("ObjectHeight") / UM.ActiveTool.properties.getValue("ScaleY")))
                 decimals: 4
                 locale: "en_US"
             }
 
-            onEditingFinished:
-            {
+            onEditingFinished: {
                 var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
                 UM.ActiveTool.setProperty("ScaleY", parseFloat(modified_text) / 100);
             }
@@ -378,43 +342,37 @@ Item
         // We have to use indirect bindings, as the values can be changed from the outside, which could cause breaks
         // (for instance, a value would be set, but it would be impossible to change it).
         // Doing it indirectly does not break these.
-        Binding
-        {
+        Binding {
             target: base
             property: "heightText"
             value: base.roundFloat(UM.ActiveTool.properties.getValue("ObjectHeight"), 4)
         }
 
-        Binding
-        {
+        Binding {
             target: base
             property: "widthText"
             value: base.roundFloat(UM.ActiveTool.properties.getValue("ObjectWidth"), 4)
         }
 
-        Binding
-        {
+        Binding {
             target: base
             property: "depthText"
             value:base.roundFloat(UM.ActiveTool.properties.getValue("ObjectDepth"), 4)
         }
 
-        Binding
-        {
+        Binding {
             target: base
             property: "xPercentageText"
             value: base.roundFloat(100 * UM.ActiveTool.properties.getValue("ScaleX"), 4)
         }
 
-        Binding
-        {
+        Binding {
             target: base
             property: "yPercentageText"
             value: base.roundFloat(100 * UM.ActiveTool.properties.getValue("ScaleY"), 4)
         }
 
-        Binding
-        {
+        Binding {
             target: base
             property: "zPercentageText"
             value: base.roundFloat(100 * UM.ActiveTool.properties.getValue("ScaleZ"), 4)

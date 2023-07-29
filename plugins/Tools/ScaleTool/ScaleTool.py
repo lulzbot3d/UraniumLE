@@ -1,5 +1,9 @@
 # Copyright (c) 2021 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
+
+import imp
+import scipy
+import time
 from typing import List, Tuple, TYPE_CHECKING, Optional
 
 from PyQt5.QtCore import Qt
@@ -9,6 +13,7 @@ from UM.Logger import Logger
 from UM.Math.Float import Float
 from UM.Math.Matrix import Matrix
 from UM.Math.Plane import Plane
+from UM.Math.Quaternion import Quaternion
 from UM.Math.Vector import Vector
 from UM.Operations.GroupedOperation import GroupedOperation
 from UM.Operations.ScaleOperation import ScaleOperation
@@ -23,7 +28,18 @@ try:
 except (ImportError, SystemError):
     import ScaleToolHandle  # type: ignore  # This fixes the tests not being able to import.
 
-import scipy
+## This import is technically a no-no, but it's how I'm going to do it for now
+try:
+    imp.find_module('cura')
+    imp_cura = True
+except ImportError:
+    imp_cura = False
+    Logger.log("w", "ScaleTool was unable to import cura to access the ZOffsetDecorator")
+
+if imp_cura:
+    from cura.Scene import ZOffsetDecorator
+    Logger.log("d", "ScaleTool successfully imported cura!")
+
 if TYPE_CHECKING:
     from UM.Scene.SceneNode import SceneNode
 
@@ -215,6 +231,17 @@ class ScaleTool(Tool):
 
         if hasattr(self.getController().getScene(), "_maximum_bounds"):
             Selection.applyOperation(ScaleToBoundsOperation, self.getController().getScene()._maximum_bounds)
+            all_nodes = Selection.getAllSelectedObjects()
+            op = GroupedOperation()
+            for node in all_nodes:
+                if imp_cura:
+                    node.removeDecorator(ZOffsetDecorator.ZOffsetDecorator)
+                if node.getBoundingBox():
+                    center_y = node.getWorldPosition().y - node.getBoundingBox().bottom
+                else:
+                    center_y = 0
+                op.addOperation(SetTransformOperation(node, Vector(0, center_y, 0)))
+            op.push()
 
     def getNonUniformScale(self):
         """Get non-uniform scaling flag
