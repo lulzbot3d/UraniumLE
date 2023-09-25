@@ -120,8 +120,8 @@ class QtApplication(QApplication, Application):
         self._http_network_request_manager = HttpRequestManager(parent = self)
 
         #Metadata required for the file dialogues.
-        self.setOrganizationDomain("https://ultimaker.com/")
-        self.setOrganizationName("Ultimaker B.V.")
+        self.setOrganizationDomain("https://lulzbot.com/")
+        self.setOrganizationName("Fargo Additive Manufacturing Equipment 3D, LLC.")
 
     def addCommandLineOptions(self) -> None:
         super().addCommandLineOptions()
