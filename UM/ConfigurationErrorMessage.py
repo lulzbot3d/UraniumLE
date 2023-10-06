@@ -43,14 +43,16 @@ class ConfigurationErrorMessage(Message):
             self._faulty_containers.add(container)
 
         if initial_length != len(self._faulty_containers):
-            self.setText(i18n_catalog.i18nc("@info:status", "Your configuration seems to be corrupt. Something seems to be wrong with the following profiles:\n- {profiles}\n Would you like to reset to factory defaults? Reset will remove all your current printers and profiles.").format(profiles = "\n- ".join(self._faulty_containers)))
+            self.setText(i18n_catalog.i18nc("@info:status", "Your configuration files seem to be corrupt. Something seems to be wrong with the following profiles:\n- {profiles}\n\n \
+                                            This may have been caused by an update to Cura LE without clearing the old cache files. Would you like to reset to factory defaults? \
+                                            A reset will completely refresh your installation of Cura LulzBot Edition.").format(profiles = "\n- ".join(self._faulty_containers)))
             self.show()
 
     def _actionTriggered(self, _, action_id):
         if action_id == "reset":
             result = QMessageBox.question(None, i18n_catalog.i18nc("@title:window", "Reset to factory"),
                                           i18n_catalog.i18nc("@label",
-                                                        "Reset will remove all your current printers and profiles! Are you sure you want to reset?"))
+                                                        "A reset will cause you to lose your custom profiles! Are you sure you want to reset?"))
             if result == QMessageBox.Yes:
                 Resources.factoryReset()
                 sys.exit(1)
