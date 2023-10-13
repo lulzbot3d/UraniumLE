@@ -110,7 +110,7 @@ Dialog
     {
         id: defaultsButton
         text: catalog.i18nc("@action:button", "Defaults");
-        enabled: stackView.currentItem.resetEnabled;
+        enabled: stackView.currentItem != null ? stackView.currentItem.resetEnabled : false;
         onClicked: stackView.currentItem.reset();
     }
 
