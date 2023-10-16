@@ -290,18 +290,16 @@ class LocalContainerProvider(ContainerProvider):
             Logger.log("w", "The definition cache for definition {definition_id} failed to save because you don't have permissions to write in the cache directory.".format(definition_id = definition.getId()))
             return  # No rights to save it. Better give up.
 
+        recursion_limit = sys.getrecursionlimit() # pulling this from upstream since we're still having issues with hitting the default recursion limit
+        sys.setrecursionlimit(3000)
         try:
             with open(cache_path, "wb") as f:
-                sys.setrecursionlimit(1200) # Looks like for whatever reason we need to increase the recursion limit slightly for our pickling to work.
                 pickle.dump(definition, f, pickle.HIGHEST_PROTOCOL)
-                Logger.log("i", "Pickled " + str(definition))
-                sys.setrecursionlimit(1000)
         except RecursionError as err:
             # Sometimes a recursion error in pickling occurs here.
             # The cause is unknown. It must be some circular reference in the definition instances or definition containers.
             # Instead of saving a partial cache and raising an exception, simply fail to save the cache.
             # See CURA-4024.
-            print(err)
             Logger.log("w", "The definition cache for definition {definition_id} failed to pickle.".format(definition_id = definition.getId()))
             if os.path.exists(cache_path):
                 try:
@@ -311,6 +309,8 @@ class LocalContainerProvider(ContainerProvider):
                     Logger.log("w", "Unable to remove picked file as another process has access to it %s", cache_path)
         except PermissionError:
             Logger.log("w", "Cura didn't get permission to save the definition {definition_id}".format(definition_id = definition.getId()))
+        finally:
+            sys.setrecursionlimit(recursion_limit)
 
     def _updatePathCache(self) -> None:
         """Updates the cache of paths to containers.
