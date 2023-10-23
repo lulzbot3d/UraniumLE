@@ -311,7 +311,7 @@ Item {
             }
             property var lastEnteredValue: parseFloat(yPercentageText)
             onEditingFinished: {
-                lastEnteredValue = textfields.evaluateTextChange(text, lastEnteredValue, "ObjectHeight", "ScaleY")
+                lastEnteredValue = textfields.evaluateTextChange(text, lastEnteredValue, "ObjectHeight", "ScaleZ")
             }
             Keys.onBacktabPressed: selectTextInTextfield(heightTextField)
             Keys.onTabPressed: selectTextInTextfield(widthTextField)
