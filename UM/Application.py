@@ -79,8 +79,8 @@ class Application:
         self.default_theme = self._app_name  # type: str # Default theme is the application name
         self._default_language = "en_US"  # type: str
 
-        self.change_log_url: str = "https://github.com/Ultimaker/Uranium"  # Where to find a more detailed description of the recent updates.
-        self.beta_change_log_url: str = "https://github.com/Ultimaker/Uranium"  # Where to find a more detailed description of proposed updates.
+        self.change_log_url: str = "https://gitlab.com/lulzbot3d/cura-le/uranium"  # Where to find a more detailed description of the recent updates.
+        self.beta_change_log_url: str = "https://gitlab.com/lulzbot3d/cura-le/uranium"  # Where to find a more detailed description of proposed updates.
 
         self._preferences_filename = None  # type: str
         self._preferences = None  # type: Preferences
