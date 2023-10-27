@@ -58,17 +58,26 @@ class FileHandler(QObject):
         file_types = []
         all_types = []
 
+        # Adding a quick filter that only shows you 3D Model files
+        files_3d = ["stl", "obj", "x3d", "ctm", "dae", "glb", "gltf", "ply", "zae", "3mf", "amf"]
+        model_types = []
+
         if Platform.isLinux():
             for ext, desc in self.getSupportedFileTypesRead().items():
                 file_types.append("{0} (*.{1} *.{2})".format(desc, ext.lower(), ext.upper()))
                 all_types.append("*.{0} *.{1}".format(ext.lower(), ext.upper()))
+                if ext.lower() in files_3d:
+                    model_types.append("*.{0} *.{1}".format(ext.lower(), ext.upper()))
         else:
             for ext, desc in self.getSupportedFileTypesRead().items():
                 file_types.append("{0} (*.{1})".format(desc, ext))
                 all_types.append("*.{0}".format(ext))
+                if ext.lower() in files_3d:
+                    model_types.append("*.{0}".format(ext.lower()))
 
         file_types.sort()
         file_types.insert(0, i18n_catalog.i18nc("@item:inlistbox", "All Supported Types ({0})", " ".join(all_types)))
+        file_types.insert(0, i18n_catalog.i18nc("@item:inlistbox", "3D Model Files ({0})", " ".join(model_types)))
         file_types.append(i18n_catalog.i18nc("@item:inlistbox", "All Files (*)"))
 
         return file_types
