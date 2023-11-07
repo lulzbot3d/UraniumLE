@@ -28,18 +28,6 @@ try:
 except (ImportError, SystemError):
     import ScaleToolHandle  # type: ignore  # This fixes the tests not being able to import.
 
-## This import is technically a no-no, but it's how I'm going to do it for now
-try:
-    imp.find_module('cura')
-    imp_cura = True
-except ImportError:
-    imp_cura = False
-    Logger.log("w", "ScaleTool was unable to import cura to access the ZOffsetDecorator")
-
-if imp_cura:
-    from cura.Scene import ZOffsetDecorator
-    Logger.log("d", "ScaleTool successfully imported cura!")
-
 if TYPE_CHECKING:
     from UM.Scene.SceneNode import SceneNode
 
@@ -234,8 +222,6 @@ class ScaleTool(Tool):
             all_nodes = Selection.getAllSelectedObjects()
             op = GroupedOperation()
             for node in all_nodes:
-                if imp_cura:
-                    node.removeDecorator(ZOffsetDecorator.ZOffsetDecorator)
                 if node.getBoundingBox():
                     center_y = node.getWorldPosition().y - node.getBoundingBox().bottom
                 else:

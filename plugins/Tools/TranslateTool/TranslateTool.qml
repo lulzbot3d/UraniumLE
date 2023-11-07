@@ -46,10 +46,7 @@ Item
         selected_item.focus = true
     }
 
-    
-
-    Grid
-    {
+    Grid {
         id: textfields;
 
         anchors.leftMargin: UM.Theme.getSize("default_margin").width;
@@ -184,13 +181,12 @@ Item
         }
     }
 
-    CheckBox
-    {
+    CheckBox {
         property var checkbox_state: 0; // if the state number is 2 then the checkbox has "partially" state
 
         // temporary property, which is used to recalculate checkbox state and keeps reference of the
         // binging object. If the binding object changes then checkBox state will be updated.
-        property var temp_checkBox_value:{
+        property var temp_checkBox_value: {
 
             checkbox_state = getCheckBoxState()
 
@@ -198,28 +194,26 @@ Item
             return base.lockPosition
         }
 
-        function getCheckBoxState(){
+        function getCheckBoxState() {
 
-            if (base.lockPosition == "true"){
+            if (base.lockPosition == "true") {
                 lockPositionCheckbox.checked = true
                 return 1;
-            }
-            else if (base.lockPosition == "partially"){
+            } else if (base.lockPosition == "partially") {
                 lockPositionCheckbox.checked = true
                 return 2;
-            }
-            else{
+            } else {
                 lockPositionCheckbox.checked = false
                 return 0;
             }
         }
 
-
         id: lockPositionCheckbox
-        anchors.top: textfields.bottom
-        anchors.topMargin: UM.Theme.getSize("default_margin").height;
-        anchors.left: textfields.left
-        anchors.leftMargin: UM.Theme.getSize("default_margin").width
+        anchors {
+            top: textfields.bottom
+            topMargin: UM.Theme.getSize("default_margin").height;
+            horizontalCenter: textfields.horizontalCenter
+        }
 
         text: catalog.i18nc("@option:check","Lock Model");
         style: UM.Theme.styles.partially_checkbox;
@@ -227,17 +221,43 @@ Item
         onClicked: {
 
             // If state is partially, then set Checked
-            if (checkbox_state == 2){
+            if (checkbox_state == 2) {
                 lockPositionCheckbox.checked = true
                 UM.ActiveTool.setProperty("LockPosition", true);
-            }
-            else{
+            } else {
                 UM.ActiveTool.setProperty("LockPosition", lockPositionCheckbox.checked);
             }
 
             // After clicking the base.lockPosition is not refreshed, fot this reason manually update the state
             // Set zero because only 2 will show partially icon in checkbox
             checkbox_state = 0;
+        }
+    }
+
+    Column {
+
+        anchors {
+            top: lockPositionCheckbox.bottom
+            topMargin: UM.Theme.getSize("default_margin").height
+            horizontalCenter: textfields.horizontalCenter
+        }
+
+        spacing: 5
+
+        Button {
+            id: centerButton
+            text: catalog.i18nc("@action:button", "Center")
+            style: UM.Theme.styles.toolbox_action_button
+
+            onClicked: UM.ActiveTool.triggerAction("centerSelection")
+        }
+
+        Button {
+            id: bottomButton
+            text: catalog.i18nc("@action:button", "Bottom")
+            style: UM.Theme.styles.toolbox_action_button
+
+            onClicked: UM.ActiveTool.triggerAction("dropToBuildPlate")
         }
     }
 
