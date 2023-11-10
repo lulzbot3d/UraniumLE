@@ -65,10 +65,13 @@ class UpdateChecker(Extension):
         the update for a particular version. When manually checking for updates,
         the user wants to display the update even if he's already seen it.
         """
-        http_manager = HttpRequestManager.getInstance()
-        Logger.log("i", "Checking for new version")
-        http_manager.get(self.url, callback = lambda reply: self._onRequestCompleted(reply, silent, display_same_version))
-        self._download_url = None
+        # http_manager = HttpRequestManager.getInstance()
+        # Logger.log("i", "Checking for new version")
+        # http_manager.get(self.url, callback = lambda reply: self._onRequestCompleted(reply, silent, display_same_version))
+        # self._download_url = None
+        Logger.log("i", "Update checking is currently disabled.")
+        Message(i18n_catalog.i18nc("@info", "The update checker is still undergoing development. Please check again in later versions."),
+                        title=i18n_catalog.i18nc("@info:title", "Under Development!"), lifetime=5).show()
 
     @classmethod
     def _extractVersionAndURLFromData(cls, data: Dict, application_name: str) -> Tuple[Optional[Version], Optional[str]]:
@@ -95,7 +98,7 @@ class UpdateChecker(Extension):
 
         app_version = Application.getInstance().getVersion()
         # Skip if we're on a dev version
-        if app_version == "master" or app_version == Version([0, 0, 0]):
+        if app_version == "main" or app_version == Version([0, 0, 0]):
             if not silent:
                 Message(i18n_catalog.i18nc("@info", "The version you are using does not support checking for updates."),
                         title=i18n_catalog.i18nc("@info:title", "Warning")).show()
