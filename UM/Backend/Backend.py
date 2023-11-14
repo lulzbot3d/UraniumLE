@@ -224,20 +224,29 @@ class Backend(PluginObject):
 
         self._createSocket()
 
+    def _cleanupExistingSocket(self) -> None:
+        self._socket.stateChanged.disconnect(self._onSocketStateChanged)
+        self._socket.messageReceived.disconnect(self._onMessageReceived)
+        self._socket.error.disconnect(self._onSocketError)
+        # Hack for (at least) Linux. If the socket is connecting, the close will deadlock.
+        while self._socket.getState() == Arcus.SocketState.Opening:
+            sleep(0.1)
+        # If the error occurred due to parsing, both connections believe that connection is okay.
+        # So we need to force a close.
+        self._socket.close()
+
+
     def _createSocket(self, protocol_file):
         """Creates a socket and attaches listeners."""
 
+        if not protocol_file:
+            Logger.log("w", "Unable to create socket without protocol file!")
+            return
+
         if self._socket:
             Logger.log("d", "Previous socket existed. Closing that first.") # temp debug logging
-            self._socket.stateChanged.disconnect(self._onSocketStateChanged)
-            self._socket.messageReceived.disconnect(self._onMessageReceived)
-            self._socket.error.disconnect(self._onSocketError)
-            # Hack for (at least) Linux. If the socket is connecting, the close will deadlock.
-            while self._socket.getState() == Arcus.SocketState.Opening:
-                sleep(0.1)
-            # If the error occurred due to parsing, both connections believe that connection is okay.
-            # So we need to force a close.
-            self._socket.close()
+            self._cleanupExistingSocket()
+
 
         self._socket = SignalSocket()
         self._socket.stateChanged.connect(self._onSocketStateChanged)
