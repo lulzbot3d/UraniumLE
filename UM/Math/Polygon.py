@@ -224,8 +224,14 @@ class Polygon:
             return None
 
         clipper = pyclipper.Pyclipper()
-        clipper.AddPath(self._clipperPoints(), pyclipper.PT_SUBJECT, closed = True)
-        clipper.AddPath(other._clipperPoints(), pyclipper.PT_CLIP, closed = True)
+        try: # On rare occasion this section can apparently throw a clipper error
+            clipper.AddPath(self._clipperPoints(), pyclipper.PT_SUBJECT, closed = True)
+            clipper.AddPath(other._clipperPoints(), pyclipper.PT_CLIP, closed = True)
+        except pyclipper.ClipperException:
+            # It looks like you have to be doing some dumb stuff to trigger this
+            # We'll just acknowledge it happened but avoid crashing harshly.
+            Logger.logException("e", "Tried to add an invalid path for Clipping!")
+            return None
         intersection_points = clipper.Execute(pyclipper.CT_INTERSECTION)
 
         if len(intersection_points) == 0:
