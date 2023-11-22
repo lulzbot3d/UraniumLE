@@ -257,6 +257,11 @@ class Controller:
         :return: tool if name was found, None otherwise.
         """
 
+        if name == "":
+            # This actually ends up coming through by design fairly often
+            # I just don't want to completely congest the log with em.
+            return None
+
         try:
             return self._tools[name]
         except KeyError:  # No such tool
