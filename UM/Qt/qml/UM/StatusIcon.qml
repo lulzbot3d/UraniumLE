@@ -47,7 +47,7 @@ Item
             PropertyChanges
             {
                 target: iconInner
-                source: UM.Theme.getIcon("CheckThin", "low")
+                source: UM.Theme.getIcon("Check", "low")
                 color: UM.Theme.getColor("message_success_icon")
             }
             PropertyChanges
