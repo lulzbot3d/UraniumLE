@@ -133,7 +133,7 @@ class LocalContainerProvider(ContainerProvider):
                     else:
                         Logger.log("e", "Failed to find MIME type for container ID [%s] with path [%s]", container.getId(), path)
         else:
-            Logger.log("w", "Dirty container [%s] is not saved because the resource type is unknown in ContainerRegistry", container_type)
+            Logger.log("d", "Container of type [%s] was not saved.", container_type)
 
     def loadMetadata(self, container_id: str) -> Dict[str, Any]:
         """Load the metadata of a specified container.
