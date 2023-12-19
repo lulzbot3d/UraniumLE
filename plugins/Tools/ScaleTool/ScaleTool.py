@@ -19,6 +19,7 @@ from UM.Operations.GroupedOperation import GroupedOperation
 from UM.Operations.ScaleOperation import ScaleOperation
 from UM.Operations.SetTransformOperation import SetTransformOperation
 from UM.Operations.ScaleToBoundsOperation import ScaleToBoundsOperation
+from UM.Operations.ToBuildPlateOperation import ToBuildPlateOperation
 from UM.Scene.Selection import Selection
 from UM.Scene.ToolHandle import ToolHandle
 from UM.Tool import Tool
@@ -228,6 +229,18 @@ class ScaleTool(Tool):
                     center_y = 0
                 op.addOperation(SetTransformOperation(node, Vector(0, center_y, 0)))
             op.push()
+
+    def dropToBuildPlate(self) -> None:
+        selected_nodes = self._getSelectedObjectsWithoutSelectedAncestors()
+        if len(selected_nodes) > 1:
+                op = GroupedOperation()
+                for selected_node in selected_nodes:
+                    op.addOperation(ToBuildPlateOperation(selected_node))
+                op.push()
+        else:
+            for selected_node in selected_nodes:
+                ToBuildPlateOperation(selected_node).push()
+        self._controller.toolOperationStopped.emit(self)
 
     def getNonUniformScale(self):
         """Get non-uniform scaling flag

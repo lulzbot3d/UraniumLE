@@ -92,7 +92,15 @@ Item {
         anchors.right: parent.right;
         anchors.top: resetScaleButton.top;
 
-        spacing: UM.Theme.getSize("default_margin").height;
+        spacing: UM.Theme.getSize("default_margin").height / 2;
+
+        Button {
+            id: bottomButton
+            text: catalog.i18nc("@action:button", "Bottom")
+            style: UM.Theme.styles.toolbox_action_button
+
+            onClicked: UM.ActiveTool.triggerAction("dropToBuildPlate")
+        }
 
         CheckBox {
             id: snapScalingCheckbox
