@@ -1,8 +1,8 @@
-# Copyright (c) 2018 Ultimaker B.V.
+# Copyright (c) 2022 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QKeySequence
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QKeySequence
 
 from UM.Application import Application
 
@@ -11,14 +11,14 @@ from UM.PluginRegistry import PluginRegistry
 
 
 class ToolModel(ListModel):
-    IdRole = Qt.UserRole + 1
-    NameRole = Qt.UserRole + 2
-    IconRole = Qt.UserRole + 3
-    ToolActiveRole = Qt.UserRole + 4
-    ToolEnabledRole = Qt.UserRole + 5
-    DescriptionRole = Qt.UserRole + 6
-    LocationRole = Qt.UserRole + 7
-    ShortcutRole = Qt.UserRole + 8
+    IdRole = Qt.ItemDataRole.UserRole + 1
+    NameRole = Qt.ItemDataRole.UserRole + 2
+    IconRole = Qt.ItemDataRole.UserRole + 3
+    ToolActiveRole = Qt.ItemDataRole.UserRole + 4
+    ToolEnabledRole = Qt.ItemDataRole.UserRole + 5
+    DescriptionRole = Qt.ItemDataRole.UserRole + 6
+    LocationRole = Qt.ItemDataRole.UserRole + 7
+    ShortcutRole = Qt.ItemDataRole.UserRole + 8
 
     def __init__(self, parent = None):
         super().__init__(parent)
@@ -47,8 +47,9 @@ class ToolModel(ListModel):
             tool_meta_data = tools[name].getMetaData()
             location = PluginRegistry.getInstance().getMetaData(plugin_id).get("location", "")
 
-            # Skip tools that are marked as not visible
-            if "visible" in tool_meta_data and not tool_meta_data["visible"]:
+            # Skip tools that are marked as not visible, or are not there
+            tool = self._controller.getTool(name)
+            if ("visible" in tool_meta_data and not tool_meta_data["visible"]) or tool is None:
                 continue
 
             # Optional metadata elements
@@ -56,7 +57,7 @@ class ToolModel(ListModel):
             icon_name = tool_meta_data.get("icon", "default.png")
 
             #Get the shortcut and translate it to a string.
-            shortcut = self._controller.getTool(name).getShortcutKey()
+            shortcut = tool.getShortcutKey()
             if shortcut:
                 shortcut = QKeySequence(shortcut).toString()
             else:
@@ -64,7 +65,7 @@ class ToolModel(ListModel):
 
             weight = tool_meta_data.get("weight", 0)
 
-            enabled = self._controller.getTool(name).getEnabled()
+            enabled = tool.getEnabled()
 
             items.append({
                 "id": name,

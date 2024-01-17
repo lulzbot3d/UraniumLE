@@ -1,9 +1,9 @@
-# Copyright (c) 2020 Ultimaker B.V.
+# Copyright (c) 2022 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
 
 from typing import Optional
 
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 
 from UM.Event import Event, MouseEvent, KeyEvent
 from UM.Job import Job
@@ -53,7 +53,7 @@ class RotateTool(Tool):
         self._angle = None
         self._angle_update_time = None
 
-        self._shortcut_key = Qt.Key_R
+        self._shortcut_key = Qt.Key.Key_R
 
         self._progress_message = None
         self._iterations = 0
@@ -434,7 +434,7 @@ class RotateTool(Tool):
         :return: type(String) fully formatted string showing the angle by which the mesh(es) are rotated
         """
 
-        return "%d°" % round(math.degrees(self._angle)) if self._angle else None
+        return ("%f" % round(math.degrees(self._angle), 2)).rstrip('0').rstrip('.') + "°" if self._angle else None
 
     def getSelectFaceSupported(self) -> bool:
         """Get whether the select face feature is supported

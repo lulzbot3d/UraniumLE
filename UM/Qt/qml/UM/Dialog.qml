@@ -1,40 +1,82 @@
-// Copyright (c) 2017 Ultimaker B.V.
+// Copyright (c) 2022 Ultimaker B.V.
 // Uranium is released under the terms of the LGPLv3 or higher.
 
 import QtQuick 2.10
 import QtQuick.Window 2.2
 import QtQuick.Layouts 1.3
+import QtQuick.Dialogs
 
-import UM 1.0 as UM
-
+import UM 1.5 as UM
 
 Window
 {
     id: base
 
-    modality: Qt.ApplicationModal;
-    flags: Qt.Dialog | Qt.CustomizeWindowHint | Qt.WindowTitleHint | Qt.WindowCloseButtonHint;
+    modality: Qt.ApplicationModal
+    flags: (Qt.platform.os == "windows" ? Qt.Dialog : Qt.Window)  // <-- Ugly workaround for a bug in Windows, where the close-button doesn't show up unless we have a Dialog (but _not_ a Window).
+        | Qt.CustomizeWindowHint | Qt.WindowTitleHint | Qt.WindowCloseButtonHint
 
     minimumWidth: screenScaleFactor * 640;
     minimumHeight: screenScaleFactor * 480;
     width: minimumWidth
     height: minimumHeight
 
-    property int margin: screenScaleFactor * 8;
+    property int margin: UM.Theme.getSize("default_margin").width
     property bool closeOnAccept: true;  // Automatically close the window when the window is "accepted" (eg using the return key)
 
     default property alias contents: contentItem.children;
 
     property alias loader: contentLoader
 
-    property alias leftButtons: leftButtonRow.children;
-    property alias rightButtons: rightButtonRow.children;
+    property list<Item> leftButtons
+    property list<Item> rightButtons
     property alias backgroundColor: background.color
 
-    signal accepted();
-    signal rejected();
+    property real buttonSpacing: 0
 
-    function accept() {
+    property Component buttonRow: RowLayout
+    {
+        height: childrenRect.height
+        Layout.fillWidth: true
+
+        RowLayout
+        {
+            Layout.alignment: Qt.AlignLeft
+            spacing: base.buttonSpacing
+            children: leftButtons
+        }
+
+        RowLayout
+        {
+            Layout.alignment: Qt.AlignRight
+            spacing: base.buttonSpacing
+            children: rightButtons
+        }
+    }
+
+    property Component footerComponent: Item
+    {
+        anchors.leftMargin: base.margin
+        anchors.rightMargin: base.margin
+        anchors.bottomMargin: base.margin
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: childrenRect.height + base.margin
+        Loader
+        {
+            sourceComponent: buttonRow
+            width: parent.width
+            height: childrenRect.height
+        }
+    }
+
+    property alias headerComponent: header.sourceComponent
+
+    signal accepted()
+    signal rejected()
+
+    function accept()
+    {
         if (base.closeOnAccept) {
             base.visible = false;
         }
@@ -50,65 +92,65 @@ Window
         }
     }
 
-    function open() {
+    function open()
+    {
         base.visible = true;
     }
 
-    Rectangle {
+    Rectangle
+    {
         id: background
-        anchors.fill: parent;
-        color: palette.window;
-
-        focus: base.visible;
-
-        Keys.onEscapePressed:{
-            base.reject();
-        }
-
-        Keys.onReturnPressed: {
-            base.accept();
-        }
-
-        Item {
-            id: contentItem;
-
-            anchors {
-                left: parent.left;
-                leftMargin: base.margin;
-                right: parent.right;
-                rightMargin: base.margin;
-                top: parent.top;
-                topMargin: base.margin;
-                bottom: buttonRow.top;
-                bottomMargin: base.margin;
-            }
-
-            Loader
-            {
-                id: contentLoader
-                anchors.fill: parent
-                property var manager: null
-            }
-        }
-
-        Item {
-            id: buttonRow;
-
-            anchors {
-                bottom: parent.bottom;
-                bottomMargin: base.margin;
-                left: parent.left;
-                leftMargin: base.margin;
-                right: parent.right;
-                rightMargin: base.margin;
-            }
-            height: childrenRect.height;
-
-            Row { id: leftButtonRow; anchors.left: parent.left; }
-
-            Row { id: rightButtonRow; anchors.right: parent.right; }
-        }
+        anchors.fill: parent
+        color: UM.Theme.getColor("main_background")
     }
 
-    SystemPalette { id: palette; }
+    ColumnLayout
+    {
+        spacing: 0
+        focus: base.visible
+        anchors.fill: background
+
+        Keys.onEscapePressed: base.reject()
+
+        Keys.onReturnPressed: base.accept()
+
+        Loader
+        {
+            id: header
+            visible: status != Loader.Null
+            Layout.preferredWidth: parent.width
+            Layout.preferredHeight: childrenRect.height
+        }
+
+        Item
+        {
+            Layout.fillHeight: true
+            Layout.preferredWidth: parent.width
+
+            Item
+            {
+                id: contentItem
+
+                anchors.fill: parent
+                anchors.margins: base.margin
+
+                Loader
+                {
+                    id: contentLoader
+                    visible: status != Loader.Null
+                    anchors.fill: parent
+                    property var manager: null
+                }
+            }
+        }
+
+        Loader
+        {
+            id: footer
+            visible: status != Loader.Null
+            Layout.preferredWidth: parent.width
+            Layout.preferredHeight: childrenRect.height
+            sourceComponent: footerComponent
+        }
+    }
 }

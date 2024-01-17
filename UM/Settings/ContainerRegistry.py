@@ -1,4 +1,4 @@
-# Copyright (c) 2021 Ultimaker B.V.
+# Copyright (c) 2022 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
 
 import gc
@@ -17,6 +17,7 @@ from UM.Resources import Resources
 from UM.Settings.EmptyInstanceContainer import EmptyInstanceContainer
 from UM.Settings.ContainerFormatError import ContainerFormatError
 from UM.Settings.ContainerProvider import ContainerProvider
+from UM.Settings.AdditionalSettingDefinitionsAppender import AdditionalSettingDefinitionsAppender
 from UM.Settings.constant_instance_containers import empty_container
 from . import ContainerQuery
 from UM.Settings.ContainerStack import ContainerStack
@@ -47,9 +48,9 @@ class ContainerRegistry(ContainerRegistryInterface):
     def __init__(self, application: "QtApplication") -> None:
         if ContainerRegistry.__instance is not None:
             raise RuntimeError("Try to create singleton '%s' more than once" % self.__class__.__name__)
-        ContainerRegistry.__instance = self
 
         super().__init__()
+        ContainerRegistry.__instance = self
 
         self._application = application  # type: QtApplication
 
@@ -58,6 +59,9 @@ class ContainerRegistry(ContainerRegistryInterface):
         # Sorted list of container providers (keep it sorted by sorting each time you add one!).
         self._providers = []  # type: List[ContainerProvider]
         PluginRegistry.addType("container_provider", self.addProvider)
+
+        self._additional_setting_definitions_list: List[Dict[str, Dict[str, Any]]] = []
+        PluginRegistry.addType("setting_definitions_appender", self.addAdditionalSettingDefinitionsAppender)
 
         self.metadata = {}  # type: Dict[str, metadata_type]
         self._containers = {}  # type: Dict[str, ContainerInterface]
@@ -114,6 +118,11 @@ class ContainerRegistry(ContainerRegistryInterface):
         self._providers.append(provider)
         # Re-sort every time. It's quadratic, but there shouldn't be that many providers anyway...
         self._providers.sort(key = lambda provider: PluginRegistry.getInstance().getMetaData(provider.getPluginId())["container_provider"].get("priority", 0))
+
+    def addAdditionalSettingDefinitionsAppender(self, appender: AdditionalSettingDefinitionsAppender) -> None:
+        """Adds a provider for additional setting definitions to append to each definition-container."""
+
+        self._additional_setting_definitions_list.append(appender.getAdditionalSettingDefinitions())
 
     def findDefinitionContainers(self, **kwargs: Any) -> List[DefinitionContainerInterface]:
         """Find all DefinitionContainer objects matching certain criteria.
@@ -379,7 +388,12 @@ class ContainerRegistry(ContainerRegistryInterface):
         return self._db_connection
 
     def _getProfileType(self, container_id: str, db_cursor: db.Cursor) -> Optional[str]:
-        db_cursor.execute("select id, container_type from containers where id = ?", (container_id, ))
+        try:
+            db_cursor.execute("select id, container_type from containers where id = ?", (container_id, ))
+        except (db.DatabaseError, db.OperationalError) as e:
+            Logger.error(f"Could not access database: {e}. Is it corrupt? Recreating it.")
+            self._recreateCorruptDataBase(db_cursor)
+            return None
         row = db_cursor.fetchone()
         if row:
             return row[1]
@@ -395,9 +409,17 @@ class ContainerRegistry(ContainerRegistryInterface):
         except:
             # Could be that the cursor is already closed
             pass
-        cursor.close()
 
-        self._db_connection = None
+        try:
+            cursor.close()
+        except db.ProgrammingError:
+            # Database was already closed
+            pass
+
+        if self._db_connection is not None:
+            self._db_connection.close()
+            self._db_connection = None
+
         db_path = os.path.join(Resources.getCacheStoragePath(), "containers.db")
         try:
             os.remove(db_path)
@@ -419,7 +441,7 @@ class ContainerRegistry(ContainerRegistryInterface):
         if container_type in self._database_handlers:
             try:
                 self._database_handlers[container_type].insert(metadata)
-            except db.DatabaseError as e:
+            except (db.DatabaseError, db.OperationalError) as e:
                 Logger.warning(f"Removing corrupt database and recreating database. {e}")
                 self._recreateCorruptDataBase(self._database_handlers[container_type].cursor)
 
@@ -428,7 +450,7 @@ class ContainerRegistry(ContainerRegistryInterface):
         if container_type in self._database_handlers:
             try:
                 self._database_handlers[container_type].update(metadata)
-            except db.DatabaseError as e:
+            except (db.DatabaseError, db.OperationalError) as e:
                 Logger.warning(f"Removing corrupt database and recreating database. {e}")
                 self._recreateCorruptDataBase(self._database_handlers[container_type].cursor)
 
@@ -457,12 +479,12 @@ class ContainerRegistry(ContainerRegistryInterface):
         for provider in self._providers:  # Automatically sorted by the priority queue.
             # Make copy of all IDs since it might change during iteration.
             provider_container_ids = set(provider.getAllIds())
-            # Keep a list of all the ID's that we know off
+            # Keep a list of all the ID's that we know of
             all_container_ids.update(provider_container_ids)
             for container_id in provider_container_ids:
                 try:
                     db_last_modified_time = self._getProfileModificationTime(container_id, cursor)
-                except db.DatabaseError as e:
+                except (db.DatabaseError, db.OperationalError) as e:
                     Logger.warning(f"Removing corrupt database and recreating database. {e}")
                     self._recreateCorruptDataBase(cursor)
                     cursor = self._getDatabaseConnection().cursor()  # After recreating the database, all the cursors have changed.
@@ -481,7 +503,7 @@ class ContainerRegistry(ContainerRegistryInterface):
                             cursor.execute(
                                 "INSERT INTO containers (id, name, last_modified, container_type) VALUES (?, ?, ?, ?)",
                                 (container_id, metadata["name"], modified_time, metadata["type"]))
-                        except db.DatabaseError as e:
+                        except (db.DatabaseError, db.OperationalError) as e:
                             Logger.warning(f"Unable to edit database to insert new cache records for containers, recreating database: {str(e)}")
                             self._recreateCorruptDataBase(self._database_handlers[metadata["type"]].cursor)
                             cursor = self._getDatabaseConnection().cursor()  # After recreating the database, all the cursors have changed.
@@ -493,13 +515,18 @@ class ContainerRegistry(ContainerRegistryInterface):
 
                 else:
                     # Metadata already exists in database.
-                    modified_time = provider.getLastModifiedTime(container_id)
+                    try:
+                        modified_time = provider.getLastModifiedTime(container_id)
+                    except OSError:
+                        Logger.warning(f"Could not get last modified time of {container_id}.")
+                        # Record is purged below.
+                        continue
                     if modified_time > db_last_modified_time:
                         # Metadata is outdated, so load from file and update the database
                         metadata = provider.loadMetadata(container_id)
                         try:
                             cursor.execute("UPDATE containers SET name = ?, last_modified = ?, container_type = ? WHERE id = ?", (metadata["name"], modified_time, metadata["type"], metadata["id"]))
-                        except db.DatabaseError as e:
+                        except (db.DatabaseError, db.OperationalError) as e:
                             Logger.warning(f"Unable to update timestamp of container cache in database, recreating database: {str(e)}")
                             self._recreateCorruptDataBase(self._database_handlers[metadata["type"]].cursor)
                             cursor = self._getDatabaseConnection().cursor()  # After recreating the database, all the cursors have changed.
@@ -529,7 +556,11 @@ class ContainerRegistry(ContainerRegistryInterface):
             self._removeContainerFromDatabase(container_id)
 
         if ids_to_remove:  # We only can (and need to) commit again if we removed containers
-            cursor.execute("commit")
+            try:
+                cursor.execute("commit")
+            except (db.DatabaseError, db.OperationalError) as e:  # E.g. read-only database, concurrent access, corrupt database.
+                Logger.error(f"Could not complete purging of removed containers: {str(e)}")
+                # Don't purge database. It's only for removing extra data, not critical, and it might just be a temporary problem.
 
         Logger.log("d", "Loading metadata into container registry took %s seconds", time.time() - resource_start_time)
         gc.enable()
@@ -584,6 +615,12 @@ class ContainerRegistry(ContainerRegistryInterface):
         if container_id not in self.source_provider:
             self.source_provider[container_id] = None  # Added during runtime.
         self._clearQueryCacheByContainer(container)
+
+        for additional_setting_definitions in self._additional_setting_definitions_list:
+            if container.getMetaDataEntry("type") == "extruder" or not isinstance(container, DefinitionContainer):
+                continue
+            container = cast(DefinitionContainer, container)
+            container.appendAdditionalSettingDefinitions(additional_setting_definitions)
 
         # containerAdded is a custom signal and can trigger direct calls to its subscribers. This should be avoided
         # because with the direct calls, the subscribers need to know everything about what it tries to do to avoid

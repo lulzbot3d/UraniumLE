@@ -40,7 +40,7 @@ class Preferences:
         """Indicates that the value of this setting should be evaluated before acceptance, and otherwise not loaded."""
         self._untrusted_preferences[(group, key)] = eval_func
 
-        # While this method should preferably have run before any load from file, also handle a call afterward
+        # While this method should preferably have run before any load from file, also handle a call afterwards.
         if group in self._preferences and key in self._preferences[group]:
             if not eval_func(self._preferences[group][key]):
                 self._preferences[group][key].setValue(self._preferences[group][key].getDefault())

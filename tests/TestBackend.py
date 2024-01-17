@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-import Arcus
+import pyArcus as Arcus
 
 from UM.Backend.Backend import Backend
 
@@ -86,7 +86,7 @@ def test_onSocketBindFailed(backend):
     port = backend._port
     backend._createSocket = MagicMock()
     bind_failed_error = MagicMock()
-    bind_failed_error.getErrorCode = MagicMock(return_value=Arcus.ErrorCode.BindFailedError)
+    bind_failed_error.getErrorCode = MagicMock(return_value = Arcus.ErrorCode.BindFailedError)
     backend._onSocketError(bind_failed_error)
     assert backend._createSocket.call_count == 1
     assert port + 1 == backend._port

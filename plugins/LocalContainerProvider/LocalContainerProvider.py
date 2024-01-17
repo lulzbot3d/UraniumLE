@@ -1,10 +1,12 @@
-# Copyright (c) 2020 Ultimaker B.V.
+# Copyright (c) 2022 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
 
+import sys # For setrecursionlimit
 import os  # For getting the IDs from a filename.
 import sys
 import pickle  # For caching definitions.
 import re  # To detect back-up files in the ".../old/#/..." folders.
+import time
 import urllib.parse  # For interpreting escape characters using unquote_plus.
 from typing import Any, Dict, Iterable, Optional, Set, Tuple
 
@@ -57,7 +59,10 @@ class LocalContainerProvider(ContainerProvider):
         return self._id_to_path.keys()
 
     def getLastModifiedTime(self, container_id: str) -> float:
-        return os.path.getmtime(self._id_to_path[container_id])
+        try:
+            return os.path.getmtime(self._id_to_path[container_id])
+        except OSError:  # File system can be corrupt.
+            return time.time()  # Pretend it just got modified.
 
     def loadContainer(self, container_id: str) -> "ContainerInterface":
         # First get the actual (base) ID of the path we're going to read.
@@ -187,7 +192,11 @@ class LocalContainerProvider(ContainerProvider):
         if container_id in self._is_read_only_cache:
             return self._is_read_only_cache[container_id]
         if self._storage_path == "":
-            self._storage_path = os.path.realpath(Resources.getDataStoragePath())
+            try:
+                self._storage_path = os.path.realpath(Resources.getDataStoragePath())
+            except OSError:  # Directory can't be accessed.
+                self._is_read_only_cache[container_id] = True
+                return True
         storage_path = self._storage_path
 
         file_path = self._id_to_path[container_id]  # If KeyError: We don't know this ID.
@@ -290,7 +299,7 @@ class LocalContainerProvider(ContainerProvider):
             Logger.log("w", "The definition cache for definition {definition_id} failed to save because you don't have permissions to write in the cache directory.".format(definition_id = definition.getId()))
             return  # No rights to save it. Better give up.
 
-        recursion_limit = sys.getrecursionlimit() # pulling this from upstream since we're still having issues with hitting the default recursion limit
+        recursionlimit = sys.getrecursionlimit()
         sys.setrecursionlimit(3000)
         try:
             with open(cache_path, "wb") as f:
@@ -310,7 +319,7 @@ class LocalContainerProvider(ContainerProvider):
         except PermissionError:
             Logger.log("w", "Cura didn't get permission to save the definition {definition_id}".format(definition_id = definition.getId()))
         finally:
-            sys.setrecursionlimit(recursion_limit)
+            sys.setrecursionlimit(recursionlimit)
 
     def _updatePathCache(self) -> None:
         """Updates the cache of paths to containers.

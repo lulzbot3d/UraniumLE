@@ -2,7 +2,7 @@
 # Uranium is released under the terms of the LGPLv3 or higher.
 
 from typing import Any
-from PyQt5.QtCore import pyqtSlot, pyqtProperty, pyqtSignal, QObject, QUrl, QVariant
+from PyQt6.QtCore import pyqtSlot, pyqtProperty, pyqtSignal, QObject, QUrl, QVariant
 
 from UM.Application import Application
 from UM.Logger import Logger
@@ -89,7 +89,10 @@ class ActiveToolProxy(QObject):
         if hasattr(self._active_tool, "set" + property):
             option_setter = getattr(self._active_tool, "set" + property)
             if option_setter:
-                option_setter(value)
+                try:
+                    option_setter(value)
+                except Exception as e:
+                    Logger.logException("e", f"Unable to set value '{value}' to property '{property}'.")
 
         if hasattr(self._active_tool, property):
             setattr(self._active_tool, property, value)

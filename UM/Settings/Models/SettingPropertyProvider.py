@@ -1,7 +1,10 @@
-from typing import Optional, List, Set, Any
+# Copyright (c) 2022 Ultimaker B.V.
+# Uranium is released under the terms of the LGPLv3 or higher.
 
-from PyQt5.QtCore import QObject, QTimer, pyqtProperty, pyqtSignal
-from PyQt5.QtQml import QQmlPropertyMap
+from typing import Optional, List, Set, Any, OrderedDict
+
+from PyQt6.QtCore import QObject, QTimer, pyqtProperty, pyqtSignal
+from PyQt6.QtQml import QQmlPropertyMap
 from UM.FlameProfiler import pyqtSlot
 
 from UM.Logger import Logger
@@ -437,4 +440,11 @@ class SettingPropertyProvider(QObject):
                             self._validator = validator_type(self._key)
                 if self._validator:
                     property_value = self._validator(self._stack)
+        elif property_name == "options" and isinstance(property_value, OrderedDict):
+            # Return QQmlProperty map instead of str(OrderedDict) so that the values can be queried in qml
+            options_map = QQmlPropertyMap(self)
+            for key, value in property_value.items():
+                options_map.insert(key, value)
+            return options_map
+
         return str(property_value)

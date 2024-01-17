@@ -2,11 +2,10 @@
 // Uranium is released under the terms of the LGPLv3 or higher.
 
 import QtQuick 2.3
-import QtQuick.Controls 1.1
-import QtQuick.Controls.Styles 1.3
+import QtQuick.Controls 2.1
 import QtQuick.Layouts 1.1
 
-import UM 1.4 as UM
+import UM 1.7 as UM
 
 ListView
 {
@@ -39,22 +38,19 @@ ListView
     {
         Button
         {
+            id: control
             text: model.name
-            style: ButtonStyle
+            background: Item {}
+            contentItem: Label
             {
-                background: Item {}
-
-                label: Label
+                text: control.text
+                font:
                 {
-                    text: control.text
-                    font:
-                    {
-                        var defaultFont = UM.Theme.getFont("default")
-                        defaultFont.underline = true
-                        return defaultFont
-                    }
-                    color: UM.Theme.getColor("text_link")
+                    var defaultFont = UM.Theme.getFont("default")
+                    defaultFont.underline = true
+                    return defaultFont
                 }
+                color: UM.Theme.getColor("text_link")
             }
         }
     }
@@ -134,8 +130,7 @@ ListView
                 }
             }
 
-
-            Label
+            UM.Label
             {
                 id: messageTitle
                 Layout.fillWidth: true
@@ -146,32 +141,19 @@ ListView
                 wrapMode: Text.WordWrap
                 elide: Text.ElideRight
                 maximumLineCount: 2
-                renderType: Text.NativeRendering
             }
-
-            Button
+            UM.SimpleButton
             {
                 id: closeButton
                 implicitWidth: UM.Theme.getSize("message_close").width
                 implicitHeight: UM.Theme.getSize("message_close").height
                 Layout.alignment: Qt.AlignTop
-
-                style: ButtonStyle
-                {
-                    background: UM.RecolorImage
-                    {
-                        width: UM.Theme.getSize("message_close").width
-                        sourceSize.width: width
-                        color: control.hovered ? UM.Theme.getColor("message_close_hover") : UM.Theme.getColor("message_close")
-                        source: UM.Theme.getIcon("Cancel")
-                    }
-
-                    label: Item {}
-                }
-
                 onClicked: base.model.hideMessage(model.id)
                 visible: model.dismissable
                 enabled: model.dismissable
+                color: UM.Theme.getColor("message_close")
+                hoverColor: UM.Theme.getColor("message_close_hover")
+                iconSource: UM.Theme.getIcon("Cancel")
             }
         }
         Column
@@ -211,7 +193,7 @@ ListView
                 mipmap: true
             }
 
-            Label
+            UM.Label
             {
                 id: imageCaption
                 anchors
@@ -222,16 +204,15 @@ ListView
                 text: model.image_caption
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
-                color: UM.Theme.getColor("text")
                 font: UM.Theme.getFont("large_bold")
                 height: text != "" ? contentHeight : 0
                 linkColor: UM.Theme.getColor("text_link")
             }
         }
 
-        Label
+        UM.ScrollableTextArea
         {
-            id: messageLabel
+            id: scrollableMessageLabel
 
             anchors
             {
@@ -245,28 +226,27 @@ ListView
                 topMargin: UM.Theme.getSize("default_margin").height
             }
 
-            height: text == "" ? 0 : contentHeight
+            height: textArea.text === "" ? 0 : Math.min(UM.Theme.getSize("message").height * 3, contentHeight)
 
             function getProgressText()
             {
                 return "%1 %2%".arg(model.text).arg(Math.floor(model.progress))
             }
 
-            text: model.progress > 0 ? messageLabel.getProgressText() : model.text == undefined ? "" : model.text
-            onLinkActivated: Qt.openUrlExternally(link)
-            color: UM.Theme.getColor("text")
-            font: UM.Theme.getFont("default")
-            wrapMode: Text.Wrap
-            renderType: Text.NativeRendering
-            linkColor: UM.Theme.getColor("text_link")
+            textArea.text: model.progress > 0 ? getProgressText() : (model.text == undefined ? "" : model.text)
+            textArea.textFormat: Text.RichText
+            textArea.readOnly: true
+            textArea.onLinkActivated: Qt.openUrlExternally(link)
+            textArea.background: null
+            textArea.padding: 0
         }
 
-        CheckBox
+        UM.CheckBox
         {
             id: optionToggle
             anchors
             {
-                top: messageLabel.bottom
+                top: scrollableMessageLabel.bottom
                 topMargin: visible ? UM.Theme.getSize("narrow_margin").height: 0
                 left: parent.left
                 leftMargin: UM.Theme.getSize("default_margin").width
@@ -278,16 +258,6 @@ ListView
             height: visible ? undefined: 0
             checked: model.option_state
             onCheckedChanged: base.model.optionToggled(message.model_id, checked)
-            style: CheckBoxStyle
-            {
-                label: Label
-                {
-                    text: control.text
-                    font: UM.Theme.getFont("default")
-                    color: UM.Theme.getColor("text")
-                    elide: Text.ElideRight
-                }
-            }
         }
 
         UM.ProgressBar

@@ -1,7 +1,8 @@
-// Copyright (c) 2018 Ultimaker B.V.
+// Copyright (c) 2023 Ultimaker
 // Uranium is released under the terms of the LGPLv3 or higher.
 
 import QtQuick 2.1
+import UM 1.5 as UM
 
 MouseArea
 {
@@ -17,21 +18,22 @@ MouseArea
     property real iconMargin: 0
 
     property alias hovered: base.containsMouse
+    property alias backgroundRadius: background.radius
 
     Rectangle
     {
         id: background
         anchors.fill: parent
         color: base.containsMouse ? base.hoverBackgroundColor : base.backgroundColor
+        radius: 0
     }
 
-    RecolorImage
+    UM.ColorImage
     {
         id: image
 
         anchors.fill: parent
         anchors.margins: base.iconMargin
-        sourceSize.height: width
 
         color: base.containsMouse ? base.hoverColor : base.color
 

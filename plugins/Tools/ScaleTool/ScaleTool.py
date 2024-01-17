@@ -1,4 +1,4 @@
-# Copyright (c) 2021 Ultimaker B.V.
+# Copyright (c) 2022 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
 
 import imp
@@ -6,7 +6,7 @@ import scipy
 import time
 from typing import List, Tuple, TYPE_CHECKING, Optional
 
-from PyQt5.QtCore import Qt
+from PyQt6.QtCore import Qt
 
 from UM.Event import Event, MouseEvent, KeyEvent
 from UM.Logger import Logger
@@ -50,7 +50,7 @@ class ScaleTool(Tool):
 
         self._move_up = True
 
-        self._shortcut_key = Qt.Key_S
+        self._shortcut_key = Qt.Key.Key_S
 
         # We use the position of the scale handle when the operation starts.
         # This is done in order to prevent runaway reactions (drag changes of 100+)
@@ -364,7 +364,11 @@ class ScaleTool(Tool):
 
         obj = Selection.getSelectedObject(0)
         if obj:
-            width = float(width)
+            try:
+                width = float(width)
+            except ValueError:
+                Logger.warning("Unable to set width")
+                return
             obj_width = obj.getBoundingBox().width
             if not Float.fuzzyCompare(obj_width, width, DIMENSION_TOLERANCE):
                 scale_factor = width / obj_width
@@ -374,6 +378,7 @@ class ScaleTool(Tool):
                     scale_vector = Vector(scale_factor, scale_factor, scale_factor)
 
                 self._scaleSelectedNodes(scale_vector)
+
     def setObjectHeight(self, height):
         """Set the height of the selected object(s) by scaling the first selected object to a certain height
 
@@ -382,7 +387,11 @@ class ScaleTool(Tool):
 
         obj = Selection.getSelectedObject(0)
         if obj:
-            height = float(height)
+            try:
+                height = float(height)
+            except ValueError:
+                Logger.warning("Unable to set height")
+                return
             obj_height = obj.getBoundingBox().height
             if not Float.fuzzyCompare(obj_height, height, DIMENSION_TOLERANCE):
                 scale_factor = height / obj_height
@@ -401,7 +410,11 @@ class ScaleTool(Tool):
 
         obj = Selection.getSelectedObject(0)
         if obj:
-            depth = float(depth)
+            try:
+                depth = float(depth)
+            except ValueError:
+                Logger.warning("Unable to set depth")
+                return
             obj_depth = obj.getBoundingBox().depth
             if not Float.fuzzyCompare(obj_depth, depth, DIMENSION_TOLERANCE):
                 scale_factor = depth / obj_depth

@@ -1,13 +1,13 @@
-# Copyright (c) 2021 Ultimaker B.V.
+# Copyright (c) 2022 Ultimaker B.V.
 # Copyright (c) 2013 David Braam
 # Uranium is released under the terms of the LGPLv3 or higher.
 import platform
 import json
 from typing import TYPE_CHECKING, Dict, Optional, Tuple, Type
 
-from PyQt5.QtCore import QUrl
-from PyQt5.QtGui import QDesktopServices
-from PyQt5.QtNetwork import QNetworkRequest
+from PyQt6.QtCore import QUrl
+from PyQt6.QtGui import QDesktopServices
+from PyQt6.QtNetwork import QNetworkRequest
 
 from UM.Application import Application
 from UM.Extension import Extension
@@ -20,7 +20,7 @@ from .NewBetaVersionMessage import NewBetaVersionMessage
 from .NewVersionMessage import NewVersionMessage
 
 if TYPE_CHECKING:
-    from PyQt5.QtNetwork import QNetworkReply
+    from PyQt6.QtNetwork import QNetworkReply
 
 
 i18n_catalog = i18nCatalog("uranium")
@@ -32,19 +32,19 @@ class UpdateChecker(Extension):
     The plugin is currently only usable for applications maintained by Ultimaker. But it should be relatively easy
     to change it to work for other applications.
     """
-    # url = "https://software.lulzbot.com/current_version.json"
-    url = ""
 
     def __init__(self) -> None:
         super().__init__()
+
+        self.latest_url = Application.getInstance().latest_url
+        self._download_url: Optional[str] = None
+
         self.setMenuName(i18n_catalog.i18nc("@item:inmenu", "Update Checker"))
         self.addMenuItem(i18n_catalog.i18nc("@item:inmenu", "Check for Updates"), self.checkNewVersion)
         preferences = Application.getInstance().getPreferences()
         preferences.addPreference("info/automatic_update_check", False)
         if preferences.getValue("info/automatic_update_check"):
             self.checkNewVersion(silent = True, display_same_version = False)
-
-        self._download_url: Optional[str] = None
 
         # Which version was the latest shown in the version upgrade dialog. Don't show these updates twice.
         preferences.addPreference("info/latest_update_version_shown", Application.getInstance().getVersion())
@@ -65,13 +65,10 @@ class UpdateChecker(Extension):
         the update for a particular version. When manually checking for updates,
         the user wants to display the update even if he's already seen it.
         """
-        # http_manager = HttpRequestManager.getInstance()
-        # Logger.log("i", "Checking for new version")
-        # http_manager.get(self.url, callback = lambda reply: self._onRequestCompleted(reply, silent, display_same_version))
-        # self._download_url = None
-        Logger.log("i", "Update checking is currently disabled.")
-        Message(i18n_catalog.i18nc("@info", "The update checker is still undergoing development. Please check again in later versions."),
-                        title=i18n_catalog.i18nc("@info:title", "Under Development!"), lifetime=5).show()
+        http_manager = HttpRequestManager.getInstance()
+        Logger.log("i", "Checking for new version")
+        http_manager.get(self.latest_url, callback = lambda reply: self._onRequestCompleted(reply, silent, display_same_version))
+        self._download_url = None
 
     @classmethod
     def _extractVersionAndURLFromData(cls, data: Dict, application_name: str) -> Tuple[Optional[Version], Optional[str]]:
@@ -82,12 +79,27 @@ class UpdateChecker(Extension):
         if os not in data[application_name]:
             return None, None
 
-        return Version([int(data[application_name][os]["major"]),
-                        int(data[application_name][os]["minor"]),
-                        int(data[application_name][os]["revision"])]), data[application_name][os]["url"]
+        try:
+            if "postfix_type" in data[application_name][os] and "postfix_version" in data[application_name][os]:
+                # Prerelease versions include the extra postfix_type and postfix_version keys
+                return Version([int(data[application_name][os]["major"]),
+                                int(data[application_name][os]["minor"]),
+                                int(data[application_name][os]["revision"]),
+                                str(data[application_name][os]["postfix_type"]),
+                                int(data[application_name][os]["postfix_version"])]), data[application_name][os]["url"]
+            else:
+                return Version([int(data[application_name][os]["major"]),
+                                int(data[application_name][os]["minor"]),
+                                int(data[application_name][os]["revision"])]), data[application_name][os]["url"]
+        except KeyError as err:
+            Logger.error(f"Failed to find key in version data from latest.json: {err}")
+            return None, None
+        except Exception as err:
+            Logger.error(f"Failed to extract version data from latest.json: {err}")
+            return None, None
 
     def _onRequestCompleted(self, reply: "QNetworkReply", silent: bool, display_same_version: bool) -> None:
-        if reply.attribute(QNetworkRequest.HttpStatusCodeAttribute) != 200:
+        if reply.attribute(QNetworkRequest.Attribute.HttpStatusCodeAttribute) != 200:
             Logger.log("w", "Something went wrong when checking for updates. We didn't get the expected response")
             return
         try:

@@ -32,7 +32,7 @@ class DefinitionPropertyType(enum.IntEnum):
     Function = 4  ## Value is a python function. It is passed to SettingFunction's constructor which will parse and analyze it.
 
 
-def _toFloatConversion(value: str) -> float:
+def toFloatConversion(value: str) -> float:
     """Conversion of string to float."""
     
     value = value.replace(",", ".")
@@ -53,7 +53,7 @@ def _toFloatConversion(value: str) -> float:
         return 0
 
 
-def _toIntConversion(value):
+def toIntConversion(value):
     """Conversion from string to integer.
     :param value: The string representation of an integer.
     """
@@ -62,24 +62,6 @@ def _toIntConversion(value):
     except SyntaxError:
         return 0
 
-##  Defines a single Setting with its properties.
-#
-#   This class defines a single Setting with all its properties. This class is considered immutable,
-#   the only way to change it is using deserialize(). Should any state need to be stored for a definition,
-#   create a SettingInstance pointing to the definition, then store the value in that instance.
-#
-#   == Supported Properties
-#
-#   The SettingDefinition class contains a concept of "supported properties". These are properties that
-#   are supported when serializing or deserializing a setting. These properties are defined through the
-#   addSupportedProperty() method. Each property needs a name and a type. In addition, there are two
-#   optional boolean value to indicate whether the property is "required" and whether it is "read only".
-#   Currently, four types of supported properties are defined. Please DefinitionPropertyType for a description
-#   of these types.
-#
-#   Required properties are properties that should be present when deserializing a setting. If the property
-#   is not present, an error will be raised. Read-only properties are properties that should never change
-#   after creating a SettingDefinition. This means they cannot be stored in a SettingInstance object.
 class SettingDefinition:
     ##  Construcutor
     #
@@ -96,8 +78,8 @@ class SettingDefinition:
 
         self._i18n_catalog = i18n_catalog  # type: Optional[i18nCatalog]
 
-        self._children = []     # type: List[SettingDefinition]
-        self._relations = []    # type: List[SettingRelation]
+        self._children: List[SettingDefinition] = [] 
+        self._relations: List[SettingRelation] = []
 
         # Cached set of keys of ancestors. Used for fast lookups of ancestors.
         self.__ancestors = set()  # type: Set[str]
@@ -107,7 +89,21 @@ class SettingDefinition:
 
         self.__property_values = {}  # type: Dict[str, Any]
 
-    ##  Override __getattr__ to provide access to definition properties.
+    def extend_category(self, value_id: str, value_display: str, plugin_id: Optional[str] = None,
+                        plugin_version: Optional[str] = None) -> None:
+        """Append a category to the setting.
+
+        :param value_id: :type{str} The id of the category.
+        :param value_display: :type{str} The display name of the category. If the display string needs to be translated, provide the translated string.
+        :param plugin_id: :type{Optional[str]} The id of the plugin that owns the category. Defaults to None.
+        :param plugin_version: :type{Optional[str]} The version of the plugin that owns the category. Defaults to None.
+        """
+        if plugin_id is not None and plugin_version is not None:
+            value_id = f"PLUGIN::{plugin_id}@{plugin_version}::{value_id}"
+        elif plugin_id is not None or plugin_version is not None:
+            raise ValueError("Both plugin_id and plugin_version must be provided if one of them is provided.")
+        self.options[value_id] = value_display
+
     def __getattr__(self, name: str) -> Any:
         if name in self.__property_definitions:
             if name in self.__property_values:
@@ -126,9 +122,10 @@ class SettingDefinition:
 
     def __hash__(self):
         """Ensure that the SettingDefinition is hashable, so it can be used in a set."""
-        return hash(str(self))
 
-    
+        return hash((id(self), self._key, self._container))
+
+
     def __getstate__(self):
         """For Pickle support.
         This should be identical to Pickle's default behaviour but the default
@@ -136,10 +133,10 @@ class SettingDefinition:
         """
         return self.__dict__
 
-    
+
     def __setstate__(self, state):
         """For Pickle support.
-    
+
         This should be identical to Pickle's default behaviour but the default
         behaviour doesn't combine well with a non-default __getattr__.
         """
@@ -602,12 +599,17 @@ class SettingDefinition:
                 continue
 
             if key not in self.__property_definitions:
-                Logger.log("w", "Unrecognised property %s in setting %s", key, self._key)
+                Logger.log("w", f"Unrecognised property {key} in setting {self._key}")
                 continue
 
             if key == "type":
                 if value not in self.__type_definitions:
-                    raise ValueError("Type {0} is not a correct setting type".format(value))
+                    raise ValueError(f"Type {value} is not a correct setting type.")
+
+            if key == "options" and not isinstance(value, collections.OrderedDict):
+                if not isinstance(value, dict):
+                    raise ValueError(f"Type {value} is not a correct value for an enum-definition.")
+                value = collections.OrderedDict(value)
 
             if self.__property_definitions[key]["type"] == DefinitionPropertyType.Any:
                 self.__property_values[key] = value
@@ -618,11 +620,11 @@ class SettingDefinition:
             elif self.__property_definitions[key]["type"] == DefinitionPropertyType.Function:
                 self.__property_values[key] = SettingFunction.SettingFunction(str(value))
             else:
-                Logger.log("w", "Unknown DefinitionPropertyType (%s) for key %s", key, self.__property_definitions[key]["type"])
+                Logger.log("w", f"Unknown DefinitionPropertyType ({key}) for key {self.__property_definitions[key]['type']}")
 
         for key in filter(lambda i: self.__property_definitions[i]["required"], self.__property_definitions):
             if key not in self.__property_values:
-                raise AttributeError("Setting {0} is missing required property {1}".format(self._key, key))
+                raise AttributeError(f"Setting {self._key} is missing required property {key}")
 
         self.__ancestors = self._updateAncestors()
         self.__descendants = self._updateDescendants()
@@ -725,7 +727,7 @@ class SettingDefinition:
 
     __type_definitions = {
         # An integer value
-        "int": {"from": lambda v: str(v) if v is not None else "", "to": _toIntConversion, "validator": Validator},
+        "int": {"from": lambda v: str(v) if v is not None else "", "to": toIntConversion, "validator": Validator},
         # A boolean value
         "bool": {"from": str, "to": ast.literal_eval, "validator": Validator},
         # Special case setting; Doesn't have a value. Display purposes only.
@@ -735,7 +737,7 @@ class SettingDefinition:
         # An enumeration
         "enum": {"from": None, "to": None, "validator": None},
         # A floating point value
-        "float": {"from": lambda v: str(round(float(v), 4)) if v is not None else "", "to": _toFloatConversion, "validator": Validator},
+        "float": {"from": lambda v: str(round(float(v), 4)) if v is not None else "", "to": toFloatConversion, "validator": Validator},
         # A list of 2D points
         "polygon": {"from": str, "to": ast.literal_eval, "validator": None},
         # A list of polygons

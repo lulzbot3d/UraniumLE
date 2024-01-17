@@ -213,12 +213,20 @@ class Resources:
     def addSecureSearchPath(cls, path: str) -> None:
         """Add a path relative to which resources should be searched for.
         This path should be secure, such as the install directory.
-        
+
         :param path: The path to add.
         """
-        # If we import at the top of this file, we get circular import errors on startup due to CentralStorage
+        #  If we import at the top of this file we get circular import errors on startup due to CentralStorage
         from UM.Application import Application
         from UM.Trust import TrustBasics
+
+        if os.path.isdir(path) and path not in cls.__secure_paths and TrustBasics.isPathInLocation(Application.getInstallPrefix(), path):
+            cls.__paths.append(path)
+            cls.__secure_paths.append(path)
+
+    @classmethod
+    def removeSearchPath(cls, path: str) -> None:
+        """Remove a resource search path."""
 
         if os.path.isdir(path) and path not in cls.__secure_paths and TrustBasics.isPathInLocation(Application.getInstallPrefix(), path):
             cls.__paths.append(path)
@@ -300,6 +308,15 @@ class Resources:
 
     ##  Remove a custom resource type.
     @classmethod
+    def getSecureSearchPaths(cls) -> Generator[str, None, None]:
+        """Gets the secure search paths for resources.
+
+        :return: A sequence of paths where resources might be.
+        """
+
+        yield from cls.__secure_paths
+
+    @classmethod
     def removeType(cls, resource_type: int) -> None:
         if resource_type not in cls.__types:
             return
@@ -366,7 +383,7 @@ class Resources:
                 Logger.logException("e", "Failed to backup [%s] to file [%s]", folder, zip_file_path)
 
     @classmethod
-    def __find(cls, resource_type: int, secure_paths_only: bool, *args: str) -> List[str]:
+    def __find(cls, resource_type: int, secure_paths_only: bool,  *args: str) -> List[str]:
         """Returns a list of paths where args was found."""
 
         suffix = cls.__types.get(resource_type, None)
@@ -462,7 +479,7 @@ class Resources:
     def __initializeStoragePaths(cls) -> None:
         Logger.log("d", "Initializing storage paths")
         # use nested structure: <app-name>/<version>/...
-        if cls.ApplicationVersion == "main" or cls.ApplicationVersion == "unknown":
+        if cls.ApplicationVersion in ["master", "main", "dev"] or cls.ApplicationVersion == "unknown":
             storage_dir_name = os.path.join(cls.ApplicationIdentifier, cls.ApplicationVersion)
         else:
             version = Version(cls.ApplicationVersion)
@@ -655,12 +672,16 @@ class Resources:
     @classmethod
     def addExpectedDirNameInData(cls, dir_name: str) -> None:
         cls.__expected_dir_names_in_data.append(dir_name)
-    
+
     @classmethod
     def setIsEnterprise(cls, is_enterprise: bool) -> None:
         cls.__is_enterprise_version = is_enterprise
 
-    __expected_dir_names_in_data: List[str] = []
+    @classmethod
+    def setIsEnterprise(cls, is_enterprise: bool) -> None:
+        cls.__is_enterprise_version = is_enterprise
+
+    __expected_dir_names_in_data:List[str] = []
 
     __config_storage_path: str = None
     __data_storage_path: str = None

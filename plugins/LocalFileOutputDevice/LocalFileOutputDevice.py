@@ -1,12 +1,12 @@
-# Copyright (c) 2021 Ultimaker B.V.
+# Copyright (c) 2022 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
 
 import os
 import sys
 
-from PyQt5.QtCore import QUrl
-from PyQt5.QtGui import QDesktopServices
-from PyQt5.QtWidgets import QFileDialog, QMessageBox
+from PyQt6.QtCore import QUrl
+from PyQt6.QtGui import QDesktopServices
+from PyQt6.QtWidgets import QFileDialog, QMessageBox
 
 from UM.Application import Application
 from UM.FileHandler.WriteFileJob import WriteFileJob
@@ -57,14 +57,11 @@ class LocalFileOutputDevice(ProjectOutputDevice):
         dialog = QFileDialog()
 
         dialog.setWindowTitle(catalog.i18nc("@title:window", "Save to Disk"))
-        dialog.setFileMode(QFileDialog.AnyFile)
-        dialog.setAcceptMode(QFileDialog.AcceptSave)
+        dialog.setFileMode(QFileDialog.FileMode.AnyFile)
+        dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
 
         # Ensure platform never ask for overwrite confirmation since we do this ourselves
-        dialog.setOption(QFileDialog.DontConfirmOverwrite)
-
-        if sys.platform == "linux" and "KDE_FULL_SESSION" in os.environ:
-            dialog.setOption(QFileDialog.DontUseNativeDialog)
+        dialog.setOption(QFileDialog.Option.DontConfirmOverwrite)
 
         filters = []
         mime_types = []
@@ -123,7 +120,7 @@ class LocalFileOutputDevice(ProjectOutputDevice):
         if selected_filter is not None:
             dialog.selectNameFilter(selected_filter)
 
-        if not dialog.exec_():
+        if not dialog.exec():
             raise OutputDeviceError.UserCanceledError()
 
         save_path = dialog.directory().absolutePath()
@@ -138,8 +135,20 @@ class LocalFileOutputDevice(ProjectOutputDevice):
 
         if os.path.exists(file_name):
             result = QMessageBox.question(None, catalog.i18nc("@title:window", "File Already Exists"), catalog.i18nc("@label Don't translate the XML tag <filename>!", "The file <filename>{0}</filename> already exists. Are you sure you want to overwrite it?").format(file_name))
-            if result == QMessageBox.No:
+            if result == QMessageBox.StandardButton.No:
                 raise OutputDeviceError.UserCanceledError()
+        self._performWrite(file_name, selected_type, file_handler, nodes)
+
+    def _performWrite(self, file_name, selected_type, file_handler, nodes):
+        """Writes the specified nodes to a file. This is split from requestWrite to allow interception
+        in other plugins. See Ultimaker/Cura#10917.
+
+        :param file_name: File path to write to.
+        :param selected_type: Selected file type to write.
+        :param file_handler: File handler for writing to the file.
+        :param nodes: A collection of scene nodes that should be written to the
+        file.
+        """
 
         # Actually writing file
         if file_handler:
@@ -188,36 +197,41 @@ class LocalFileOutputDevice(ProjectOutputDevice):
         self.writeProgress.emit(self, progress)
 
     def _onWriteJobFinished(self, job):
-        self._writing = False
-        self.writeFinished.emit(self)
-        if job.getResult():
-            self.writeSuccess.emit(self)
-            message = Message(
-                catalog.i18nc("@info:status Don't translate the XML tags <filename>!", "Saved to <filename>{0}</filename>").format(job.getFileName()),
-                title = catalog.i18nc("@info:title", "File Saved"),
-                message_type = Message.MessageType.POSITIVE)
-            message.addAction("open_folder", catalog.i18nc("@action:button", "Open Folder"), "open-folder", catalog.i18nc("@info:tooltip", "Open the folder containing the file"))
-            message._folder = os.path.dirname(job.getFileName())
-            message.actionTriggered.connect(self._onMessageActionTriggered)
-            message.show()
-        else:
-            message = Message(catalog.i18nc("@info:status Don't translate the XML tags <filename> or <message>!",
-                                            "Could not save to <filename>{0}</filename>: <message>{1}</message>").format(job.getFileName(), str(job.getError())),
-                                            lifetime = 0,
-                                            title = catalog.i18nc("@info:title", "Error"),
-                                            message_type = Message.MessageType.ERROR)
-            message.show()
-            self.writeError.emit(self)
+        if job.getStream():
+            error = job.getError()
+            try:
+                # Explicitly closing the stream flushes the write-buffer
+                job.getStream().close()
+            except Exception as e:
+                if not error:
+                    # Only log new error if there was no previous one
+                    error = e
 
-        try:
-            job.getStream().close()
-        except (OSError, PermissionError): #When you don't have the rights to do the final flush or the disk is full.
-            message = Message(catalog.i18nc("@info:status",
-                                            "Something went wrong saving to <filename>{0}</filename>: <message>{1}</message>").format(job.getFileName(), str(job.getError())),
-                                            title = catalog.i18nc("@info:title", "Error"),
-                                            message_type = Message.MessageType.ERROR)
-            message.show()
-            self.writeError.emit(self)
+            self._writing = False
+            self.writeFinished.emit(self)
+
+            if not error:
+                message = Message(
+                    catalog.i18nc("@info:status Don't translate the XML tags <filename>!", "Saved to <filename>{0}</filename>").format(job.getFileName()),
+                    title=catalog.i18nc("@info:title", "File Saved"),
+                    message_type=Message.MessageType.POSITIVE)
+                message.addAction("open_folder", catalog.i18nc("@action:button", "Open Folder"), "open-folder", catalog.i18nc("@info:tooltip", "Open the folder containing the file"))
+                message._folder = os.path.dirname(job.getFileName())
+                message.actionTriggered.connect(self._onMessageActionTriggered)
+                message.show()
+                self.writeSuccess.emit(self)
+            else:
+                try:
+                    os.remove(job.getFileName())
+                except Exception as e:
+                    Logger.logException("e", "Exception when trying to remove incomplete exported file %s",
+                                        str(job.getFileName()))
+                message = Message(catalog.i18nc("@info:status Don't translate the XML tags <filename> or <message>!",
+                                                "Could not save to <filename>{0}</filename>: <message>{1}</message>").format(job.getFileName(), str(error)),
+                                  title=catalog.i18nc("@info:title", "Error"),
+                                  message_type=Message.MessageType.ERROR)
+                message.show()
+                self.writeError.emit(self)
 
     def _onMessageActionTriggered(self, message, action):
         if action == "open_folder" and hasattr(message, "_folder"):

@@ -23,6 +23,11 @@ if TYPE_CHECKING:
     from typing import FrozenSet
 
 
+
+import traceback
+
+
+
 class IllegalMethodError(Exception):
     pass
 
@@ -48,12 +53,16 @@ class SettingFunction:
         self._code = expression
 
         #  Keys of all settings that are referenced to in this function.
-        self._used_keys = frozenset()  # type: FrozenSet[str]
-        self._used_values = frozenset()  # type: FrozenSet[str]
+        self._used_keys: FrozenSet[str] = frozenset()
+        self._used_values: FrozenSet[str] = frozenset()
 
-        self._compiled = None  # type: Optional[CodeType] #Actually an Optional['code'] object, but Python doesn't properly expose this 'code' object via any library.
-        self._valid = False  # type: bool
+        # Actually an Optional['code'] object, but Python doesn't properly expose this 'code' object via any library.
+        self._compiled: Optional[CodeType] = None
+        self._valid: bool = False
 
+        self._safeCompile()
+
+    def _safeCompile(self):
         try:
             tree = ast.parse(self._code, "eval")
 
@@ -70,7 +79,8 @@ class SettingFunction:
         except Exception as e:
             Logger.log("e", "Exception in function ({0}) for setting: {1}".format(str(e), self._code))
 
-    def __call__(self, value_provider: ContainerInterface, context: Optional[PropertyEvaluationContext] = None) -> Any:
+    def __call__(self, value_provider: ContainerInterface, context: Optional[PropertyEvaluationContext] = None, *,
+                 additional_variables: Optional[Dict[str, Any]] = None) -> Any:
         """Call the actual function to calculate the value.
 
         :param value_provider: The container from which to get setting values in the formula.
@@ -83,7 +93,7 @@ class SettingFunction:
         if not self._valid:
             return None
 
-        locals = {}  # type: Dict[str, Any]
+        local_variables: Dict[str, Any] = {}
         # If there is a context, evaluate the values from the perspective of the original caller
         if context is not None:
             value_provider = context.rootStack()
@@ -91,23 +101,27 @@ class SettingFunction:
             value = value_provider.getProperty(name, "value", context)
             if value is None:
                 continue
+            local_variables[name] = value
 
-            locals[name] = value
+        if additional_variables is not None:
+            for name, value in additional_variables.items():
+                local_variables[name] = value
 
-        g = {}  # type: Dict[str, Any]
-        g.update(globals())
-        g.update(self.__operators)
+        globals_variables: Dict[str, Any] = {}
+        globals_variables.update(globals())
+        globals_variables.update(self.__operators)
         # Override operators if there is any in the context
         if context is not None:
-            g.update(context.context.get("override_operators", {}))
+            globals_variables.update(context.context.get("override_operators", {}))
 
         try:
             if self._compiled:
-                return eval(self._compiled, g, locals)
+                return eval(self._compiled, globals_variables, local_variables)
             Logger.log("e", "An error occurred evaluating the function {0}.".format(self))
             return 0
         except Exception as e:
-            Logger.logException("d", "An exception occurred in inherit function {0}: {1}".format(self, str(e)))
+            stack_str = traceback.format_stack()
+            Logger.logException("w", f"An exception occurred in inherit function {self}: {str(e)}\nTrace: {stack_str}")
             return 0  # Settings may be used in calculations and they need a value
 
     def __eq__(self, other: object) -> bool:
@@ -154,7 +168,8 @@ class SettingFunction:
 
     def __setstate__(self, state: Dict[str, Any]) -> None:
         self.__dict__.update(state)
-        self._compiled = compile(self._code, repr(self), "eval")
+        self._compiled = None  # Just to be sure.
+        self._safeCompile()
 
     @classmethod
     def registerOperator(cls, name: str, operator: Callable) -> None:
@@ -300,7 +315,8 @@ class _SettingExpressionVisitor(ast.NodeVisitor):
         "upper",
         "startswith",
         "endswith",
-        "capitalize"
+        "capitalize",
+        "index",
     }  # type: Set[str]
 
     _blacklist = {

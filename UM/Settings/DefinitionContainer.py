@@ -1,12 +1,12 @@
-# Copyright (c) 2019 Ultimaker B.V.
+# Copyright (c) 2022 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
 
 import json
 import collections
 import copy
 
-from PyQt5.QtCore import QObject, pyqtProperty
-from PyQt5.QtQml import QQmlEngine
+from PyQt6.QtCore import QObject, pyqtProperty
+from PyQt6.QtQml import QQmlEngine
 
 from UM.i18n import i18nCatalog #For typing.
 from UM.Logger import Logger
@@ -56,7 +56,7 @@ class DefinitionContainer(QObject, DefinitionContainerInterface, PluginObject):
         """
 
         super().__init__()
-        QQmlEngine.setObjectOwnership(self, QQmlEngine.CppOwnership)
+        QQmlEngine.setObjectOwnership(self, QQmlEngine.ObjectOwnership.CppOwnership)
 
         self._metadata = {"id": container_id,
                           "name": container_id,
@@ -342,16 +342,69 @@ class DefinitionContainer(QObject, DefinitionContainerInterface, PluginObject):
         self._metadata["version"] = self.Version #Guaranteed to be equal to what's in the parsed data by the validation.
         self._metadata["container_type"] = DefinitionContainer
 
-        for key, value in parsed["settings"].items():
-            definition = SettingDefinition(key, self, None, self._i18n_catalog)
-            self._definition_cache[key] = definition
-            definition.deserialize(value)
-            self._definitions.append(definition)
+        self._deserializeDefinitions(parsed["settings"])
 
         for definition in self._definitions:
             self._updateRelations(definition)
 
         return serialized
+
+    def _deserializeDefinitions(self, settings_dict: Dict[str, Any], force_category: Optional[str] = None) -> List[SettingDefinition]:
+
+        # When there is a forced category (= parent) present, find the category parent, create it if it doesn't exist.
+        category_parent = None
+        if force_category:
+            category_parent = self.findDefinitions(key = force_category)
+            category_parent = category_parent[0] if len(category_parent) > 0 else None
+
+        added_definitions = []
+        for key, value in settings_dict.items():
+            definition = SettingDefinition(key, self, category_parent, self._i18n_catalog)
+            self._definition_cache[key] = definition
+            definition.deserialize(value)
+            if category_parent:
+                # Forced category; these are then children of that category, instead of full categories on their own.
+                category_parent.children.append(definition)
+            else:
+                self._definitions.append(definition)
+            added_definitions.append(definition)
+
+        return added_definitions
+
+    def appendAdditionalSettingDefinitions(self, additional_settings: Dict[str, Dict[str, Any]]) -> None:
+        """
+        Appends setting-definitions not defined for/by the main program (for example, a plugin) to this container.
+
+        Additional settings are always assumed to come in the form of categories with child-settings.
+        See also the Settings.AdditionalSettingDefinitionAppender class.
+
+        :param additional_settings: A dictionary of category-name to categories, each containing setting-definitions.
+        """
+        try:
+            merge_with_existing_categories = {}
+            create_new_categories = {}
+
+            for category, values in additional_settings.items():
+                if len(self.findDefinitions(key = category)) > 0:
+                    merge_with_existing_categories[category] = values
+                else:
+                    create_new_categories[category] = values
+
+            added_definitions = []
+            if len(create_new_categories) > 0:
+                self._deserializeDefinitions(create_new_categories)
+            for category, values in merge_with_existing_categories.items():
+                if "children" in values:
+                    for key, value in values["children"].items():
+                        added_definitions += self._deserializeDefinitions({key: value}, category)
+                else:
+                    added_definitions += self._deserializeDefinitions(values, category)
+
+            for definition in added_definitions:
+                self._updateRelations(definition)
+
+        except Exception as ex:
+            Logger.error(f"Failed to append additional settings from external source because: {str(ex)}")
 
     @classmethod
     def deserializeMetadata(cls, serialized: str, container_id: str) -> List[Dict[str, Any]]:
@@ -442,6 +495,7 @@ class DefinitionContainer(QObject, DefinitionContainerInterface, PluginObject):
         json_dict = self._loadFile(file_name)
 
         if "inherits" in json_dict:
+            # NOTE: Since load-file isn't cached, this will load base definitions multiple times!
             inherited = self._resolveInheritance(json_dict["inherits"])
             json_dict = self._mergeDicts(inherited, json_dict)
 
@@ -549,3 +603,6 @@ class DefinitionContainer(QObject, DefinitionContainerInterface, PluginObject):
 
     def __repr__(self) -> str:
         return str(self)
+
+    def __hash__(self) -> int:
+        return hash(self.getId())

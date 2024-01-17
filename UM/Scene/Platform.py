@@ -35,6 +35,8 @@ class Platform(SceneNode.SceneNode):
             return True
         if not self._shader:
             self._shader = OpenGL.getInstance().createShaderProgram(Resources.getPath(Resources.Shaders, "platform.shader"))
+            if not self._shader:  # Failed to compile (it already adds a log entry about this then).
+                return True  # It'll try to compile every frame, which is bad for performance but it won't crash at least.
             if self._texture:
                 self._shader.setTexture(0, self._texture)
             else:
@@ -70,6 +72,9 @@ class Platform(SceneNode.SceneNode):
 
                 offset = container.getMetaDataEntry("platform_offset")
                 if offset:
+                    if isinstance(offset, str):
+                        offset = list(map(float,offset.split(',')))
+
                     if len(offset) == 3:
                         self.setPosition(Vector(offset[0], offset[1], offset[2]))
                     else:

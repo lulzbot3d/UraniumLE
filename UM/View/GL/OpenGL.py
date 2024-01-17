@@ -1,11 +1,15 @@
-# Copyright (c) 2021 Ultimaker B.V.
+# Copyright (c) 2022 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
 
-import sys
 import ctypes   # type: ignore
+import re
+import sys
 
-from PyQt5.QtGui import QOpenGLVersionProfile, QOpenGLContext, QOpenGLFramebufferObject, QOpenGLBuffer
-from PyQt5.QtWidgets import QMessageBox
+from PyQt6.QtOpenGL import QOpenGLVersionFunctionsFactory
+
+from PyQt6.QtGui import QOpenGLContext
+from PyQt6.QtOpenGL import QOpenGLVersionProfile, QOpenGLFramebufferObject, QOpenGLBuffer
+from PyQt6.QtWidgets import QMessageBox
 from typing import Any, TYPE_CHECKING, cast, Optional
 
 from UM.Logger import Logger
@@ -45,9 +49,9 @@ class OpenGL:
     def __init__(self) -> None:
         if OpenGL.__instance is not None:
             raise RuntimeError("Try to create singleton '%s' more than once" % self.__class__.__name__)
-        OpenGL.__instance = self
 
         super().__init__()
+        OpenGL.__instance = self
 
         profile = QOpenGLVersionProfile()
         profile.setVersion(OpenGLContext.major_version, OpenGLContext.minor_version)
@@ -56,12 +60,12 @@ class OpenGL:
         context = QOpenGLContext.currentContext()
         if not context:
             Logger.log("e", "Startup failed due to OpenGL context creation failing")
-            QMessageBox.critical(None, i18n_catalog.i18nc("@message", "Failed to Initialize OpenGL", "Could not initialize an OpenGL context. This program requires OpenGL 2.0 or higher. Please check your video card drivers."))
+            QOpenGLContext.currentContext()
             sys.exit(1)
-        self._gl = context.versionFunctions(profile) # type: Any #It's actually a protected class in PyQt that depends on the implementation of your graphics card.
+        self._gl = QOpenGLVersionFunctionsFactory.get(profile, context)
         if not self._gl:
             Logger.log("e", "Startup failed due to OpenGL initialization failing")
-            QMessageBox.critical(None, i18n_catalog.i18nc("@message", "Failed to Initialize OpenGL", "Could not initialize OpenGL. This program requires OpenGL 2.0 or higher. Please check your video card drivers."))
+            QMessageBox.critical(QMessageBox.Icon.Critical, "Failed to Initialize OpenGL", i18n_catalog.i18nc("@message", "Failed to Initialize OpenGL", "Could not initialize OpenGL. This program requires OpenGL 2.0 or higher. Please check your video card drivers."))
             sys.exit(1)
 
         # It would be nice to be able to not necessarily need OpenGL FrameBuffer Object support, but
@@ -91,7 +95,7 @@ class OpenGL:
 
         self._gpu_type = "Unknown"  # type: str
         # WORKAROUND: Cura/#1117 Cura-packaging/12
-        # Some Intel GPU chipsets return a string, which is not undecodable via PyQt5.
+        # Some Intel GPU chipsets return a string, which is not undecodable via PyQt6.
         # This workaround makes the code fall back to a "Unknown" renderer in these cases.
         try:
             self._gpu_type = self._gl.glGetString(self._gl.GL_RENDERER)
@@ -99,6 +103,11 @@ class OpenGL:
             Logger.log("e", "DecodeError while getting GL_RENDERER via glGetString!")
 
         self._opengl_version = self._gl.glGetString(self._gl.GL_VERSION) #type: str
+        short_versions = re.findall(r"(\d+.\d+(.\d+)?)", self._opengl_version)  # Find version numbers, either 2-component or 3-component.
+        if short_versions:
+            self._opengl_version_short = short_versions[0][0]  # First whole match (second [0] is to grab the first group which is the whole version number).
+        else:
+            self._opengl_version_short = "unknown"
 
         self._opengl_shading_language_version = Version("0.0")  # type: Version
         try:
@@ -128,6 +137,14 @@ class OpenGL:
         :return: Version of OpenGL
         """
         return self._opengl_version
+
+    def getOpenGLVersionShort(self) -> str:
+        """
+        Get a short version of the OpenGL version, which is just the version
+        number, not any build number or anything.
+        :return: Version number of OpenGL.
+        """
+        return self._opengl_version_short
 
     def getOpenGLShadingLanguageVersion(self) -> "Version":
         """Get the current OpenGL shading language version.
@@ -224,7 +241,7 @@ class OpenGL:
         if not kwargs.get("force_recreate", False) and hasattr(mesh, OpenGL.VertexBufferProperty):
             return getattr(mesh, OpenGL.VertexBufferProperty)
 
-        buffer = QOpenGLBuffer(QOpenGLBuffer.VertexBuffer)
+        buffer = QOpenGLBuffer(QOpenGLBuffer.Type.VertexBuffer)
         buffer.create()
         buffer.bind()
 
@@ -306,7 +323,7 @@ class OpenGL:
         if not kwargs.get("force_recreate", False) and hasattr(mesh, OpenGL.IndexBufferProperty):
             return getattr(mesh, OpenGL.IndexBufferProperty)
 
-        buffer = QOpenGLBuffer(QOpenGLBuffer.IndexBuffer)
+        buffer = QOpenGLBuffer(QOpenGLBuffer.Type.IndexBuffer)
         buffer.create()
         buffer.bind()
 

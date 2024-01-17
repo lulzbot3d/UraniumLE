@@ -1,7 +1,7 @@
 from UM.Qt.Bindings.Theme import Theme
 from unittest.mock import MagicMock, patch
-from PyQt5.QtGui import QColor, QFont
-from PyQt5.QtCore import QSizeF, QUrl
+from PyQt6.QtGui import QColor, QFont
+from PyQt6.QtCore import QSizeF, QUrl
 import pytest
 import os
 
@@ -43,7 +43,7 @@ def test_getUnknownIcon(theme):
 def test_knownFont(theme):
     font = theme.getFont("test_font")
     assert font.family() == "Felidae"
-    assert font.weight() == 40
+    assert font.weight() == 350
 
 
 def test_unknownFont(theme):

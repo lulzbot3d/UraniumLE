@@ -1,4 +1,4 @@
-# Copyright (c) 2019 Ultimaker B.V.
+# Copyright (c) 2022 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
 
 import configparser
@@ -7,8 +7,8 @@ import copy
 import os
 from typing import Any, cast, Dict, List, Optional, Set, Tuple
 
-from PyQt5.QtCore import QObject, pyqtProperty, pyqtSignal
-from PyQt5.QtQml import QQmlEngine #To take ownership of this class ourselves.
+from PyQt6.QtCore import QObject, pyqtProperty, pyqtSignal
+from PyQt6.QtQml import QQmlEngine #To take ownership of this class ourselves.
 
 from UM.FastConfigParser import FastConfigParser
 from UM.Trust import Trust
@@ -58,7 +58,7 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
         """
 
         super().__init__()
-        QQmlEngine.setObjectOwnership(self, QQmlEngine.CppOwnership)
+        QQmlEngine.setObjectOwnership(self, QQmlEngine.ObjectOwnership.CppOwnership)
 
         self._metadata = {
             "id": container_id,
@@ -140,6 +140,27 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
         """For pickle support"""
 
         self.__dict__.update(state)
+
+    @classmethod
+    def createMergedInstanceContainer(cls, instance_container1: "InstanceContainer",
+                                      instance_container2: "InstanceContainer") -> "InstanceContainer":
+        """Create a new container with container 2 as base and container 1 written over it."""
+
+        flat_container = InstanceContainer(instance_container2.getName())
+
+        # The metadata includes id, name and definition
+        flat_container.setMetaData(copy.deepcopy(instance_container2.getMetaData()))
+
+        if instance_container1.getDefinition():
+            flat_container.setDefinition(instance_container1.getDefinition().getId())
+
+        for key in instance_container2.getAllKeys():
+            flat_container.setProperty(key, "value", instance_container2.getProperty(key, "value"))
+
+        for key in instance_container1.getAllKeys():
+            flat_container.setProperty(key, "value", instance_container1.getProperty(key, "value"))
+
+        return flat_container
 
     def getId(self) -> str:
         """:copydoc ContainerInterface::getId
@@ -629,12 +650,14 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
 
     def _instantiateCachedValues(self) -> None:
         """Instance containers are lazy loaded. This function ensures that it happened."""
-
         if not self._cached_values:
             return
         definition = self.getDefinition()
-        for key, value in self._cached_values.items():
-            self.setProperty(key, "value", value, definition, set_from_cache=True)
+        try:
+            for key, value in self._cached_values.items():
+                self.setProperty(key, "value", value, definition, set_from_cache = True)
+        except AttributeError:  # Cached values could've been erased asynchronously.
+            return
 
         self._cached_values = None
 
