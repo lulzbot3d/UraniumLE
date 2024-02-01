@@ -6,6 +6,7 @@ import UM 1.5 as UM
 
 Item
 {
+    id: base
     width: childrenRect.width
     height: childrenRect.height
     UM.I18nCatalog { id: catalog; name: "uranium"}
@@ -14,6 +15,8 @@ Item
     {
         id: resetRotationButton
 
+        anchors.top: textfields.bottom;
+        anchors.topMargin: UM.Theme.getSize("default_margin").width;
         anchors.left: parent.left;
 
         text: catalog.i18nc("@action:button", "Reset")
@@ -102,5 +105,26 @@ Item
         target: alignFaceButton
         property: "checked"
         value: UM.ActiveTool.properties.getValue("SelectFaceToLayFlatMode")
+    }
+
+    Binding
+    {
+        target: base
+        property: "xText"
+        value: base.roundFloat(UM.ActiveTool.properties.getValue("X"), 4)
+    }
+
+    Binding
+    {
+        target: base
+        property: "yText"
+        value: base.roundFloat(UM.ActiveTool.properties.getValue("Z"), 4)
+    }
+
+    Binding
+    {
+        target: base
+        property: "zText"
+        value:base.roundFloat(UM.ActiveTool.properties.getValue("Y"), 4)
     }
 }

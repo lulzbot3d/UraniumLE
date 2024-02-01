@@ -473,6 +473,7 @@ def approximateConvexHull(vertex_data: numpy.ndarray, target_count: int) -> Opti
     start_time = time()
 
     input_max = target_count * 50   # Maximum number of vertices we want to feed to the convex hull algorithm.
+
     unit_size = 0.0125             # Initial rounding interval. i.e. round to 0.125.
     max_unit_size = 0.01
 

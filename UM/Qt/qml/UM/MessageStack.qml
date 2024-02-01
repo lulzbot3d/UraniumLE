@@ -70,9 +70,25 @@ ListView
 
         anchors.horizontalCenter: parent !== null ? parent.horizontalCenter : undefined
 
-        color: UM.Theme.getColor("message_background")
-        border.width: UM.Theme.getSize("default_lining").width
-        border.color: UM.Theme.getColor("message_border")
+        color:
+        {
+            if(model.type == 2)
+            {
+                return UM.Theme.getColor("message_background_error")
+            }
+            else
+            {
+                return UM.Theme.getColor("message_background")
+            }
+        }
+        border.width: UM.Theme.getSize("message_lining").width
+        border.color: {
+            if(model.type == 2) {
+                return "black"
+            } else {
+                return UM.Theme.getColor("message_border")
+            }
+        }
         radius: UM.Theme.getSize("message_radius").width
 
         RowLayout
@@ -120,7 +136,9 @@ ListView
                 Layout.fillWidth: true
 
                 text: model.title == undefined ? "" : model.title
-                font: UM.Theme.getFont("default_bold")
+                color: UM.Theme.getColor("text")
+                font: UM.Theme.getFont("large_bold")
+                wrapMode: Text.WordWrap
                 elide: Text.ElideRight
                 maximumLineCount: 2
             }
@@ -277,10 +295,13 @@ ListView
 
             anchors
             {
+                // I expanded the right and left margins... I don't know why they were narrow?
                 left: parent.left
-                leftMargin: UM.Theme.getSize("narrow_margin").width
+                //leftMargin: UM.Theme.getSize("narrow_margin").width
+                leftMargin: UM.Theme.getSize("default_margin").width
                 right: parent.right
-                rightMargin: UM.Theme.getSize("narrow_margin").width
+                //rightMargin: UM.Theme.getSize("narrow_margin").width
+                rightMargin: UM.Theme.getSize("default_margin").width
                 top: totalProgressBar.bottom
                 topMargin: UM.Theme.getSize("narrow_margin").width
             }

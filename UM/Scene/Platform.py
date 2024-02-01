@@ -12,7 +12,6 @@ from UM.Scene.Iterator.DepthFirstIterator import DepthFirstIterator
 
 from UM.View.GL.OpenGL import OpenGL
 
-
 class Platform(SceneNode.SceneNode):
     """Platform is a special case of Scene node. It renders a specific model as the platform of the machine.
     A specialised class is used due to the differences in how it needs to rendered and the fact that a platform

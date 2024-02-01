@@ -237,6 +237,33 @@ Item
         }
     }
 
+    Column {
+
+        anchors {
+            top: lockPositionCheckbox.bottom
+            topMargin: UM.Theme.getSize("default_margin").height
+            horizontalCenter: textfields.horizontalCenter
+        }
+
+        spacing: 5
+
+        Button {
+            id: centerButton
+            text: catalog.i18nc("@action:button", "Center")
+            style: UM.Theme.styles.toolbox_action_button
+
+            onClicked: UM.ActiveTool.triggerAction("centerSelection")
+        }
+
+        Button {
+            id: bottomButton
+            text: catalog.i18nc("@action:button", "Bottom")
+            style: UM.Theme.styles.toolbox_action_button
+
+            onClicked: UM.ActiveTool.triggerAction("dropToBuildPlate")
+        }
+    }
+
     // We have to use indirect bindings, as the values can be changed from the outside, which could cause breaks
     // (for instance, a value would be set, but it would be impossible to change it).
     // Doing it indirectly does not break these.

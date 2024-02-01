@@ -60,6 +60,9 @@ class SceneNode:
         self._shear = Vector(0.0, 0.0, 0.0)  # type: Vector
         self._mirror = Vector(1.0, 1.0, 1.0)  # type: Vector
         self._orientation = Quaternion()  # type: Quaternion
+        self._rotationX = 0
+        self._rotationY = 0
+        self._rotationZ = 0
 
         # World transformation (from root to local)
         self._world_transformation = Matrix()  # type: Matrix
@@ -667,13 +670,9 @@ class SceneNode:
             self.scale(scale / self._scale, SceneNode.TransformSpace.World)
 
     def getPosition(self) -> Vector:
-        """Get the local position."""
-
         return self._position
 
     def getWorldPosition(self) -> Vector:
-        """Get the position of this scene node relative to the world."""
-
         return self._derived_position
 
     def translate(self, translation: Vector, transform_space: int = TransformSpace.Local) -> None:
@@ -744,17 +743,24 @@ class SceneNode:
 
         self.setOrientation(Quaternion.fromMatrix(m))
 
+    ##  Can be overridden by child nodes if they need to perform special rendering.
+    #   If you need to handle rendering in a special way, for example for tool handles,
+    #   you can override this method and render the node. Return True to prevent the
+    #   view from rendering any attached mesh data.
+    #
+    #   \param renderer The renderer object to use for rendering.
+    #
+    #   \return False if the view should render this node, True if we handle our own rendering.
     def render(self, renderer) -> bool:
         """Can be overridden by child nodes if they need to perform special rendering.
         If you need to handle rendering in a special way, for example for tool handles,
         you can override this method and render the node. Return True to prevent the
         view from rendering any attached mesh data.
-
-        :param renderer: The renderer object to use for rendering.
-
-        :return: False if the view should render this node, True if we handle our own rendering.
+    
+        :param renderer The renderer object to use for rendering.
+    
+        :return False if the view should render this node, True if we handle our own rendering.
         """
-
         return False
 
     def isEnabled(self) -> bool:
@@ -774,9 +780,10 @@ class SceneNode:
 
         self._enabled = enable
 
+
     def isSelectable(self) -> bool:
         """Get whether this SceneNode can be selected.
-
+    
         :note This will return false if isEnabled() returns false.
         """
 
@@ -791,8 +798,7 @@ class SceneNode:
         self._selectable = select
 
     def getBoundingBox(self) -> Optional[AxisAlignedBox]:
-        """Get the bounding box of this node and its children."""
-
+        """Get the bounding box of this node and its children"""
         if not self._calculate_aabb:
             return None
         if self._aabb is None:

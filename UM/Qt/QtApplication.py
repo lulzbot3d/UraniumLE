@@ -129,8 +129,8 @@ class QtApplication(QApplication, Application):
         self._http_network_request_manager: Optional[HttpRequestManager] = None
 
         #Metadata required for the file dialogues.
-        self.setOrganizationDomain("https://ultimaker.com/")
-        self.setOrganizationName("Ultimaker B.V.")
+        self.setOrganizationDomain("https://lulzbot.com/")
+        self.setOrganizationName("Fargo Additive Manufacturing Equipment 3D, LLC.")
 
     def addCommandLineOptions(self) -> None:
         super().addCommandLineOptions()
@@ -202,9 +202,6 @@ class QtApplication(QApplication, Application):
 
         Logger.log("i", "Initializing version upgrade manager ...")
         self._version_upgrade_manager = VersionUpgradeManager(self)
-
-    def isQmlEngineInitialized(self) -> bool:
-        return self._qml_engine_initialized
 
     def _displayLoadingPluginSplashMessage(self, plugin_id: Optional[str]) -> None:
         message = i18nCatalog("uranium").i18nc("@info:progress", "Loading plugins...")
@@ -338,7 +335,6 @@ class QtApplication(QApplication, Application):
         i18n_catalog = i18nCatalog("uranium")
         self.showSplashMessage(i18n_catalog.i18nc("@info:progress", "Loading UI..."))
         self._qml_engine.load(self._main_qml)
-        self._qml_engine_initialized = True
         self.engineCreatedSignal.emit()
 
     recentFilesChanged = pyqtSignal()
@@ -541,7 +537,6 @@ class QtApplication(QApplication, Application):
     @pyqtSlot(result = "QObject*")
     def getBackend(self) -> Backend:
         """Get the backend of the application (the program that does the heavy lifting).
-
         The backend is also a QObject, which can be used from qml.
         """
 
@@ -550,7 +545,6 @@ class QtApplication(QApplication, Application):
     @pyqtProperty("QVariant", constant = True)
     def backend(self) -> Backend:
         """Property used to expose the backend
-
         It is made static as the backend is not supposed to change during runtime.
         This makes the connection between backend and QML more reliable than the pyqtSlot above.
         :returns: Backend :type{Backend}
@@ -658,7 +652,6 @@ class QtApplication(QApplication, Application):
     @classmethod
     def getInstance(cls, *args, **kwargs) -> "QtApplication":
         """Gets the instance of this application.
-
         This is just to further specify the type of Application.getInstance().
         :return: The instance of this application.
         """
@@ -687,7 +680,6 @@ class QtApplication(QApplication, Application):
 
 class _QtFunctionEvent(QEvent):
     """Internal.
-
     Wrapper around a FunctionEvent object to make Qt handle the event properly.
     """
 

@@ -12,6 +12,7 @@ from UM.Math.Float import Float
 from UM.Math.Plane import Plane
 from UM.Math.Vector import Vector
 from UM.Operations.GroupedOperation import GroupedOperation
+from UM.Operations.ToBuildPlateOperation import ToBuildPlateOperation
 from UM.Operations.TranslateOperation import TranslateOperation
 from UM.Scene.SceneNodeSettings import SceneNodeSettings
 from UM.Scene.Selection import Selection
@@ -222,6 +223,37 @@ class TranslateTool(Tool):
     def getAutoDropDown(self) -> Optional[bool]:
         default = Application.getInstance().getPreferences().getValue("physics/automatic_drop_down")
         return self.getBoolSettingFromSelection(SceneNodeSettings.AutoDropDown, default)
+
+
+    def centerSelection(self) -> None:
+        selected_nodes = self._getSelectedObjectsWithoutSelectedAncestors()
+        if len(selected_nodes) > 1:
+                op = GroupedOperation()
+                big_box = Selection.getBoundingBox()
+                sel_x = big_box.center.x
+                sel_y = big_box.center.z
+                for selected_node in selected_nodes:
+                    current_pos = selected_node.getWorldPosition()
+                    updated_pos = current_pos.set(x = current_pos.x - sel_x, z = current_pos.z - sel_y)
+                    op.addOperation(TranslateOperation(selected_node, updated_pos, set_position = True))
+                op.push()
+        else:
+            for selected_node in selected_nodes:
+                current_z = selected_node.getWorldPosition().y
+                TranslateOperation(selected_node, Vector(0, current_z, 0), set_position = True).push()
+        self._controller.toolOperationStopped.emit(self)
+
+    def dropToBuildPlate(self) -> None:
+        selected_nodes = self._getSelectedObjectsWithoutSelectedAncestors()
+        if len(selected_nodes) > 1:
+                op = GroupedOperation()
+                for selected_node in selected_nodes:
+                    op.addOperation(ToBuildPlateOperation(selected_node))
+                op.push()
+        else:
+            for selected_node in selected_nodes:
+                ToBuildPlateOperation(selected_node).push()
+        self._controller.toolOperationStopped.emit(self)
 
     def event(self, event: Event) -> bool:
         """Handle mouse and keyboard events.

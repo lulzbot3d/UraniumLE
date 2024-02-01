@@ -1,5 +1,9 @@
 # Copyright (c) 2022 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
+
+import imp
+import scipy
+import time
 from typing import List, Tuple, TYPE_CHECKING, Optional
 
 from PyQt6.QtCore import Qt
@@ -9,10 +13,13 @@ from UM.Logger import Logger
 from UM.Math.Float import Float
 from UM.Math.Matrix import Matrix
 from UM.Math.Plane import Plane
+from UM.Math.Quaternion import Quaternion
 from UM.Math.Vector import Vector
 from UM.Operations.GroupedOperation import GroupedOperation
 from UM.Operations.ScaleOperation import ScaleOperation
 from UM.Operations.SetTransformOperation import SetTransformOperation
+from UM.Operations.ScaleToBoundsOperation import ScaleToBoundsOperation
+from UM.Operations.ToBuildPlateOperation import ToBuildPlateOperation
 from UM.Scene.Selection import Selection
 from UM.Scene.ToolHandle import ToolHandle
 from UM.Tool import Tool
@@ -22,7 +29,6 @@ try:
 except (ImportError, SystemError):
     import ScaleToolHandle  # type: ignore  # This fixes the tests not being able to import.
 
-import scipy
 if TYPE_CHECKING:
     from UM.Scene.SceneNode import SceneNode
 
@@ -208,6 +214,33 @@ class ScaleTool(Tool):
         """Reset scale of the selected objects"""
 
         Selection.applyOperation(SetTransformOperation, None, None, Vector(1.0, 1.0, 1.0), Vector(0, 0, 0))
+
+    def scaleToMax(self):
+        """Initialize and start a ScaleToBoundsOperation on the selected objects"""
+
+        if hasattr(self.getController().getScene(), "_maximum_bounds"):
+            Selection.applyOperation(ScaleToBoundsOperation, self.getController().getScene()._maximum_bounds)
+            all_nodes = Selection.getAllSelectedObjects()
+            op = GroupedOperation()
+            for node in all_nodes:
+                if node.getBoundingBox():
+                    center_y = node.getWorldPosition().y - node.getBoundingBox().bottom
+                else:
+                    center_y = 0
+                op.addOperation(SetTransformOperation(node, Vector(0, center_y, 0)))
+            op.push()
+
+    def dropToBuildPlate(self) -> None:
+        selected_nodes = self._getSelectedObjectsWithoutSelectedAncestors()
+        if len(selected_nodes) > 1:
+                op = GroupedOperation()
+                for selected_node in selected_nodes:
+                    op.addOperation(ToBuildPlateOperation(selected_node))
+                op.push()
+        else:
+            for selected_node in selected_nodes:
+                ToBuildPlateOperation(selected_node).push()
+        self._controller.toolOperationStopped.emit(self)
 
     def getNonUniformScale(self):
         """Get non-uniform scaling flag

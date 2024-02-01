@@ -42,7 +42,7 @@ class UpdateChecker(Extension):
         self.setMenuName(i18n_catalog.i18nc("@item:inmenu", "Update Checker"))
         self.addMenuItem(i18n_catalog.i18nc("@item:inmenu", "Check for Updates"), self.checkNewVersion)
         preferences = Application.getInstance().getPreferences()
-        preferences.addPreference("info/automatic_update_check", True)
+        preferences.addPreference("info/automatic_update_check", False)
         if preferences.getValue("info/automatic_update_check"):
             self.checkNewVersion(silent = True, display_same_version = False)
 
@@ -110,7 +110,7 @@ class UpdateChecker(Extension):
 
         app_version = Application.getInstance().getVersion()
         # Skip if we're on a dev version
-        if app_version == "master" or app_version == Version([0, 0, 0]):
+        if app_version == "main" or app_version == Version([0, 0, 0]):
             if not silent:
                 Message(i18n_catalog.i18nc("@info", "The version you are using does not support checking for updates."),
                         title=i18n_catalog.i18nc("@info:title", "Warning")).show()

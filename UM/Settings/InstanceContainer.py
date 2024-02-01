@@ -27,14 +27,11 @@ import re
 class InvalidInstanceError(Exception):
     pass
 
-
 class IncorrectInstanceVersionError(Exception):
     pass
 
-
 class DefinitionNotFoundError(Exception):
     pass
-
 
 MimeTypeDatabase.addMimeType(
     MimeType(
@@ -167,7 +164,7 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
 
     def getId(self) -> str:
         """:copydoc ContainerInterface::getId
-
+        
         Reimplemented from ContainerInterface
         """
 
@@ -203,10 +200,10 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
 
     def getName(self) -> str:
         """:copydoc ContainerInterface::getName
-
+        
         Reimplemented from ContainerInterface
         """
-
+        
         return self._metadata["name"]
 
     def setName(self, name: str) -> None:
@@ -274,23 +271,24 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
 
         return self._metadata.get(entry, default)
 
+    
     def setMetaDataEntry(self, key: str, value: Any) -> None:
         """Set a metadata entry to a certain value.
-
+        
         :param key: The key of the metadata entry to set.
         :param value: The new value of the metadata.
-
+        
         :note This does nothing if the key is not already added to the metadata.
         """
-
+        
         if key not in self._metadata or self._metadata[key] != value:
             self._metadata[key] = value
             self._dirty = True
             self.metaDataChanged.emit(self)
-
+        
+    
+    ##  Check if this container is dirty, that is, if it changed from deserialization.
     def isDirty(self) -> bool:
-        """Check if this container is dirty, that is, if it changed from deserialization."""
-
         return self._dirty
 
     def setDirty(self, dirty: bool) -> None:
@@ -348,12 +346,12 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
         for key, value in self._cached_values.items():
             if key not in self._instances:
                 if not self.getDefinition():
-                    Logger.log("w", "Tried to set value of setting %s that has no SettingInstance in the InstanceContainer %s and the InstanceContainer has no SettingDefinition either", key, self.getName())
+                    Logger.log("w", "Tried to set value of setting %s that has no instance in the container %s and the container has no definition", key, self.getName())
                     return
 
                 setting_definition = self.getDefinition().findDefinitions(key = key)
                 if not setting_definition:
-                    Logger.log("w", "Tried to set value of the setting %s, but it has no SettingInstance in this InstanceContainer %s or its SettingDefinition %s", key, self.getName(), self.getDefinition().getName())
+                    Logger.log("w", "Tried to set value of setting %s that has no instance in this container %s or its definition %s", key, self.getName(), self.getDefinition().getName())
                     return
 
                 instance = SettingInstance(setting_definition[0], self)
@@ -385,7 +383,6 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
                 "Tried to setProperty [%s] with value [%s] with key [%s] on read-only object [%s]" % (
                     property_name, property_value, key, self.id))
             return
-
         if key not in self._instances:
             try:
                 definition = self.getDefinition()
@@ -619,20 +616,20 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
 
         return serialized
 
+    ##  Gets the metadata of an instance container from a serialised format.
+    #
+    #   This parses the entire CFG document and only extracts the metadata from
+    #   it.
+    #
+    #   \param serialized A CFG document, serialised as a string.
+    #   \param container_id The ID of the container to get the metadata of, as
+    #   obtained from the file name.
+    #   \return A dictionary of metadata that was in the CFG document in a
+    #   singleton list. If anything went wrong, this returns an empty list
+    #   instead.
     @classmethod
     def deserializeMetadata(cls, serialized: str, container_id: str) -> List[Dict[str, Any]]:
-        """Gets the metadata of an instance container from a serialised format.
-
-        This parses the entire CFG document and only extracts the metadata from
-        it.
-
-        :param serialized: A CFG document, serialised as a string.
-        :param container_id: The ID of the container to get the metadata of, as obtained from the file name.
-        :return: A dictionary of metadata that was in the CFG document in a singleton list. If anything went
-        wrong, this returns an empty list instead.
-        """
-
-        serialized = cls._updateSerialized(serialized)  # Update to most recent version.
+        serialized = cls._updateSerialized(serialized) #Update to most recent version.
         parser = FastConfigParser(serialized)
 
         metadata = {
@@ -681,18 +678,17 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
 
         return result
 
+    ##  Get an instance by key
+    #
     def getInstance(self, key: str) -> Optional[SettingInstance]:
-        """Get an instance by key"""
-
         self._instantiateCachedValues()
         if key in self._instances:
             return self._instances[key]
 
         return None
 
+    ##  Add a new instance to this container.
     def addInstance(self, instance: SettingInstance) -> None:
-        """Add a new instance to this container."""
-
         self._instantiateCachedValues()
         key = instance.definition.key
         if key in self._instances:
@@ -735,9 +731,8 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
 
         instance.updateRelations(self)
 
+    ##  Update all instances from this container.
     def update(self) -> None:
-        """Update all instances from this container."""
-
         self._instantiateCachedValues()
         for key, instance in self._instances.items():
             instance.propertyChanged.emit(key, "value")
@@ -748,8 +743,8 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
                     self.propertyChanged.emit(key, property_name)
         self._dirty = True
 
+    ##  Get the DefinitionContainer used for new instance creation.
     def getDefinition(self) -> DefinitionContainerInterface:
-        """Get the DefinitionContainer used for new instance creation."""
 
         if self._definition is None:
             definitions = _containerRegistry.findDefinitionContainers(id = self._metadata.get("definition", ""))
@@ -774,6 +769,7 @@ class InstanceContainer(QObject, ContainerInterface, PluginObject):
         other = cast(InstanceContainer, other)
         own_weight = int(self.getMetaDataEntry("weight", 0))
         other_weight = int(other.getMetaDataEntry("weight", 0))
+
         if own_weight and other_weight:
             return own_weight < other_weight
 

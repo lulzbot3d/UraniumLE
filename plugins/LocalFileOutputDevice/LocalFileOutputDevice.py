@@ -36,6 +36,7 @@ class LocalFileOutputDevice(ProjectOutputDevice):
         self.menu_entry_text = catalog.i18nc("@item:inmenu About saving files to the hard drive", "To Disk")
 
         self._writing = False
+        self.setPriority(1.5)
 
     def requestWrite(self, nodes, file_name = None, limit_mimetypes = None, file_handler = None, **kwargs):
         """Request the specified nodes to be written to a file.

@@ -14,7 +14,6 @@ from UM.Logger import Logger
 from UM.i18n import i18nCatalog
 i18n_catalog = i18nCatalog("uranium")
 
-
 class DurationFormat(QObject):
     class Format(enum.IntEnum):
         Seconds = 0
@@ -113,6 +112,9 @@ class Duration(QObject):
 
         self.durationChanged.emit()
 
+    ##  Get a string representation of this object that can be used to display in interfaces.
+    #
+    #   This is not called toString() primarily because that conflicts with JavaScript"s toString()
     @pyqtSlot(int, result = str)
     def getDisplayString(self, display_format = DurationFormat.Format.Short):
         """Get a string representation of this object that can be used to display

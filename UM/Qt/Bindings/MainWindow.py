@@ -334,7 +334,7 @@ class MainWindow(QQuickWindow):
 
             if camera.getAutoAdjustViewPort():
                 camera.setViewportSize(view_width, view_height)
-
+    
         self._app.getRenderer().setViewportSize(view_width, view_height)
         self._app.getRenderer().setWindowSize(width, height)
 

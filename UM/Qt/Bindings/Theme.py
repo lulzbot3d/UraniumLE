@@ -1,8 +1,10 @@
 # Copyright (c) 2022 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
 
+from gettext import install
 import json
 import os
+import os.path
 import sys
 import warnings
 from typing import Dict, List
@@ -15,7 +17,6 @@ from UM.FlameProfiler import pyqtSlot
 from UM.Logger import Logger
 from UM.Resources import Resources
 from UM.Trust import TrustBasics
-
 
 class Theme(QObject):
     def __init__(self, engine, parent = None) -> None:
@@ -321,7 +322,6 @@ class Theme(QObject):
                 # Won't get any images then. They will show as black squares.
 
         Logger.log("d", "Loaded theme %s", path)
-        Logger.info(f"System's em size is {self._em_height}px.")
         self._path = path
 
         # only emit the theme loaded signal once after all the themes in the inheritance chain have been loaded

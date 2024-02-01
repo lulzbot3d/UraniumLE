@@ -1,4 +1,11 @@
 
+Uranium LE is a Python framework for building 3D printing related applications. This is the LulzBot specific fork.
+
+License
+------------
+Uranium LE is released under the terms of the LGPLv3 or higher. A copy of this license should be included with the software.
+=======
+
 <br>
 
 <div align = center>

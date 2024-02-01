@@ -133,8 +133,6 @@ class CameraTool(Tool):
 
         if MouseEvent.MiddleButton in event.buttons:  # mousewheel
             return True
-        elif MouseEvent.LeftButton in event.buttons and self._shift_is_active is True:  # shift -> leftbutton
-            return True
         elif MouseEvent.RightButton in event.buttons and self._shift_is_active is True:  # shift -> rightbutton
             return True
         return False
@@ -170,6 +168,7 @@ class CameraTool(Tool):
                     _zoom_speed = 2000
                     self._zoomCamera(_diff_y * _zoom_speed)
                     self._start_y = None
+
         elif event.type is Event.MouseWheelEvent:
             self._zoomCamera(event.vertical, event)
             return True

@@ -203,6 +203,16 @@ class DefinitionContainer(QObject, DefinitionContainerInterface, PluginObject):
             value = getattr(definition, property_name)
             if value is None and property_name == "value":
                 value = getattr(definition, "default_value")
+                if key in ["machine_start_gcode", "machine_end_gcode", "machine_wipe_gcode","machine_abort_gcode", "machine_level_x_axis_gcode",
+                           "machine_extruder_start_code", "machine_extruder_end_code"]:
+                    value_from_file = getattr(definition, "default_value_from_file")
+                    if value_from_file != None:
+                        try:
+                            path = Resources.getPath(Resources.GCodes, value_from_file + ".gcode")
+                            with open(path, encoding = "utf-8") as f:
+                                value = f.read()
+                        except FileNotFoundError:
+                            return None
             return value
         except AttributeError:
             return None
@@ -472,7 +482,10 @@ class DefinitionContainer(QObject, DefinitionContainerInterface, PluginObject):
     def _loadFile(self, file_name: str) -> Dict[str, Any]:
         path = Resources.getPath(Resources.DefinitionContainers, file_name + ".def.json")
         with open(path, encoding = "utf-8") as f:
-            contents = json.load(f, object_pairs_hook=collections.OrderedDict)
+            try:
+                contents = json.load(f, object_pairs_hook=collections.OrderedDict)
+            except json.JSONDecodeError as e:
+                Logger.log("e", "Error while loading file %s %s:%s %s" % (file_name, e.lineno, e.colno, e.msg))
 
         self._inherited_files.append(path)
         return contents
