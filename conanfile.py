@@ -12,18 +12,18 @@ from conan.errors import ConanInvalidConfiguration
 required_conan_version = ">=1.58.0 <2.0.0"
 
 
-class UraniumConan(ConanFile):
-    name = "uranium"
+class UraniumLEConan(ConanFile):
+    name = "uranium-le"
     license = "LGPL-3.0"
-    author = "UltiMaker"
-    url = "https://github.com/Ultimaker/uranium"
+    author = "Fargo Additive Manufacturing Equipment 3D"
+    url = "https://github.com/lulzbot3d/UraniumLE"
     description = "A Python framework for building Desktop applications."
     topics = ("conan", "python", "pyqt6", "qt", "3d-graphics", "3d-models", "python-framework")
     exports = "LICENSE*"
     settings = "os", "compiler", "build_type", "arch"
 
-    python_requires = "umbase/[>=0.1.7]@ultimaker/stable", "translationextractor/[>=2.2.0]@ultimaker/stable"
-    python_requires_extend = "umbase.UMBaseConanfile"
+    python_requires = "lulzbase/[>=0.1.7]@lulzbot/stable", "translationextractor/[>=2.2.0]@lulzbot/stable"
+    python_requires_extend = "lulzbase.LulzBaseConanfile"
 
     options = {
         "devtools": [True, False],
@@ -33,7 +33,7 @@ class UraniumConan(ConanFile):
         "devtools": False,
         "enable_i18n": True,
     }
-    
+
     def set_version(self):
         if not self.version:
             self.version = "5.7.0-alpha"
