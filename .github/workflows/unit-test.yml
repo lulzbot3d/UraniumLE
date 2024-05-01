@@ -105,8 +105,8 @@ jobs:
 
       - name: Get Conan configuration
         run: |
-          conan config install https://github.com/Ultimaker/conan-config.git
-          conan config install https://github.com/Ultimaker/conan-config.git -a "-b runner/${{ runner.os }}/${{ runner.arch }}"
+          conan config install https://github.com/lulzbot3d/conan-config-le.git
+          conan config install https://github.com/lulzbot3d/conan-config-le.git -a "-b runner/${{ runner.os }}/${{ runner.arch }}"
 
       - name: Install dependencies
         run: conan install . ${{ needs.conan-recipe-version.outputs.recipe_id_full }} --build=missing --update -o uranium:devtools=True  -g VirtualPythonEnv -if venv

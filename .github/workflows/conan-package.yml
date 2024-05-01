@@ -38,7 +38,7 @@ env:
 
 jobs:
   conan-recipe-version:
-    uses: ultimaker/cura/.github/workflows/conan-recipe-version.yml@main
+    uses: lulzbot3d/CuraLE/.github/workflows/conan-recipe-version.yml@main
     with:
       project_name: uranium
 
@@ -90,8 +90,8 @@ jobs:
 
       - name: Get Conan configuration
         run: |
-          conan config install https://github.com/Ultimaker/conan-config.git
-          conan config install https://github.com/Ultimaker/conan-config.git -a "-b runner/${{ runner.os }}/${{ runner.arch }}"
+          conan config install https://github.com/lulzbot3d/conan-config-le.git
+          conan config install https://github.com/lulzbot3d/conan-config-le.git -a "-b runner/${{ runner.os }}/${{ runner.arch }}"
 
       - name: Create the Packages
         run: conan create . ${{ needs.conan-recipe-version.outputs.recipe_id_full }} --build=missing --update -o ${{ needs.conan-recipe-version.outputs.project_name }}:devtools=True -c tools.build:skip_test=True
@@ -110,7 +110,7 @@ jobs:
     if: ${{ always() && (github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'master' || needs.conan-recipe-version.outputs.is_release_branch == 'true')) }}
     needs: [ conan-recipe-version, conan-package-create-linux ]
 
-    uses: ultimaker/cura/.github/workflows/notify.yml@main
+    uses: lulzbot3d/CuraLE/.github/workflows/notify.yml@main
     with:
       success: ${{ contains(join(needs.*.result, ','), 'success') }}
       success_title: "New binaries created in ${{ github.repository }}"

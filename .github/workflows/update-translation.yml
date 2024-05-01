@@ -65,7 +65,7 @@ jobs:
         run: conan profile new default --detect --force
 
       - name: Get Conan configuration
-        run: conan config install https://github.com/Ultimaker/conan-config.git
+        run: conan config install https://github.com/lulzbot3d/conan-config-le.git
 
       - name: generate the files using Conan install
         run: conan install . --build=missing --update -o uranium:devtools=True
