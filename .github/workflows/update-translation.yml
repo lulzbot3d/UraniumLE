@@ -9,7 +9,6 @@ on:
       - 'conanfile.py'
       - 'conandata.yml'
       - '.github/workflows/conan-*.yml'
-      - '.github/workflows/notify.yml'
       - '.github/workflows/requirements-conan-package.txt'
       - 'requirements*.txt'
       - 'conanfile.py'

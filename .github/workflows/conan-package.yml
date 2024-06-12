@@ -106,15 +106,3 @@ jobs:
           conan upload ${{ needs.conan-recipe-version.outputs.recipe_id_full }} -r cura --all -c
           conan upload ${{ needs.conan-recipe-version.outputs.recipe_id_latest }} -r cura -c
 
-  notify-create:
-    if: ${{ always() && (github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'master' || needs.conan-recipe-version.outputs.is_release_branch == 'true')) }}
-    needs: [ conan-recipe-version, conan-package-create-linux ]
-
-    uses: lulzbot3d/CuraLE/.github/workflows/notify.yml@main
-    with:
-      success: ${{ contains(join(needs.*.result, ','), 'success') }}
-      success_title: "New binaries created in ${{ github.repository }}"
-      success_body: "Created binaries for ${{ needs.conan-recipe-version.outputs.recipe_id_full }}"
-      failure_title: "Failed to create binaries in ${{ github.repository }}"
-      failure_body: "Failed to created binaries for ${{ needs.conan-recipe-version.outputs.recipe_id_full }}"
-    secrets: inherit
