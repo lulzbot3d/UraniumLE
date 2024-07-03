@@ -1,0 +1,3 @@
+version: "5.7.2"
+requirements:
+  - "pyarcus/5.3.1"

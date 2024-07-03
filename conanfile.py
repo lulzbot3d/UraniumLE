@@ -4,7 +4,7 @@ from pathlib import Path
 
 from conan import ConanFile
 from conan.tools.env import VirtualBuildEnv, VirtualRunEnv
-from conan.tools.files import copy, mkdir
+from conan.tools.files import copy, mkdir, update_conandata
 from conan.tools.microsoft import unix_path
 from conan.tools.scm import Version
 from conan.errors import ConanInvalidConfiguration
@@ -22,8 +22,7 @@ class UraniumLEConan(ConanFile):
     exports = "LICENSE*"
     settings = "os", "compiler", "build_type", "arch"
 
-    python_requires = "lulzbase/[>=0.1.7]@lulzbot/stable", "translationextractor/[>=2.2.0]@lulzbot/stable"
-    python_requires_extend = "lulzbase.LulzBaseConanfile"
+    python_requires = "translationextractor/[>=2.1.2]@lulzbot/stable"
 
     options = {
         "devtools": [True, False],
@@ -36,7 +35,7 @@ class UraniumLEConan(ConanFile):
 
     def set_version(self):
         if not self.version:
-            self.version = "5.7.0-alpha"
+            self.version = self.conan_data["version"]
 
     @property
     def _i18n_options(self):
@@ -83,6 +82,9 @@ class UraniumLEConan(ConanFile):
             py_interp = Path(*[f'"{p}"' if " " in p else p for p in py_interp.parts])
         return py_interp
 
+    def export(self):
+        update_conandata(self, {"version": self.version})
+
     def export_sources(self):
         copy(self, "*", os.path.join(self.recipe_folder, "plugins"), os.path.join(self.export_sources_folder, "plugins"))
         copy(self, "*", os.path.join(self.recipe_folder, "resources"), os.path.join(self.export_sources_folder, "resources"), excludes = "*.mo")
@@ -98,6 +100,8 @@ class UraniumLEConan(ConanFile):
     def configure(self):
         self.options["pyarcus"].shared = True
         self.options["cpython"].shared = True
+        if self.settings.os == "Linux":
+            self.options["openssl"].shared = True
 
     def validate(self):
         if self.version:
@@ -105,8 +109,11 @@ class UraniumLEConan(ConanFile):
                 raise ConanInvalidConfiguration("Only versions 5+ are support")
 
     def requirements(self):
-        self.requires("pyarcus/5.3.0")
-        self.requires("cpython/3.10.4")
+        for req in self.conan_data["requirements"]:
+            self.requires(req)
+        self.requires("cpython/3.10.4@ultimaker/stable")
+        self.requires("openssl/3.2.0")
+        self.requires("protobuf/3.21.12")
 
     def build_requirements(self):
         if self.options.get_safe("enable_i18n", False):
@@ -127,7 +134,6 @@ class UraniumLEConan(ConanFile):
 
     def build(self):
         if self.options.get_safe("enable_i18n", False) and self._i18n_options["build"]:
-            # FIXME: once m4, autoconf, automake are Conan V2 ready use self.win_bash and add gettext as base tool_requirement
             for po_file in self.source_path.joinpath("resources", "i18n").glob("**/*.po"):
                 mo_file = Path(self.build_folder, po_file.with_suffix('.mo').relative_to(self.source_path))
                 mo_file = mo_file.parent.joinpath("LC_MESSAGES", mo_file.name)
@@ -165,4 +171,6 @@ class UraniumLEConan(ConanFile):
         self.info.clear()
 
         del self.info.options.devtools
+        if self.options.get_safe("enable_i18n", False):
+            del self.info.options.enable_i18n
 
