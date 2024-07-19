@@ -31,31 +31,26 @@ Uranium LE is released under the terms of the LGPLv3 or higher. A copy of this l
 
 <br>
 
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/Ultimaker/Uranium/badge)](https://api.securityscorecards.dev/projects/github.com/Ultimaker/Uranium)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/lulzbot3d/UraniumLE/badge)](https://api.securityscorecards.dev/projects/github.com/lulzbot3d/UraniumLE)
 
 <br>
 
 <!----------------------------------------------------------------------------->
 
-[Contributors]: https://github.com/Ultimaker/Uranium/graphs/contributors
-[Plugins]: https://github.com/Ultimaker/Uranium/wiki/Plugins
-[Conan]: https://github.com/Ultimaker/Uranium/actions/workflows/conan-package.yml
-[Test]: https://github.com/Ultimaker/Uranium/actions/workflows/unit-test.yml
+[Contributors]: https://github.com/lulzbot3d/UraniumLE/graphs/contributors
+[Plugins]: https://github.com/lulzbot3d/UraniumLE/wiki/Plugins
+[Conan]: https://github.com/lulzbot3d/UraniumLE/actions/workflows/conan-package.yml
+[Test]: https://github.com/lulzbot3d/UraniumLE/actions/workflows/unit-test.yml
 
-[Developing]: https://github.com/Ultimaker/Uranium/wiki/Building-And-Developing
 [License]: LICENSE
 [#]: #
 
 
 <!---------------------------------[ Badges ]---------------------------------->
 
-[Badge Contributors]: https://img.shields.io/github/contributors/ultimaker/Uranium?style=for-the-badge&logoColor=white&labelColor=db5e8a&color=ab4a6c&logo=GitHub
+[Badge Contributors]: https://img.shields.io/github/contributors/lulzbot3d/UraniumLE?style=for-the-badge&logoColor=white&labelColor=db5e8a&color=ab4a6c&logo=GitHub
 [Badge License]: https://img.shields.io/badge/License-LGPL3-336887.svg?style=for-the-badge&labelColor=458cb5&logoColor=white&logo=GNU
-[Badge Conan]: https://img.shields.io/github/workflow/status/Ultimaker/Uranium/conan-package?style=for-the-badge&logoColor=white&labelColor=6185aa&color=4c6987&logo=Conan&label=Conan%20Package
-[Badge Test]: https://img.shields.io/github/workflow/status/Ultimaker/Uranium/unit-test?style=for-the-badge&logoColor=white&labelColor=715a97&color=584674&logo=Codacy&label=Unit%20Test
-[Badge Size]: https://img.shields.io/github/repo-size/ultimaker/Uranium?style=for-the-badge&logoColor=white&labelColor=629944&color=446a30&logo=GoogleAnalytics
+[Badge Conan]: https://img.shields.io/github/workflow/status/lulzbot3d/UraniumLE/conan-package?style=for-the-badge&logoColor=white&labelColor=6185aa&color=4c6987&logo=Conan&label=Conan%20Package
+[Badge Test]: https://img.shields.io/github/workflow/status/lulzbot3d/UraniumLE/unit-test?style=for-the-badge&logoColor=white&labelColor=715a97&color=584674&logo=Codacy&label=Unit%20Test
+[Badge Size]: https://img.shields.io/github/repo-size/lulzbot3d/UraniumLE?style=for-the-badge&logoColor=white&labelColor=629944&color=446a30&logo=GoogleAnalytics
 
-
-<!---------------------------------[ Buttons ]--------------------------------->
-
-[Button Developing]: https://img.shields.io/badge/Developing-715a97?style=for-the-badge&logoColor=white&logo=VisualStudioCode
