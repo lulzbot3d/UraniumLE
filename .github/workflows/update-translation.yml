@@ -9,7 +9,6 @@ on:
       - 'conanfile.py'
       - 'conandata.yml'
       - '.github/workflows/conan-*.yml'
-      - '.github/workflows/notify.yml'
       - '.github/workflows/requirements-conan-package.txt'
       - 'requirements*.txt'
       - 'conanfile.py'
@@ -65,7 +64,7 @@ jobs:
         run: conan profile new default --detect --force
 
       - name: Get Conan configuration
-        run: conan config install https://github.com/Ultimaker/conan-config.git
+        run: conan config install https://github.com/lulzbot3d/conan-config-le.git
 
       - name: generate the files using Conan install
         run: conan install . --build=missing --update -o uranium:devtools=True

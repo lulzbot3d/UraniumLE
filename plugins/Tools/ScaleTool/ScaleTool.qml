@@ -67,7 +67,7 @@ Item {
             color: UM.Theme.getColor("icon")
         }
 
-        onClicked: UM.ActiveTool.triggerAction("resetScale")
+        onClicked: UM.Controller.triggerAction("resetScale")
     }
 
     Button {
@@ -94,15 +94,15 @@ Item {
             width: parent.width //Use a width instead of anchors to allow the flow layout to resolve positioning.
             text: catalog.i18nc("@option:check", "Snap Scaling")
 
-            checked: UM.ActiveTool.properties.getValue("ScaleSnap")
+            checked: UM.Controller.properties.getValue("ScaleSnap")
             onClicked:
             {
-                UM.ActiveTool.setProperty("ScaleSnap", checked)
+                UM.Controller.setProperty("ScaleSnap", checked)
                 if (snapScalingCheckbox.checked)
                 {
-                    UM.ActiveTool.setProperty("ScaleX", parseFloat(xPercentage.text) / 100)
-                    UM.ActiveTool.setProperty("ScaleY", parseFloat(yPercentage.text) / 100)
-                    UM.ActiveTool.setProperty("ScaleZ", parseFloat(zPercentage.text) / 100)
+                    UM.Controller.setProperty("ScaleX", parseFloat(xPercentage.text) / 100)
+                    UM.Controller.setProperty("ScaleY", parseFloat(yPercentage.text) / 100)
+                    UM.Controller.setProperty("ScaleZ", parseFloat(zPercentage.text) / 100)
                 }
             }
         }
@@ -110,7 +110,7 @@ Item {
         Binding {
             target: snapScalingCheckbox
             property: "checked"
-            value: UM.ActiveTool.properties.getValue("ScaleSnap")
+            value: UM.Controller.properties.getValue("ScaleSnap")
         }
 
         UM.CheckBox
@@ -120,14 +120,14 @@ Item {
             width: parent.width //Use a width instead of anchors to allow the flow layout to resolve positioning.
             text: catalog.i18nc("@option:check", "Uniform Scaling")
 
-            checked: !UM.ActiveTool.properties.getValue("NonUniformScale")
-            onClicked: UM.ActiveTool.setProperty("NonUniformScale", !checked)
+            checked: !UM.Controller.properties.getValue("NonUniformScale")
+            onClicked: UM.Controller.setProperty("NonUniformScale", !checked)
         }
 
         Binding {
             target: uniformScalingCheckbox
             property: "checked"
-            value: !UM.ActiveTool.properties.getValue("NonUniformScale")
+            value: !UM.Controller.properties.getValue("NonUniformScale")
         }
     }
 
@@ -180,7 +180,7 @@ Item {
 
             onEditingFinished: {
                 var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
-                UM.ActiveTool.setProperty("ObjectWidth", modified_text)
+                UM.Controller.setProperty("ObjectWidth", modified_text)
             }
             Keys.onBacktabPressed: selectTextInTextfield(yPercentage)
             Keys.onTabPressed: selectTextInTextfield(xPercentage)
@@ -201,7 +201,7 @@ Item {
 
             onEditingFinished: {
                 var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
-                UM.ActiveTool.setProperty("ObjectDepth", modified_text)
+                UM.Controller.setProperty("ObjectDepth", modified_text)
             }
             Keys.onBacktabPressed: selectTextInTextfield(xPercentage)
             Keys.onTabPressed: selectTextInTextfield(zPercentage)
@@ -222,7 +222,7 @@ Item {
 
             onEditingFinished: {
                 var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
-                UM.ActiveTool.setProperty("ObjectHeight", modified_text)
+                UM.Controller.setProperty("ObjectHeight", modified_text)
             }
             Keys.onBacktabPressed: selectTextInTextfield(zPercentage)
             Keys.onTabPressed: selectTextInTextfield(yPercentage)
@@ -247,20 +247,20 @@ Item {
 
         function evaluateTextChange(text, lastEnteredValue, valueName, scaleName)
         {
-            var currentModelSize = UM.ActiveTool.properties.getValue(valueName)
+            var currentModelSize = UM.Controller.properties.getValue(valueName)
             var parsedValue = textfields.validateMinimumSize(text, lastEnteredValue, currentModelSize)
-            if (parsedValue > 0 && ! UM.ActiveTool.properties.getValue("NonUniformScale"))
+            if (parsedValue > 0 && ! UM.Controller.properties.getValue("NonUniformScale"))
             {
                 var scale = parsedValue / lastEnteredValue
-                var x = UM.ActiveTool.properties.getValue("ScaleX") * 100
-                var y = UM.ActiveTool.properties.getValue("ScaleY") * 100
-                var z = UM.ActiveTool.properties.getValue("ScaleZ") * 100
+                var x = UM.Controller.properties.getValue("ScaleX") * 100
+                var y = UM.Controller.properties.getValue("ScaleY") * 100
+                var z = UM.Controller.properties.getValue("ScaleZ") * 100
                 var newX = textfields.validateMinimumSize(
-                    (x * scale).toString(), x, UM.ActiveTool.properties.getValue("ObjectWidth"))
+                    (x * scale).toString(), x, UM.Controller.properties.getValue("ObjectWidth"))
                 var newY = textfields.validateMinimumSize(
-                    (y * scale).toString(), y, UM.ActiveTool.properties.getValue("ObjectHeight"))
+                    (y * scale).toString(), y, UM.Controller.properties.getValue("ObjectHeight"))
                 var newZ = textfields.validateMinimumSize(
-                    (z * scale).toString(), z, UM.ActiveTool.properties.getValue("ObjectDepth"))
+                    (z * scale).toString(), z, UM.Controller.properties.getValue("ObjectDepth"))
                 if (newX <= 0 || newY <= 0 || newZ <= 0)
                 {
                     parsedValue = -1
@@ -268,7 +268,7 @@ Item {
             }
             if (parsedValue > 0)
             {
-                UM.ActiveTool.setProperty(scaleName, parsedValue / 100)
+                UM.Controller.setProperty(scaleName, parsedValue / 100)
                 lastEnteredValue = parsedValue
             } // 'else' the value is not valid (the object will become too small)
             return lastEnteredValue
@@ -342,37 +342,37 @@ Item {
         Binding {
             target: base
             property: "heightText"
-            value: base.roundFloat(UM.ActiveTool.properties.getValue("ObjectHeight"), 4)
+            value: base.roundFloat(UM.Controller.properties.getValue("ObjectHeight"), 4)
         }
 
         Binding {
             target: base
             property: "widthText"
-            value: base.roundFloat(UM.ActiveTool.properties.getValue("ObjectWidth"), 4)
+            value: base.roundFloat(UM.Controller.properties.getValue("ObjectWidth"), 4)
         }
 
         Binding {
             target: base
             property: "depthText"
-            value:base.roundFloat(UM.ActiveTool.properties.getValue("ObjectDepth"), 4)
+            value:base.roundFloat(UM.Controller.properties.getValue("ObjectDepth"), 4)
         }
 
         Binding {
             target: base
             property: "xPercentageText"
-            value: base.roundFloat(100 * UM.ActiveTool.properties.getValue("ScaleX"), 4)
+            value: base.roundFloat(100 * UM.Controller.properties.getValue("ScaleX"), 4)
         }
 
         Binding {
             target: base
             property: "yPercentageText"
-            value: base.roundFloat(100 * UM.ActiveTool.properties.getValue("ScaleY"), 4)
+            value: base.roundFloat(100 * UM.Controller.properties.getValue("ScaleY"), 4)
         }
 
         Binding {
             target: base
             property: "zPercentageText"
-            value: base.roundFloat(100 * UM.ActiveTool.properties.getValue("ScaleZ"), 4)
+            value: base.roundFloat(100 * UM.Controller.properties.getValue("ScaleZ"), 4)
         }
     }
 }
