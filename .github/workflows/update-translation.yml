@@ -67,7 +67,7 @@ jobs:
         run: conan config install https://github.com/lulzbot3d/conan-config-le.git
 
       - name: generate the files using Conan install
-        run: conan install . --build=missing --update -o uranium:devtools=True
+        run: conan install . --build=missing --update -o uraniumle:devtools=True
 
       - uses: stefanzweifel/git-auto-commit-action@v4
         with:
