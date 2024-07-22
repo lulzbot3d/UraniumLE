@@ -12,6 +12,7 @@ on:
       - '.github/workflows/requirements-runner.txt'
     branches:
       - main
+      - main-workflows
       - 'CURA-*'
       - 'PP-*'
       - '[0-9].[0-9]*'
