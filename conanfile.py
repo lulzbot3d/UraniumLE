@@ -13,7 +13,7 @@ required_conan_version = ">=1.58.0 <2.0.0"
 
 
 class UraniumLEConan(ConanFile):
-    name = "uranium-le"
+    name = "uraniumle"
     license = "LGPL-3.0"
     author = "Fargo Additive Manufacturing Equipment 3D"
     url = "https://github.com/lulzbot3d/UraniumLE"
@@ -111,7 +111,7 @@ class UraniumLEConan(ConanFile):
     def requirements(self):
         for req in self.conan_data["requirements"]:
             self.requires(req)
-        self.requires("cpython/3.10.4@ultimaker/stable")
+        self.requires("cpython/3.10.4@lulzbot/stable")
         self.requires("openssl/3.2.0")
         self.requires("protobuf/3.21.12")
 
