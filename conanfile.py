@@ -13,9 +13,9 @@ required_conan_version = ">=1.58.0 <2.0.0"
 
 
 class UraniumLEConan(ConanFile):
-    name = "uranium-le"
+    name = "uraniumle"
     license = "LGPL-3.0"
-    author = "Fargo Additive Manufacturing Equipment 3D"
+    author = "UltiMaker, FAME3D LLC."
     url = "https://github.com/lulzbot3d/UraniumLE"
     description = "A Python framework for building Desktop applications."
     topics = ("conan", "python", "pyqt6", "qt", "3d-graphics", "3d-models", "python-framework")
@@ -98,7 +98,7 @@ class UraniumLEConan(ConanFile):
             del self.options.enable_i18n
 
     def configure(self):
-        self.options["pyarcus"].shared = True
+        self.options["pyarcusle"].shared = True
         self.options["cpython"].shared = True
         if self.settings.os == "Linux":
             self.options["openssl"].shared = True
@@ -111,7 +111,7 @@ class UraniumLEConan(ConanFile):
     def requirements(self):
         for req in self.conan_data["requirements"]:
             self.requires(req)
-        self.requires("cpython/3.10.4@ultimaker/stable")
+        self.requires("cpython/3.10.4@lulzbot/stable")
         self.requires("openssl/3.2.0")
         self.requires("protobuf/3.21.12")
 

@@ -1,3 +1,3 @@
 version: "5.8.1"
 requirements:
-  - "pyarcus/5.3.1"
+  - "pyarcusle/5.3.1"
