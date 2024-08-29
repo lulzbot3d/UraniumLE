@@ -695,6 +695,8 @@ class SettingDefinition:
         "warning_value": {"type": DefinitionPropertyType.Function, "required": False, "read_only": True, "default": None, "depends_on": None},
         # For bool type: if the value is the same as the error value, the setting will be in the error state.
         "error_value": {"type": DefinitionPropertyType.Function, "required": False, "read_only": True, "default": None, "depends_on": None},
+        # Optional list of settings that a setting explicitely depends on, which is useful when this can not be fully calculated from the formula.
+        "force_depends_on_settings": {"type": DefinitionPropertyType.Any, "required": False, "read_only": True, "default": [], "depends_on": None},
     }   # type: Dict[str, Dict[str, Any]]
 
     # ##  Conversion from string to integer.
