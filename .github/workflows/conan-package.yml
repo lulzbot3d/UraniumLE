@@ -12,15 +12,13 @@ on:
       - '.github/workflows/requirements-runner.txt'
     branches:
       - main
-      - main-workflows
       - 'CURA-*'
       - 'PP-*'
       - '[0-9].[0-9]*'
       - '[0-9].[0-9][0-9]*'
-
-env:
-  CONAN_LOGIN_USERNAME_CURA: ${{ secrets.CONAN_USER }}
-  CONAN_PASSWORD_CURA: ${{ secrets.CONAN_PASS }}
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]*'
+      - '[0-9]+.[0-9]+.[0-9]'
 
 jobs:
   conan-recipe-version:
@@ -36,8 +34,27 @@ jobs:
       recipe_id_latest: ${{ needs.conan-recipe-version.outputs.recipe_id_latest }}
     secrets: inherit
 
-  conan-package-create:
+  conan-package-create-macos:
     needs: [ conan-recipe-version, conan-package-export ]
+    if: ${{ ((github.event_name == 'push' && (github.ref_name == 'main' || needs.conan-recipe-version.outputs.is_release_branch == 'true')) || github.event_name == 'pull_request') }}
+    uses: lulzbot3d/cura-le-workflows/.github/workflows/conan-package-create-macos.yml@main
+    with:
+      recipe_id_full: ${{ needs.conan-recipe-version.outputs.recipe_id_full }}
+      conan_extra_args: "-o uraniumle:enable_i18n=True"
+    secrets: inherit
+
+  conan-package-create-windows:
+    needs: [ conan-recipe-version, conan-package-export ]
+    if: ${{ ((github.event_name == 'push' && (github.ref_name == 'main' || needs.conan-recipe-version.outputs.is_release_branch == 'true')) || github.event_name == 'pull_request') }}
+    uses: lulzbot3d/cura-le-workflows/.github/workflows/conan-package-create-windows.yml@main
+    with:
+      recipe_id_full: ${{ needs.conan-recipe-version.outputs.recipe_id_full }}
+      conan_extra_args: "-o uraniumle:enable_i18n=True"
+    secrets: inherit
+
+  conan-package-create-linux:
+    needs: [ conan-recipe-version, conan-package-export ]
+    if: ${{ ((github.event_name == 'push' && (github.ref_name == 'main' || needs.conan-recipe-version.outputs.is_release_branch == 'true')) || github.event_name == 'pull_request') }}
     uses: lulzbot3d/cura-le-workflows/.github/workflows/conan-package-create-linux.yml@main
     with:
       recipe_id_full: ${{ needs.conan-recipe-version.outputs.recipe_id_full }}
