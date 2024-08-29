@@ -50,7 +50,6 @@ jobs:
     uses: lulzbot3d/cura-le-workflows/.github/workflows/conan-package-create-windows.yml@main
     with:
       recipe_id_full: ${{ needs.conan-recipe-version.outputs.recipe_id_full }}
-      conan_extra_args: "-o uraniumle:enable_i18n=True"
     secrets: inherit
 
   conan-package-create-linux:
