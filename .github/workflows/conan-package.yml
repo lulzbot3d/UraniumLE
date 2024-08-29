@@ -10,6 +10,7 @@ on:
       - 'conandata.yml'
       - 'requirements*.txt'
       - '.github/workflows/requirements-runner.txt'
+      - '.github/workflows/conan-package.yml'
     branches:
       - main
       - 'CURA-*'
