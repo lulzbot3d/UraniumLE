@@ -111,7 +111,7 @@ class UraniumLEConan(ConanFile):
     def requirements(self):
         for req in self.conan_data["requirements"]:
             self.requires(req)
-        self.requires("cpython/3.12.2")
+        self.requires("cpython/3.10.4@lulzbot/stable")
         self.requires("openssl/3.2.0")
         self.requires("protobuf/3.21.12")
 
