@@ -1,9 +1,7 @@
 # Copyright (c) 2022 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
 
-import imp
 import scipy
-import time
 from typing import List, Tuple, TYPE_CHECKING, Optional
 
 from PyQt6.QtCore import Qt
@@ -13,7 +11,6 @@ from UM.Logger import Logger
 from UM.Math.Float import Float
 from UM.Math.Matrix import Matrix
 from UM.Math.Plane import Plane
-from UM.Math.Quaternion import Quaternion
 from UM.Math.Vector import Vector
 from UM.Operations.GroupedOperation import GroupedOperation
 from UM.Operations.ScaleOperation import ScaleOperation

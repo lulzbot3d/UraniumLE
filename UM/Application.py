@@ -82,6 +82,7 @@ class Application:
 
         self.change_log_url: str = "https://gitlab.com/lulzbot3d/cura-le/uranium"  # Where to find a more detailed description of the recent updates.
         self.beta_change_log_url: str = "https://gitlab.com/lulzbot3d/cura-le/uranium"  # Where to find a more detailed description of proposed updates.
+        self.latest_url: str = latest_url
 
         self._preferences_filename = None  # type: str
         self._preferences = None  # type: Preferences
