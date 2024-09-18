@@ -21,9 +21,16 @@ resources/i18n/en_7S
 .coverage*
 htmlcov/
 
+# Conan
+conan.lock
+conaninfo.txt
+conanbuildinfo.txt
+
 # JUnit
 junit.xml
 junit-pytest-*
+junit_uranium*
+test_file
 
 # Different files
 *.pyc
@@ -60,6 +67,5 @@ resources/.DS_Store
 
 #Common plug-ins
 plugins/UraniumExample*Plugin
-/conanbuildinfo.txt
 /graph_info.json
 /venv/

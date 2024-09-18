@@ -8,7 +8,7 @@ from conan.tools.env import VirtualRunEnv
 from conans import tools
 from conans.errors import ConanException
 
-class UraniumTestConan(ConanFile):
+class UraniumLETestConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
     generators = "VirtualRunEnv"
 
@@ -31,7 +31,7 @@ class UraniumTestConan(ConanFile):
                 self.run(f"python test.py", env="conanrun", output=test_buf)
             except Exception:
                 print(test_buf.getvalue())
-                raise ConanException("Uranium wasn't build correctly!")
+                raise ConanException("UraniumLE wasn't built correctly!")
 
             if "True" not in test_buf.getvalue():
-                raise ConanException("Uranium wasn't build correctly!")
+                raise ConanException("UraniumLE wasn't built correctly!")
