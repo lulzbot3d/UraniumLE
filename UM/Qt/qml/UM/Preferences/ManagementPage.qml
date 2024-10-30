@@ -28,7 +28,7 @@ PreferencesPage
     property alias listContent: objectListBackground.children
 
     signal itemActivated()
-    signal hamburgeButtonClicked(Item hamburger_button)
+    signal hamburgerButtonClicked(Item hamburger_button)
     property alias hamburgerButtonVisible: hamburgerButton.visible
 
     property var isActiveModelFunction: function(model, id) { return model.id == id }
@@ -165,7 +165,7 @@ PreferencesPage
                 source: UM.Theme.getIcon("Hamburger")
                 color: UM.Theme.getColor("icon")
             }
-            onClicked: base.hamburgeButtonClicked(hamburgerButton)
+            onClicked: base.hamburgerButtonClicked(hamburgerButton)
         }
     }
 
