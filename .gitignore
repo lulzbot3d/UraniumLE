@@ -30,6 +30,7 @@ conanbuildinfo.txt
 junit.xml
 junit-pytest-*
 junit_uranium*
+junit_cura*
 test_file
 
 # Different files
