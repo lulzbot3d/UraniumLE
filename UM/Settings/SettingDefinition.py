@@ -1,13 +1,15 @@
-# Copyright (c) 2017 Ultimaker B.V.
+# Copyright (c) 2024 UltiMaker
 # Uranium is released under the terms of the LGPLv3 or higher.
 
 import ast
+from functools import lru_cache
 import json
 import enum
 import collections
 import re
 from typing import Any, List, Dict, Callable, Match, Set, Union, Optional
 
+from UM.Decorators import CachedMemberFunctions, cache_per_instance, cache_per_instance_copy_result
 from UM.Logger import Logger
 from UM.Settings.Interfaces import DefinitionContainerInterface
 from UM.i18n import i18nCatalog
@@ -89,6 +91,8 @@ class SettingDefinition:
 
         self.__property_values = {}  # type: Dict[str, Any]
 
+        self.__init_done = True
+
     def extend_category(self, value_id: str, value_display: str, plugin_id: Optional[str] = None,
                         plugin_version: Optional[str] = None) -> None:
         """Append a category to the setting.
@@ -102,6 +106,7 @@ class SettingDefinition:
             value_id = f"PLUGIN::{plugin_id}@{plugin_version}::{value_id}"
         elif plugin_id is not None or plugin_version is not None:
             raise ValueError("Both plugin_id and plugin_version must be provided if one of them is provided.")
+        CachedMemberFunctions.clearInstanceCache(self)
         self.options[value_id] = value_display
 
     def __getattr__(self, name: str) -> Any:
@@ -117,6 +122,9 @@ class SettingDefinition:
     def __setattr__(self, name: str, value: Any) -> None:
         if name in self.__property_definitions:
             raise NotImplementedError("Setting of property {0} not supported".format(name))
+
+        if "__init_done" in self.__dict__:
+            CachedMemberFunctions.clearInstanceCache(self)
 
         super().__setattr__(name, value)
 
@@ -140,6 +148,10 @@ class SettingDefinition:
         This should be identical to Pickle's default behaviour but the default
         behaviour doesn't combine well with a non-default __getattr__.
         """
+
+        if "__init_done" in self.__dict__:
+            CachedMemberFunctions.clearInstanceCache(self)
+
         self.__dict__.update(state)
         # For 4.0 we added the _all_keys property, but the pickling fails to restore this.
         # This is just there to prevent issues for developers, since only releases ignore caches.
@@ -147,10 +159,10 @@ class SettingDefinition:
         if not hasattr(self, "_all_keys"):
             self._all_keys = set()
 
+    def __del__(self) -> None:
+        CachedMemberFunctions.deleteInstanceCache(self)
+        getattr(super(), "__del__", lambda s: None)(self)
 
-    ##  The key of this setting.
-    #
-    #   \return \type{string}
     @property
     def key(self) -> str:
         return self._key
@@ -183,12 +195,19 @@ class SettingDefinition:
     def relations(self) -> List["SettingRelation"]:
         return self._relations
 
-    ##  Serialize this setting to a string.
-    #
-    #   \return \type{string} A serialized representation of this setting.
+    @cache_per_instance
+    def relationsAsFrozenSet(self) -> frozenset["SettingRelation"]:
+        """A frozen set of SettingRelation objects of this setting.
+
+        :return: :type{frozenset<SettingRelation>}
+        """
+
+        return frozenset(self.relations)
+
     def serialize(self) -> str:
         pass
 
+    @cache_per_instance_copy_result
     def getAllKeys(self) -> Set[str]:
         """Gets the key of this setting definition and of all its descendants.
 
@@ -225,17 +244,19 @@ class SettingDefinition:
     #
     #   \param serialized \type{string or dict} A serialized representation of this setting.
     def deserialize(self, serialized: Union[str, Dict[str, Any]]) -> None:
+        """Deserialize this setting from a string or dict.
+
+        :param serialized: :type{string or dict} A serialized representation of this setting.
+        """
+
+        CachedMemberFunctions.clearInstanceCache(self)
         if isinstance(serialized, dict):
             self._deserialize_dict(serialized)
         else:
             parsed = json.loads(serialized, object_pairs_hook=collections.OrderedDict)
             self._deserialize_dict(parsed)
 
-    ##  Get a child by key
-    #
-    #   \param key \type{string} The key of the child to get.
-    #
-    #   \return \type{SettingDefinition} The child with the specified key or None if not found.
+    @cache_per_instance
     def getChild(self, key: str) -> Optional["SettingDefinition"]:
         if not self.__descendants:
             self.__descendants = self._updateDescendants()
@@ -250,6 +271,7 @@ class SettingDefinition:
 
         return None
 
+    @cache_per_instance
     def _matches1l8nProperty(self, property_name: str, value: Any, catalog) -> bool:
         try:
             property_value = getattr(self, property_name)
@@ -389,29 +411,21 @@ class SettingDefinition:
 
         return definitions
 
-    ##  Check whether a certain setting is an ancestor of this definition.
-    #
-    #   \param key \type{str} The key of the setting to check.
-    #
-    #   \return True if the specified setting is an ancestor of this definition, False if not.
+    @cache_per_instance
     def isAncestor(self, key: str) -> bool:
         if not self.__ancestors:
             self.__ancestors = self._updateAncestors()
 
         return key in self.__ancestors
 
-    ##  Check whether a certain setting is a descendant of this definition.
-    #
-    #   \param key \type{str} The key of the setting to check.
-    #
-    #   \return True if the specified setting is a descendant of this definition, False if not.
+    @cache_per_instance
     def isDescendant(self, key: str) -> bool:
         if not self.__descendants:
             self.__descendants = self._updateDescendants()
 
         return key in self.__descendants
 
-    ##  Get a set of keys representing the setting's ancestors.
+    @cache_per_instance_copy_result
     def getAncestors(self) -> Set[str]:
         if not self.__ancestors:
             self.__ancestors = self._updateAncestors()
@@ -435,26 +449,33 @@ class SettingDefinition:
             Logger.log("w", "Trying to compare equality of SettingDefinition and something that is no SettingDefinition.")
             return False
 
-    ##  Define a new supported property for SettingDefinitions.
-    #
-    #   Since applications may want custom properties in their definitions, most properties are handled
-    #   dynamically. This allows the application to define what extra properties it wants to support.
-    #   Additionally, it can indicate whether a properties should be considered "required". When a
-    #   required property is not missing during deserialization, an AttributeError will be raised.
-    #
-    #   \param name \type{string} The name of the property to define.
-    #   \param property_type \type{DefinitionPropertyType} The type of property.
-    #   \param kwargs Keyword arguments. Possible values:
-    #   \param required     True if missing the property indicates an error should be raised. Defaults to False.
-    #   \param read_only    True if the property should never be set on a SettingInstance. Defaults to False. Note that for Function properties this indicates whether the result of the function should be stored.
-    #   \param default      The default value for this property. This will be returned when the specified property is not defined for this definition.
-    #   \param depends_on   Key to another property that this property depends on; eg; if that value changes, this value should be re-evaluated.
     @classmethod
     def addSupportedProperty(cls, name: str, property_type: DefinitionPropertyType, required: bool=False, read_only: bool=False, default: Any=None, depends_on: Optional[str]=None) -> None:
+        """Define a new supported property for SettingDefinitions.
+
+        Since applications may want custom properties in their definitions, most properties are handled
+        dynamically. This allows the application to define what extra properties it wants to support.
+        Additionally, it can indicate whether a properties should be considered "required". When a
+        required property is not missing during deserialization, an AttributeError will be raised.
+
+        :param name: :type{string} The name of the property to define.
+        :param property_type: :type{DefinitionPropertyType} The type of property.
+        :param kwargs: Keyword arguments. Possible values:
+        :param required:     True if missing the property indicates an error should be raised. Defaults to False.
+        :param read_only:    True if the property should never be set on a SettingInstance. Defaults to False. Note
+        that for Function properties this indicates whether the result of the function should be stored.
+        :param default:      The default value for this property. This will be returned when the specified property
+        is not defined for this definition.
+        :param depends_on:   Key to another property that this property depends on; eg; if that value changes, this
+        value should be re-evaluated.
+        """
+
+        cls._clearClassCache()
         cls.__property_definitions[name] = {"type": property_type, "required": required, "read_only": read_only,
                                             "default": default, "depends_on": depends_on}
 
     @classmethod
+    @lru_cache
     def getPropertyNames(cls, def_type: DefinitionPropertyType = None) -> List[str]:
         """Get the names of all supported properties.
 
@@ -468,6 +489,7 @@ class SettingDefinition:
         return [key for key, value in cls.__property_definitions.items() if not def_type or value["type"] == def_type]
 
     @classmethod
+    @lru_cache
     def hasProperty(cls, name: str) -> bool:
         return name in cls.__property_definitions
 
@@ -477,6 +499,7 @@ class SettingDefinition:
     #
     #   \return DefinitionPropertyType corresponding to the type of the property or None if not found.
     @classmethod
+    @lru_cache
     def getPropertyType(cls, name: str) -> Optional[str]:
         if name in cls.__property_definitions:
             return cls.__property_definitions[name]["type"]
@@ -492,6 +515,7 @@ class SettingDefinition:
     #
     #   \return True if the property is supported and is required, False if it is not required or is not part of the list of supported properties.
     @classmethod
+    @lru_cache
     def isRequiredProperty(cls, name: str) -> bool:
         if name in cls.__property_definitions:
             return cls.__property_definitions[name]["required"]
@@ -505,12 +529,14 @@ class SettingDefinition:
     #
     #   \return True if the property is supported and is read-only, False if it is not required or is not part of the list of supported properties.
     @classmethod
+    @lru_cache
     def isReadOnlyProperty(cls, name: str) -> bool:
         if name in cls.__property_definitions:
             return cls.__property_definitions[name]["read_only"]
         return False
 
     @classmethod
+    @lru_cache
     def dependsOnProperty(cls, name: str) -> Optional[str]:
         """Check if the specified property depends on another property
     
@@ -524,14 +550,17 @@ class SettingDefinition:
             return cls.__property_definitions[name]["depends_on"]
         return None
 
-    ##  Add a new setting type to the list of accepted setting types.
-    #
-    #   \param type_name The name of the new setting type.
-    #   \param from_string A function to call that converts to a proper value of this type from a string.
-    #   \param to_string A function that converts a value of this type to a string.
-    #
     @classmethod
-    def addSettingType(cls, type_name: str, from_string: Callable[[str], Any], to_string: Callable[[Any],str], validator: Validator = None) -> None:
+    def addSettingType(cls, type_name: str, from_string: Optional[Callable[[str], Any]], to_string: Callable[[Any], str], validator: Optional[Validator] = None) -> None:
+        """Add a new setting type to the list of accepted setting types.
+
+        :param type_name: The name of the new setting type.
+        :param from_string: A function to call that converts to a proper value of this type from a string.
+        :param to_string: A function that converts a value of this type to a string.
+
+        """
+
+        cls._clearClassCache()
         cls.__type_definitions[type_name] = { "from": from_string, "to": to_string, "validator": validator }
 
     ##  Convert a string to a value according to a setting type.
@@ -543,6 +572,7 @@ class SettingDefinition:
     #
     #   \exception ValueError Raised when the specified type does not exist.
     @classmethod
+    @lru_cache
     def settingValueFromString(cls, type_name: str, string_value: str) -> Any:
         if type_name not in cls.__type_definitions:
             raise ValueError("Unknown setting type {0}".format(type_name))
@@ -576,6 +606,7 @@ class SettingDefinition:
 
     ##  Get the validator type for a certain setting type.
     @classmethod
+    @lru_cache
     def getValidatorForType(cls, type_name: str) -> Callable[[str],Validator]:
         if type_name not in cls.__type_definitions:
             raise ValueError("Unknown setting type {0}".format(type_name))
@@ -587,6 +618,8 @@ class SettingDefinition:
 
         Deserialize from a dictionary
         """
+
+        CachedMemberFunctions.clearInstanceCache(self)
         self._children = []
         self._relations = []
 
@@ -629,6 +662,7 @@ class SettingDefinition:
         self.__ancestors = self._updateAncestors()
         self.__descendants = self._updateDescendants()
 
+    @cache_per_instance_copy_result
     def _updateAncestors(self) -> Set[str]:
         result = set()  # type: Set[str]
 
@@ -640,6 +674,7 @@ class SettingDefinition:
         return result
 
     def _updateDescendants(self, definition: "SettingDefinition" = None) -> Dict[str, "SettingDefinition"]:
+        CachedMemberFunctions.clearInstanceCache(self)
         result = {}
         self._all_keys = set()  # Reset the keys cache.
         if not definition:
@@ -650,6 +685,17 @@ class SettingDefinition:
             result.update(self._updateDescendants(child))
 
         return result
+
+    @classmethod
+    def _clearClassCache(cls):
+        cls.getPropertyNames.cache_clear()
+        cls.hasProperty.cache_clear()
+        cls.getPropertyType.cache_clear()
+        cls.isRequiredProperty.cache_clear()
+        cls.isReadOnlyProperty.cache_clear()
+        cls.dependsOnProperty.cache_clear()
+        cls.settingValueFromString.cache_clear()
+        cls.getValidatorForType.cache_clear()
 
     __property_definitions = {
         # The name of the setting. Only used for display purposes.
