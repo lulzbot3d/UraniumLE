@@ -92,7 +92,7 @@ class UraniumLEConan(ConanFile):
             del self.options.enable_i18n
 
     def configure(self):
-        self.options["pyarcusle"].shared = True
+        self.options["pyarcus"].shared = True
         self.options["cpython"].shared = True
         if self.settings.os == "Linux":
             self.options["openssl"].shared = True
