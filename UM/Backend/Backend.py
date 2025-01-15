@@ -293,10 +293,6 @@ class Backend(PluginObject):
             Logger.warn("Unable to create socket without protocol file!")
             return
 
-        if not protocol_file:
-            Logger.log("w", "Unable to create socket without protocol file!")
-            return
-
         if self._socket:
             Logger.log("d", "Previous socket existed. Closing that first.") # temp debug logging
             self._cleanupExistingSocket()
