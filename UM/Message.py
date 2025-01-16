@@ -1,12 +1,14 @@
 # Copyright (c) 2022 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
+
 from enum import IntEnum
 from typing import Optional, Union, Dict, List
 
 from PyQt6.QtCore import QTimer, pyqtSignal, QObject
 
-from UM.Signal import Signal, signalemitter
 from UM.Logger import Logger
+from UM.Signal import Signal, signalemitter
+
 
 @signalemitter
 class Message(QObject):

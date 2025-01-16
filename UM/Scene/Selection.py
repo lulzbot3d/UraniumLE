@@ -10,12 +10,15 @@ from UM.Scene.SceneNode import SceneNode
 
 from UM.Operations.GroupedOperation import GroupedOperation
 
+
 class Selection:
     """This class is responsible for keeping track of what objects are selected
+
     It uses signals to notify others of changes in the selection
     It also has a convenience function that allows it to apply a single operation
     to all selected objects.
     """
+
     @classmethod
     def add(cls, object: SceneNode) -> None:
         if object not in cls.__selection:
@@ -173,6 +176,7 @@ class Selection:
 
         :return: list of instantiated operations
         """
+
         if not cls.__selection:
             return
 

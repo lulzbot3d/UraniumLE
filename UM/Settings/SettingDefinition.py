@@ -22,12 +22,14 @@ from . import SettingFunction
 from UM.Settings.Validator import Validator
 
 
-##  Type of definition property.
-#
-#   This enum describes the possible types for a supported definition property.
-#   For more information about supported definition properties see SettingDefinition
-#   and SettingDefinition::addSupportedProperty().
 class DefinitionPropertyType(enum.IntEnum):
+    """Type of definition property.
+
+    This enum describes the possible types for a supported definition property.
+    For more information about supported definition properties see SettingDefinition
+    and SettingDefinition::addSupportedProperty().
+    """
+
     Any = 1  ## Any value.
     String = 2  ## Value is always converted to string.
     TranslatedString = 3  ## Value is converted to string then passed through an i18nCatalog object to get a translated version of that string.
@@ -36,17 +38,17 @@ class DefinitionPropertyType(enum.IntEnum):
 
 def toFloatConversion(value: str) -> float:
     """Conversion of string to float."""
-    
+
     value = value.replace(",", ".")
     """Ensure that all , are replaced with . (so they are seen as floats)"""
 
     def stripLeading0(matchobj: Match[str]) -> str:
         return matchobj.group(0).lstrip("0")
 
-    ## Literal eval does not like "02" as a value, but users see this as "2".
-    ## We therefore look numbers with leading "0", provided they are not used in variable names
-    ## example: "test02 * 20" should not be changed, but "test * 02 * 20" should be changed (into "test * 2 * 20")
     regex_pattern = r"(?<!\.|\w|\d)0+(\d+)"
+    """Literal eval does not like "02" as a value, but users see this as "2"."""
+    """We therefore look numbers with leading "0", provided they are not used in variable names"""
+    """example: "test02 * 20" should not be changed, but "test * 02 * 20" should be changed (into "test * 2 * 20")"""
     value = re.sub(regex_pattern, stripLeading0, value)
 
     try:
@@ -57,21 +59,46 @@ def toFloatConversion(value: str) -> float:
 
 def toIntConversion(value):
     """Conversion from string to integer.
+
     :param value: The string representation of an integer.
     """
+
     try:
         return ast.literal_eval(value)
     except SyntaxError:
         return 0
 
+
 class SettingDefinition:
-    ##  Construcutor
-    #
-    #   \param key \type{string} The unique, machine readable/writable key to use for this setting.
-    #   \param container \type{DefinitionContainerInterface} The container of this setting. Defaults to None.
-    #   \param parent \type{SettingDefinition} The parent of this setting. Defaults to None.
-    #   \param i18n_catalog \type{i18nCatalog} The translation catalog to use for this setting. Defaults to None.
-    def __init__(self, key: str, container: Optional[DefinitionContainerInterface] = None, parent: Optional["SettingDefinition"] = None, i18n_catalog: i18nCatalog = None) -> None:
+    """Defines a single Setting with its properties.
+
+    This class defines a single Setting with all its properties. This class is considered immutable,
+    the only way to change it is using deserialize(). Should any state need to be stored for a definition,
+    create a SettingInstance pointing to the definition, then store the value in that instance.
+
+    == Supported Properties
+
+    The SettingDefinition class contains a concept of "supported properties". These are properties that
+    are supported when serializing or deserializing a setting. These properties are defined through the
+    addSupportedProperty() method. Each property needs a name and a type. In addition, there are two
+    optional boolean value to indicate whether the property is "required" and whether it is "read only".
+    Currently, four types of supported properties are defined. Please DefinitionPropertyType for a description
+    of these types.
+
+    Required properties are properties that should be present when deserializing a setting. If the property
+    is not present, an error will be raised. Read-only properties are properties that should never change
+    after creating a SettingDefinition. This means they cannot be stored in a SettingInstance object.
+    """
+
+    def __init__(self, key: str, container: Optional[DefinitionContainerInterface] = None, parent: Optional["SettingDefinition"] = None, i18n_catalog: Optional[i18nCatalog] = None) -> None:
+        """Construcutor
+
+        :param key: :type{string} The unique, machine readable/writable key to use for this setting.
+        :param container: :type{DefinitionContainerInterface} The container of this setting. Defaults to None.
+        :param parent: :type{SettingDefinition} The parent of this setting. Defaults to None.
+        :param i18n_catalog: :type{i18nCatalog} The translation catalog to use for this setting. Defaults to None.
+        """
+
         super().__init__()
         self._all_keys = set()  # type: Set[str]
         self._key = key  # type: str
@@ -110,6 +137,8 @@ class SettingDefinition:
         self.options[value_id] = value_display
 
     def __getattr__(self, name: str) -> Any:
+        """Override __getattr__ to provide access to definition properties."""
+
         if name in self.__property_definitions:
             if name in self.__property_values:
                 return self.__property_values[name]
@@ -118,8 +147,9 @@ class SettingDefinition:
 
         raise AttributeError("'SettingDefinition' object has no attribute '{0}'".format(name))
 
-    ##  Override __setattr__ to enforce invariant status of definition properties.
     def __setattr__(self, name: str, value: Any) -> None:
+        """Override __setattr__ to enforce invariant status of definition properties."""
+
         if name in self.__property_definitions:
             raise NotImplementedError("Setting of property {0} not supported".format(name))
 
@@ -133,14 +163,14 @@ class SettingDefinition:
 
         return hash((id(self), self._key, self._container))
 
-
     def __getstate__(self):
         """For Pickle support.
+
         This should be identical to Pickle's default behaviour but the default
         behaviour doesn't combine well with a non-default __getattr__.
         """
-        return self.__dict__
 
+        return self.__dict__
 
     def __setstate__(self, state):
         """For Pickle support.
@@ -165,34 +195,47 @@ class SettingDefinition:
 
     @property
     def key(self) -> str:
+        """The key of this setting.
+
+        :return: :type{string}
+        """
+
         return self._key
 
-    ##  The container of this setting.
-    #
-    #   \return
     @property
     def container(self) -> Optional[DefinitionContainerInterface]:
+        """The container of this setting.
+
+        :return:
+        """
+
         return self._container
 
-    ##  The parent of this setting.
-    #
-    #   \return \type{SettingDefinition}
     @property
     def parent(self) -> Optional["SettingDefinition"]:
+        """The parent of this setting.
+
+        :return: :type{SettingDefinition}
+        """
+
         return self._parent
 
-    ##  A list of children of this setting.
-    #
-    #   \return \type{list<SettingDefinition>}
     @property
     def children(self) -> List["SettingDefinition"]:
+        """A list of children of this setting.
+
+        :return: :type{list<SettingDefinition>}
+        """
+
         return self._children
 
-    ##  A list of SettingRelation objects of this setting.
-    #
-    #   \return \type{list<SettingRelation>}
     @property
     def relations(self) -> List["SettingRelation"]:
+        """A list of SettingRelation objects of this setting.
+
+        :return: :type{list<SettingRelation>}
+        """
+
         return self._relations
 
     @cache_per_instance
@@ -205,6 +248,11 @@ class SettingDefinition:
         return frozenset(self.relations)
 
     def serialize(self) -> str:
+        """Serialize this setting to a string.
+
+        :return: :type{string} A serialized representation of this setting.
+        """
+
         pass
 
     @cache_per_instance_copy_result
@@ -240,9 +288,6 @@ class SettingDefinition:
 
         return result
 
-    ##  Deserialize this setting from a string or dict.
-    #
-    #   \param serialized \type{string or dict} A serialized representation of this setting.
     def deserialize(self, serialized: Union[str, Dict[str, Any]]) -> None:
         """Deserialize this setting from a string or dict.
 
@@ -258,6 +303,13 @@ class SettingDefinition:
 
     @cache_per_instance
     def getChild(self, key: str) -> Optional["SettingDefinition"]:
+        """Get a child by key
+
+        :param key: :type{string} The key of the child to get.
+
+        :return: :type{SettingDefinition} The child with the specified key or None if not found.
+        """
+
         if not self.__descendants:
             self.__descendants = self._updateDescendants()
 
@@ -304,28 +356,10 @@ class SettingDefinition:
         # First check for translated labels.
         keywords = kwargs.copy()
         if "i18n_label" in keywords:
-            # try:
-            #     property_value = getattr(self, "label")
-            # except AttributeError:
-            #     # If we do not have the attribute, we do not match
             if not self._matches1l8nProperty("label", keywords["i18n_label"], keywords.get("i18n_catalog")):
                 return False
-
-            # if "i18n_catalog" in keywords:
-            #     catalog = keywords["i18n_catalog"]
-            #     if catalog:
-            #         property_value = catalog.i18nc(self._key + " label", property_value)
-            # value = keywords["i18n_label"]
-
             del keywords["i18n_label"]
-            # if not isinstance(value, str):
-            #     return False
-            # if value != property_value:
-            #     if "*" not in value:
-            #         return False
 
-                # value = value.strip("* ").lower()
-                # if value not in property_value.lower():
         # There is a special case where we want to filter on either the label and the description.
         # For the sake of keeping this code simple, I've just hardcoded this option. If we ever want to have multiple
         # keywords that can be searched as an optional filter (eg; value matches either paramA or paramB, we should
@@ -334,7 +368,7 @@ class SettingDefinition:
         if "i18n_label|i18n_description" in keywords:
             matches_label = self._matches1l8nProperty("label", keywords["i18n_label|i18n_description"], keywords.get("i18n_catalog"))
             if not matches_label:
-                if not self._matches1l8nProperty("description", keywords["i18n_label|i18n_description"], keywords.get("i18n_catalog")):    
+                if not self._matches1l8nProperty("description", keywords["i18n_label|i18n_description"], keywords.get("i18n_catalog")):
                     return False
             del keywords["i18n_label|i18n_description"]
 
@@ -376,16 +410,17 @@ class SettingDefinition:
 
         return True
 
-    
     def findDefinitions(self, **kwargs: Any) -> List["SettingDefinition"]:
         """Find all definitions matching certain criteria.
-    
+
         This will search this definition and its children for definitions matching the search criteria.
-    
-        :param kwargs :type{dict} A dictionary of keyword arguments that need to match properties of the children.
-    
-        :return :type{list} A list of children matching the search criteria. The list will be empty if no children were found.
+
+        :param kwargs: :type{dict} A dictionary of keyword arguments that need to match properties of the children.
+
+        :return: :type{list} A list of children matching the search criteria. The list will be empty if no children
+        were found.
         """
+
         if not self.__descendants:
             self.__descendants = self._updateDescendants()
 
@@ -413,6 +448,13 @@ class SettingDefinition:
 
     @cache_per_instance
     def isAncestor(self, key: str) -> bool:
+        """Check whether a certain setting is an ancestor of this definition.
+
+        :param key: :type{str} The key of the setting to check.
+
+        :return: True if the specified setting is an ancestor of this definition, False if not.
+        """
+
         if not self.__ancestors:
             self.__ancestors = self._updateAncestors()
 
@@ -420,6 +462,13 @@ class SettingDefinition:
 
     @cache_per_instance
     def isDescendant(self, key: str) -> bool:
+        """Check whether a certain setting is a descendant of this definition.
+
+        :param key: :type{str} The key of the setting to check.
+
+        :return: True if the specified setting is a descendant of this definition, False if not.
+        """
+
         if not self.__descendants:
             self.__descendants = self._updateDescendants()
 
@@ -427,6 +476,8 @@ class SettingDefinition:
 
     @cache_per_instance_copy_result
     def getAncestors(self) -> Set[str]:
+        """Get a set of keys representing the setting's ancestors."""
+
         if not self.__ancestors:
             self.__ancestors = self._updateAncestors()
 
@@ -491,46 +542,61 @@ class SettingDefinition:
     @classmethod
     @lru_cache
     def hasProperty(cls, name: str) -> bool:
+        """Check if a property with the specified name is defined as a supported property.
+
+        :param name: :type{string} The name of the property to check if it is supported.
+
+        :return: True if the property is supported, False if not.
+        """
+
         return name in cls.__property_definitions
 
-    ##  Get the type of a specified property.
-    #
-    #   \param name \type{str} The name of the property to find the type of.
-    #
-    #   \return DefinitionPropertyType corresponding to the type of the property or None if not found.
     @classmethod
     @lru_cache
     def getPropertyType(cls, name: str) -> Optional[str]:
+        """Get the type of a specified property.
+
+        :param name: :type{str} The name of the property to find the type of.
+
+        :return: DefinitionPropertyType corresponding to the type of the property or None if not found.
+        """
+
         if name in cls.__property_definitions:
             return cls.__property_definitions[name]["type"]
 
         return None
 
-    ##  Check if the specified property is considered a required property.
-    #
-    #   Required properties are checked when deserializing a SettingDefinition and if not present an error
-    #   will be reported.
-    #
-    #   \param name \type{string} The name of the property to check if it is required or not.
-    #
-    #   \return True if the property is supported and is required, False if it is not required or is not part of the list of supported properties.
     @classmethod
     @lru_cache
     def isRequiredProperty(cls, name: str) -> bool:
+        """Check if the specified property is considered a required property.
+
+        Required properties are checked when deserializing a SettingDefinition and if not present an error
+        will be reported.
+
+        :param name: :type{string} The name of the property to check if it is required or not.
+
+        :return: True if the property is supported and is required, False if it is not required or is not part of the
+        list of supported properties.
+        """
+
         if name in cls.__property_definitions:
             return cls.__property_definitions[name]["required"]
         return False
 
-    ##  Check if the specified property is considered a read-only property.
-    #
-    #   Read-only properties are properties that cannot have their value set in SettingInstance objects.
-    #
-    #   \param name \type{string} The name of the property to check if it is read-only or not.
-    #
-    #   \return True if the property is supported and is read-only, False if it is not required or is not part of the list of supported properties.
     @classmethod
     @lru_cache
     def isReadOnlyProperty(cls, name: str) -> bool:
+        """Check if the specified property is considered a read-only property.
+
+        Read-only properties are properties that cannot have their value set in SettingInstance objects.
+
+        :param name: :type{string} The name of the property to check if it is read-only or not.
+
+        :return: True if the property is supported and is read-only, False if it is not required or is not part of the
+        list of supported properties.
+        """
+
         if name in cls.__property_definitions:
             return cls.__property_definitions[name]["read_only"]
         return False
@@ -539,13 +605,15 @@ class SettingDefinition:
     @lru_cache
     def dependsOnProperty(cls, name: str) -> Optional[str]:
         """Check if the specified property depends on another property
-    
-        The value of certain properties can change if the value of another property changes. This is used to signify that relation.
-    
-        :param name :type{string} The name of the property to check if it depends on another setting.
-    
-        :return :type{string} The property it depends on or None if it does not depend on another property.
+
+        The value of certain properties can change if the value of another property changes. This is used to signify
+        that relation.
+
+        :param name: :type{string} The name of the property to check if it depends on another setting.
+
+        :return: :type{string} The property it depends on or None if it does not depend on another property.
         """
+
         if name in cls.__property_definitions:
             return cls.__property_definitions[name]["depends_on"]
         return None
@@ -563,17 +631,19 @@ class SettingDefinition:
         cls._clearClassCache()
         cls.__type_definitions[type_name] = { "from": from_string, "to": to_string, "validator": validator }
 
-    ##  Convert a string to a value according to a setting type.
-    #
-    #   \param type_name \type{string} The name of the type to convert to.
-    #   \param string_value \type{string} The string to convert.
-    #
-    #   \return The string converted to a proper value.
-    #
-    #   \exception ValueError Raised when the specified type does not exist.
     @classmethod
     @lru_cache
     def settingValueFromString(cls, type_name: str, string_value: str) -> Any:
+        """Convert a string to a value according to a setting type.
+
+        :param type_name: :type{string} The name of the type to convert to.
+        :param string_value: :type{string} The string to convert.
+
+        :return: The string converted to a proper value.
+
+        :exception ValueError: Raised when the specified type does not exist.
+        """
+
         if type_name not in cls.__type_definitions:
             raise ValueError("Unknown setting type {0}".format(type_name))
 
@@ -583,18 +653,21 @@ class SettingDefinition:
 
         return string_value
 
-    ##  Convert a setting value to a string according to a setting type.
-    #
-    #   \param type_name \type{string} The name of the type to convert from.
-    #   \param value The value to convert.
-    #
-    #   \return \type{string} The specified value converted to a string.
-    #
-    #   \exception ValueError Raised when the specified type does not exist.
     @classmethod
     def settingValueToString(cls, type_name: str, value: Any) -> str:
+        """Convert a setting value to a string according to a setting type.
+
+        :param type_name: :type{string} The name of the type to convert from.
+        :param value: The value to convert.
+
+        :return: :type{string} The specified value converted to a string.
+
+        :exception ValueError: Raised when the specified type does not exist.
+        """
+
         if type_name not in cls.__type_definitions:
             raise ValueError("Unknown setting type {0}".format(type_name))
+
         convert_function = cls.__type_definitions[type_name]["from"]
         if convert_function:
             try:
@@ -602,12 +675,14 @@ class SettingDefinition:
             except Exception:
                 Logger.logException("w", "UM.Settings: Error converting from %s with value %s: %s", type_name, str(value))
                 raise
+
         return value
 
-    ##  Get the validator type for a certain setting type.
     @classmethod
     @lru_cache
     def getValidatorForType(cls, type_name: str) -> Callable[[str],Validator]:
+        """Get the validator type for a certain setting type."""
+
         if type_name not in cls.__type_definitions:
             raise ValueError("Unknown setting type {0}".format(type_name))
 
@@ -744,34 +819,6 @@ class SettingDefinition:
         # Optional list of settings that a setting explicitely depends on, which is useful when this can not be fully calculated from the formula.
         "force_depends_on_settings": {"type": DefinitionPropertyType.Any, "required": False, "read_only": True, "default": [], "depends_on": None},
     }   # type: Dict[str, Dict[str, Any]]
-
-    # ##  Conversion from string to integer.
-    # #
-    # #   \param value The string representation of an integer.
-    # def _toIntConversion(value):
-    #     try:
-    #         return ast.literal_eval(value)
-    #     except SyntaxError:
-    #         return 0
-
-    # ## Conversion of string to float.
-    # def _toFloatConversion(value):
-    #     ## Ensure that all , are replaced with . (so they are seen as floats)
-    #     value = value.replace(",", ".")
-
-    #     def stripLeading0(matchobj):
-    #         return matchobj.group(0).lstrip("0")
-
-    #     ## Literal eval does not like "02" as a value, but users see this as "2".
-    #     ## We therefore look numbers with leading "0", provided they are not used in variable names
-    #     ## example: "test02 * 20" should not be changed, but "test * 02 * 20" should be changed (into "test * 2 * 20")
-    #     regex_pattern = '(?<!\.|\w|\d)0+(\d+)'
-    #     value = re.sub(regex_pattern, stripLeading0 ,value)
-
-    #     try:
-    #         return ast.literal_eval(value)
-    #     except:
-    #         return 0
 
     __type_definitions = {
         # An integer value

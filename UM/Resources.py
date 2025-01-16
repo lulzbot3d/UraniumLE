@@ -96,13 +96,9 @@ class Resources:
             if paths:
                 return paths[0]
 
+
         raise FileNotFoundError("Could not find resource {0} in {1}".format(args, resource_type))
 
-    ##  Get a list of paths to all resources of a certain resource type.
-    #
-    #   \param resource_type The resource type to get the paths for.
-    #
-    #   \return A list of absolute paths to resources of the specified type.
     @classmethod
     def getAllResourcesOfType(cls, resource_type: int) -> List[str]:
         """Get a list of paths to all resources of a certain resource type.
@@ -135,26 +131,30 @@ class Resources:
 
         return result
 
-    ##  Get the path that can be used to write a certain resource file.
-    #
-    #   \param resource_type The type of resource to retrieve a path for.
-    #   \param args Arguments that are appended to the location for the correct path.
-    #
-    #   \return A path that can be used to write the file.
-    #
-    #   \note This method does not check whether a given file exists.
     @classmethod
     def getStoragePath(cls, resource_type: int, *args) -> str:
+        """Get the path that can be used to write a certain resource file.
+
+        :param resource_type: The type of resource to retrieve a path for.
+        :param args: Arguments that are appended to the location for the correct path.
+
+        :return: A path that can be used to write the file.
+
+        :note This method does not check whether a given file exists.
+        """
+
         return os.path.join(cls.getStoragePathForType(resource_type), *args)
 
-    ##  Return a list of paths for a certain resource type.
-    #
-    #   \param resource_type \type{int} The type of resource to retrieve.
-    #   \return \type{list} A list of absolute paths where the resource type can be found.
-    #
-    #   \exception TypeError Raised when type is an unknown value.
     @classmethod
     def getAllPathsForType(cls, resource_type: int) -> List[str]:
+        """Return a list of paths for a certain resource type.
+
+        :param resource_type: The type of resource to retrieve.
+        :return: A list of absolute paths where the resource type can be found.
+
+        :exception TypeError Raised when type is an unknown value.
+        """
+
         if resource_type not in cls.__types:
             raise ResourceTypeError("Unknown type {0}".format(resource_type))
 
@@ -170,14 +170,16 @@ class Resources:
 
         return list(paths)
 
-    ##  Return a path where a certain resource type can be stored.
-    #
-    #   \param type \type{int} The type of resource to store.
-    #   \return \type{string} An absolute path where the given resource type can be stored.
-    #
-    #   \exception UnsupportedStorageTypeError Raised when writing type is not supported.
     @classmethod
     def getStoragePathForType(cls, resource_type: int) -> str:
+        """Return a path where a certain resource type can be stored.
+
+        :param type: The type of resource to store.
+        :return: An absolute path where the given resource type can be stored.
+
+        :exception UnsupportedStorageTypeError Raised when writing type is not supported.
+        """
+
         if resource_type not in cls.__types_storage:
             raise UnsupportedStorageTypeError("Unknown storage type {0}".format(resource_type))
 
@@ -201,11 +203,13 @@ class Resources:
 
         return path
 
-    ##  Add a path relative to which resources should be searched for.
-    #
-    #   \param path The path to add.
     @classmethod
     def addSearchPath(cls, path: str) -> None:
+        """Add a path relative to which resources should be searched for.
+
+        :param path: The path to add.
+        """
+
         if os.path.isdir(path) and path not in cls.__paths:
             cls.__paths.append(path)
 
@@ -228,22 +232,17 @@ class Resources:
     def removeSearchPath(cls, path: str) -> None:
         """Remove a resource search path."""
 
-        if os.path.isdir(path) and path not in cls.__secure_paths and TrustBasics.isPathInLocation(Application.getInstallPrefix(), path):
-            cls.__paths.append(path)
-            cls.__secure_paths.append(path)
-
-    ##  Remove a resource search path.
-    @classmethod
-    def removeSearchPath(cls, path: str) -> None:
         if path in cls.__paths:
             del cls.__paths[cls.__paths.index(path)]
 
-    ##  Add a custom resource type that can be located.
-    #
-    #   \param type \type{int} An integer that can be used to identify the type. Should be greater than UserType.
-    #   \param path \type{string} The path relative to the search paths where resources of this type can be found./
     @classmethod
     def addType(cls, resource_type: int, path: str) -> None:
+        """Add a custom resource type that can be located.
+
+        :param resource_type: An integer that can be used to identify the type. Should be greater than UserType.
+        :param path: The path relative to the search paths where resources of this type can be found./
+        """
+
         if resource_type in cls.__types:
             raise ResourceTypeError("Type {0} already exists".format(resource_type))
 
@@ -252,40 +251,43 @@ class Resources:
 
         cls.__types[resource_type] = path
 
-    ##  Add a custom storage path for a resource type.
-    #
-    #   \param type The type to add a storage path for.
-    #   \param path The path to add as storage path. Should be relative to the resources storage path.
     @classmethod
     def addStorageType(cls, resource_type: int, path: str) -> None:
+        """Add a custom storage path for a resource type.
+
+        :param resource_type: The type to add a storage path for.
+        :param path: The path to add as storage path. Should be relative to the resources storage path.
+        """
+
         if resource_type in cls.__types:
             raise ResourceTypeError("Type {0} already exists".format(resource_type))
 
         cls.__types[resource_type] = path
         cls.__types_storage[resource_type] = path
 
-    ##  Gets the configuration storage path.
-    #
-    #   This is where the application stores user configuration, such as
-    #   preferences.
     @classmethod
     def getConfigStoragePath(cls) -> str:
+        """Gets the configuration storage path.
+
+        This is where the application stores user configuration, such as
+        preferences.
+        """
+
         if not cls.__config_storage_path:
             cls.__initializeStoragePaths()
         return cls.__config_storage_path
 
-    ##  Gets the data storage path.
-    #
-    #   This is where the application stores user files, such as profiles.
     @classmethod
     def getDataStoragePath(cls) -> str:
+        """Gets the data storage path.
+
+        This is where the application stores user files, such as profiles.
+        """
+
         if not cls.__data_storage_path:
             cls.__initializeStoragePaths()
         return cls.__data_storage_path
 
-    ##  Gets the search paths for resources.
-    #
-    #   \return A sequence of paths where resources might be.
     @classmethod
     def getCacheStoragePath(cls) -> str:
         """Gets the cache storage path.
@@ -306,7 +308,6 @@ class Resources:
 
         yield from cls.__paths
 
-    ##  Remove a custom resource type.
     @classmethod
     def getSecureSearchPaths(cls) -> Generator[str, None, None]:
         """Gets the secure search paths for resources.
@@ -318,6 +319,8 @@ class Resources:
 
     @classmethod
     def removeType(cls, resource_type: int) -> None:
+        """Remove a custom resource type."""
+
         if resource_type not in cls.__types:
             return
 
@@ -518,8 +521,6 @@ class Resources:
 
         cls.__paths.insert(0, cls.__data_storage_path)
 
-    ##  Copies the directories of the latest version on this machine if present, so the upgrade will use the copies
-    #   as the base for upgrade. See CURA-3529 for more details.
     @classmethod
     def _copyLatestDirsIfPresent(cls) -> None:
         """Copies the directories of the latest version on this machine if present, so the upgrade will use the copies
@@ -672,10 +673,6 @@ class Resources:
     @classmethod
     def addExpectedDirNameInData(cls, dir_name: str) -> None:
         cls.__expected_dir_names_in_data.append(dir_name)
-
-    @classmethod
-    def setIsEnterprise(cls, is_enterprise: bool) -> None:
-        cls.__is_enterprise_version = is_enterprise
 
     @classmethod
     def setIsEnterprise(cls, is_enterprise: bool) -> None:

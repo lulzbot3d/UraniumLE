@@ -161,7 +161,6 @@ class Matrix:
         except:
             return Matrix(self._data)
 
-    ##  Return the transpose of the matrix.
     def getTransposed(self) -> "Matrix":
         """Return the transpose of the matrix."""
 
@@ -541,7 +540,6 @@ class Matrix:
         []
         >>> list(matrix._unitVector([1]))
         [1.0]
-
         """
         if out is None:
             data = numpy.array(data, dtype = numpy.float64, copy = True)

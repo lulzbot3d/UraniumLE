@@ -30,7 +30,7 @@ class RotateOperation(Operation.Operation):
 
     def undo(self) -> None:
         """Undoes the rotation, rotating the node back."""
-        
+
         self._node.setTransformation(self._old_transformation)
 
     def redo(self) -> None:

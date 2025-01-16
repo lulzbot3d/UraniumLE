@@ -3,7 +3,6 @@
 
 import sys # For setrecursionlimit
 import os  # For getting the IDs from a filename.
-import sys
 import pickle  # For caching definitions.
 import re  # To detect back-up files in the ".../old/#/..." folders.
 import time
@@ -138,7 +137,7 @@ class LocalContainerProvider(ContainerProvider):
                     else:
                         Logger.log("e", "Failed to find MIME type for container ID [%s] with path [%s]", container.getId(), path)
         else:
-            Logger.log("d", "Container of type [%s] was not saved.", container_type)
+            Logger.log("w", "Dirty container [%s] is not saved because the resource type is unknown in ContainerRegistry", container_type)
 
     def loadMetadata(self, container_id: str) -> Dict[str, Any]:
         """Load the metadata of a specified container.
@@ -304,7 +303,7 @@ class LocalContainerProvider(ContainerProvider):
         try:
             with open(cache_path, "wb") as f:
                 pickle.dump(definition, f, pickle.HIGHEST_PROTOCOL)
-        except RecursionError as err:
+        except RecursionError:
             # Sometimes a recursion error in pickling occurs here.
             # The cause is unknown. It must be some circular reference in the definition instances or definition containers.
             # Instead of saving a partial cache and raising an exception, simply fail to save the cache.

@@ -1,7 +1,5 @@
 # Copyright (c) 2022 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
-
-import scipy
 from typing import List, Tuple, TYPE_CHECKING, Optional
 
 from PyQt6.QtCore import Qt
@@ -26,6 +24,7 @@ try:
 except (ImportError, SystemError):
     import ScaleToolHandle  # type: ignore  # This fixes the tests not being able to import.
 
+import scipy
 if TYPE_CHECKING:
     from UM.Scene.SceneNode import SceneNode
 

@@ -53,7 +53,7 @@ class ConfigurationErrorMessage(Message):
             result = QMessageBox.question(None, i18n_catalog.i18nc("@title:window", "Reset to factory"),
                                           i18n_catalog.i18nc("@label",
                                                         "A reset will cause you to lose your custom profiles! Are you sure you want to reset?"))
-            if result == QMessageBox.Yes:
+            if result == QMessageBox.StandardButton.Yes:
                 Resources.factoryReset()
                 self._application.closeApplication()
 

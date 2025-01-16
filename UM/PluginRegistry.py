@@ -5,14 +5,13 @@ import importlib.util
 import importlib.machinery
 import json
 import os
-import stat #To set file permissions correctly.
 import shutil  # For deleting plugin directories;
 import stat  # For setting file permissions correctly;
 import sys
 import time
 import types
 import zipfile
-from typing import Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TYPE_CHECKING
 
 from PyQt6.QtCore import QCoreApplication
 from PyQt6.QtCore import QObject, pyqtSlot, QUrl, pyqtProperty, pyqtSignal
@@ -236,11 +235,11 @@ class PluginRegistry(QObject):
         """
         if plugin_id not in self._disabled_plugins:
             self._disabled_plugins.append(plugin_id)
-            # if plugin_id not in self._changed_activated_plugins_current_session:
-            #     self._changed_activated_plugins_current_session.add(plugin_id)
-            # else:
-            #     self._changed_activated_plugins_current_session.remove(plugin_id)
-            # self.pluginsEnabledOrDisabledChanged.emit()
+            if plugin_id not in self._changed_activated_plugins_current_session:
+                self._changed_activated_plugins_current_session.add(plugin_id)
+            else:
+                self._changed_activated_plugins_current_session.remove(plugin_id)
+            self.pluginsEnabledOrDisabledChanged.emit()
         self._savePluginData()
 
     def enablePlugin(self, plugin_id: str) -> None:
@@ -297,10 +296,10 @@ class PluginRegistry(QObject):
         """
         return self._disabled_plugins
 
-    # def getCurrentSessionActivationChangedPlugins(self) -> Set[str]:
-    #     """Returns a set a plugins whom have changed their activation status in the current session, toggled between
-    #     en-/disabled after the last start-up status"""
-    #     return self._changed_activated_plugins_current_session
+    def getCurrentSessionActivationChangedPlugins(self) -> Set[str]:
+        """Returns a set a plugins whom have changed their activation status in the current session, toggled between
+        en-/disabled after the last start-up status"""
+        return self._changed_activated_plugins_current_session
 
     def getInstalledPlugins(self) -> List[str]:
         """
@@ -472,7 +471,6 @@ class PluginRegistry(QObject):
         """
         # If plugin has already been loaded, do not load it again:
         if plugin_id in self._plugins:
-            # Already loaded, do not load again
             Logger.log("w", "Plugin %s was already loaded", plugin_id)
             return
 
@@ -886,10 +884,6 @@ class PluginRegistry(QObject):
             if "description" in meta_data["plugin"]:
                 meta_data["plugin"]["description"] = i18n_catalog.i18n(meta_data["plugin"]["description"])
 
-    ##  private:
-    #   Populate the list of metadata
-    #   \param plugin_id \type{string}
-    #   \return
     def _populateMetaData(self, plugin_id: str) -> bool:
         """Populate the list of metadata"""
 
@@ -897,8 +891,6 @@ class PluginRegistry(QObject):
         if not plugin:
             Logger.log("w", "Could not find plugin %s", plugin_id)
             return False
-
-        # meta_data = None
 
         location = None
         for folder in self._plugin_locations:
@@ -1022,11 +1014,10 @@ class PluginRegistry(QObject):
 
         if not plugin:
             return None
-        # file_name = self._plugins[plugin_id].__file__
-        # if file_name is None:
-        #     file_name = ""
-        # path = os.path.dirname(file_name)
-        path = os.path.dirname(self._plugins[plugin_id].__file__)
+        file_name = self._plugins[plugin_id].__file__
+        if file_name is None:
+            file_name = ""
+        path = os.path.dirname(file_name)
         if os.path.isdir(path):
             return path
 

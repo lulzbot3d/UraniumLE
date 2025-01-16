@@ -482,10 +482,7 @@ class DefinitionContainer(QObject, DefinitionContainerInterface, PluginObject):
     def _loadFile(self, file_name: str) -> Dict[str, Any]:
         path = Resources.getPath(Resources.DefinitionContainers, file_name + ".def.json")
         with open(path, encoding = "utf-8") as f:
-            try:
-                contents = json.load(f, object_pairs_hook=collections.OrderedDict)
-            except json.JSONDecodeError as e:
-                Logger.log("e", "Error while loading file %s %s:%s %s" % (file_name, e.lineno, e.colno, e.msg))
+            contents = json.load(f, object_pairs_hook=collections.OrderedDict)
 
         self._inherited_files.append(path)
         return contents
