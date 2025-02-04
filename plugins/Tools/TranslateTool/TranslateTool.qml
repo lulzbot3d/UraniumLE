@@ -237,30 +237,46 @@ Item
         }
     }
 
-    Column {
+    Row
+    {
 
-        anchors {
-            top: lockPositionCheckbox.bottom
+        anchors
+        {
+            top: checkboxes.bottom
             topMargin: UM.Theme.getSize("default_margin").height
             horizontalCenter: textfields.horizontalCenter
         }
 
         spacing: 5
 
-        Button {
+        UM.ToolbarButton
+        {
             id: centerButton
             text: catalog.i18nc("@action:button", "Center")
-            style: UM.Theme.styles.toolbox_action_button
 
-            onClicked: UM.ActiveTool.triggerAction("centerSelection")
+            toolItem: UM.ColorImage
+            {
+                source: UM.Theme.getIcon("ArrowFourWay")
+                color: UM.Theme.getColor("icon")
+            }
+
+            onClicked: UM.Controller.triggerAction("centerSelection")
         }
 
-        Button {
+        UM.ToolbarButton
+        {
             id: bottomButton
             text: catalog.i18nc("@action:button", "Bottom")
-            style: UM.Theme.styles.toolbox_action_button
 
-            onClicked: UM.ActiveTool.triggerAction("dropToBuildPlate")
+            enabled: !autoDropDownCheckbox.checked
+
+            toolItem: UM.ColorImage
+            {
+                source: UM.Theme.getIcon("Adhesion")
+                color: UM.Theme.getColor("icon")
+            }
+
+            onClicked: UM.Controller.triggerAction("dropToBuildPlate")
         }
     }
 

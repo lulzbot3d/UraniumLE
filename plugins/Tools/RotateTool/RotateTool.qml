@@ -2,7 +2,7 @@
 // Uranium is released under the terms of the LGPLv3 or higher.
 
 import QtQuick 2.2
-import UM 1.5 as UM
+import UM 1.7 as UM
 
 Item
 {
@@ -11,13 +11,168 @@ Item
     height: childrenRect.height
     UM.I18nCatalog { id: catalog; name: "uranium"}
 
+    property string xText
+    property string yText
+    property string zText
+
+    //Rounds a floating point number to 4 decimals. This prevents floating
+    //point rounding errors.
+    //
+    //input:    The number to round.
+    //decimals: The number of decimals (digits after the radix) to round to.
+    //return:   The rounded number.
+    function roundFloat(input, decimals)
+    {
+        //First convert to fixed-point notation to round the number to 4 decimals and not introduce new floating point errors.
+        //Then convert to a string (is implicit). The fixed-point notation will be something like "3.200".
+        //Then remove any trailing zeroes and the radix.
+        if(input)
+        {
+            return input.toFixed(decimals).replace(/\.?0*$/, ""); //Match on periods, if any ( \.? ), followed by any number of zeros ( 0* ), then the end of string ( $ ).
+        }
+        else
+        {
+            return 0
+        }
+    }
+
+    function selectTextInTextfield(selected_item)
+    {
+        selected_item.selectAll()
+        selected_item.focus = true
+    }
+
+    Grid
+    {
+        id: textfields;
+
+        anchors.top: parent.top;
+
+        columns: 2;
+        flow: Grid.TopToBottom;
+        spacing: Math.round(UM.Theme.getSize("default_margin").width / 2);
+
+        UM.Label
+        {
+            height: UM.Theme.getSize("setting_control").height;
+            text: "X";
+            color: UM.Theme.getColor("x_axis");
+            width: Math.ceil(contentWidth) //Make sure that the grid cells have an integer width.
+        }
+
+        UM.Label
+        {
+            height: UM.Theme.getSize("setting_control").height;
+            text: "Y";
+            color: UM.Theme.getColor("z_axis"); // This is intentional. The internal axis are switched.
+            width: Math.ceil(contentWidth) //Make sure that the grid cells have an integer width.
+        }
+
+        UM.Label
+        {
+            height: UM.Theme.getSize("setting_control").height;
+            text: "Z";
+            color: UM.Theme.getColor("y_axis"); // This is intentional. The internal axis are switched.
+            width: Math.ceil(contentWidth) //Make sure that the grid cells have an integer width.
+        }
+
+        UM.TextFieldWithUnit
+        {
+            id: xTextField
+            width: UM.Theme.getSize("setting_control").width
+            height: UM.Theme.getSize("setting_control").height
+            unit: "Degrees"
+
+            text: xText
+            validator: UM.FloatValidator
+            {
+                maxBeforeDecimal: 3
+                maxAfterDecimal: 4
+            }
+
+            onEditingFinished:
+            {
+                var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
+                UM.Controller.setProperty("X", modified_text);
+            }
+            onActiveFocusChanged:
+            {
+                if(!activeFocus && text =="")
+                {
+                    xText = 0.1; // Yeaaah i know. We need to change it to something else so we can force it to 0
+                    xText = 0;
+                }
+            }
+            Keys.onBacktabPressed: selectTextInTextfield(zTextField)
+            Keys.onTabPressed: selectTextInTextfield(yTextField)
+        }
+        UM.TextFieldWithUnit
+        {
+            id: yTextField
+            width: UM.Theme.getSize("setting_control").width
+            height: UM.Theme.getSize("setting_control").height
+            unit: "Degrees"
+            text: yText
+            validator: UM.FloatValidator
+            {
+                maxBeforeDecimal: 3
+                maxAfterDecimal: 4
+            }
+
+            onEditingFinished:
+            {
+                var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
+                UM.Controller.setProperty("Z", modified_text);
+            }
+
+            onActiveFocusChanged:
+            {
+                if(!activeFocus && text =="")
+                {
+                    yText = 0.1; // Yeaaah i know. We need to change it to something else so we can force it to 0
+                    yText = 0;
+                }
+            }
+            Keys.onBacktabPressed: selectTextInTextfield(xTextField)
+            Keys.onTabPressed: selectTextInTextfield(zTextField)
+        }
+        UM.TextFieldWithUnit
+        {
+            id: zTextField
+            width: UM.Theme.getSize("setting_control").width
+            height: UM.Theme.getSize("setting_control").height
+            unit: "Degrees"
+            text: zText
+            validator: UM.FloatValidator
+            {
+                maxBeforeDecimal: 3
+                maxAfterDecimal: 4
+            }
+            onEditingFinished:
+            {
+                var modified_text = text.replace(",", ".") // User convenience. We use dots for decimal values
+                UM.Controller.setProperty("Y", modified_text);
+            }
+            onActiveFocusChanged:
+            {
+                if(!activeFocus && text =="")
+                {
+                    zText = 0.1; // Yeaaah i know. We need to change it to something else so we can force it to 0
+                    zText = 0;
+                }
+            }
+            Keys.onBacktabPressed: selectTextInTextfield(yTextField)
+            Keys.onTabPressed: selectTextInTextfield(xTextField)
+        }
+    }
+
     UM.ToolbarButton
     {
         id: resetRotationButton
 
-        anchors.top: textfields.bottom;
-        anchors.topMargin: UM.Theme.getSize("default_margin").width;
-        anchors.left: parent.left;
+        anchors.top: textfields.bottom
+        anchors.topMargin: UM.Theme.getSize("default_margin").width
+        anchors.left: parent.left
 
         text: catalog.i18nc("@action:button", "Reset")
         toolItem: UM.ColorImage
@@ -27,7 +182,7 @@ Item
         }
         property bool needBorder: true
 
-        z: 2
+        z: 3
 
         onClicked: UM.Controller.triggerAction("resetRotation")
     }
@@ -36,6 +191,8 @@ Item
     {
         id: layFlatButton
 
+        anchors.top: textfields.bottom
+        anchors.topMargin: UM.Theme.getSize("default_margin").width
         anchors.left: resetRotationButton.right
         anchors.leftMargin: UM.Theme.getSize("default_margin").width
 
@@ -48,7 +205,7 @@ Item
             color: UM.Theme.getColor("icon")
         }
 
-        z: 1
+        z: 2
 
         onClicked: UM.Controller.triggerAction("layFlat");
 
@@ -56,12 +213,14 @@ Item
         // visible: ! UM.Controller.properties.getValue("SelectFaceSupported");
     }
 
-    UM.ToolbarButton{
+    UM.ToolbarButton
+    {
         id: alignFaceButton
 
+        anchors.top: textfields.bottom
+        anchors.topMargin: UM.Theme.getSize("default_margin").width
         anchors.left: layFlatButton.visible ? layFlatButton.right : resetRotationButton.right
         anchors.leftMargin: UM.Theme.getSize("default_margin").width
-        width: visible ? UM.Theme.getIcon("LayFlatOnFace").width : 0
 
         text: catalog.i18nc("@action:button", "Select face to align to the build plate")
 
@@ -70,6 +229,8 @@ Item
             source: UM.Theme.getIcon("LayFlatOnFace")
             color: UM.Theme.getColor("icon")
         }
+
+        z: 1
 
         checkable: true
 
@@ -111,20 +272,20 @@ Item
     {
         target: base
         property: "xText"
-        value: base.roundFloat(UM.ActiveTool.properties.getValue("X"), 4)
+        value: base.roundFloat(UM.Controller.properties.getValue("X"), 4)
     }
 
     Binding
     {
         target: base
         property: "yText"
-        value: base.roundFloat(UM.ActiveTool.properties.getValue("Z"), 4)
+        value: base.roundFloat(UM.Controller.properties.getValue("Z"), 4)
     }
 
     Binding
     {
         target: base
         property: "zText"
-        value:base.roundFloat(UM.ActiveTool.properties.getValue("Y"), 4)
+        value:base.roundFloat(UM.Controller.properties.getValue("Y"), 4)
     }
 }
