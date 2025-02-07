@@ -10,6 +10,6 @@ on:
 
 jobs:
   update-translations:
-    uses: ultimaker/cura-workflows/.github/workflows/update-translations.yml@main
-      with:
-        branch: ${{ inputs.branch }}
+    uses: lulzbot3d/CuraLE_Workflows/.github/workflows/update-translation.yml@main
+    with:
+      branch: ${{ inputs.branch }}
