@@ -12,4 +12,4 @@ jobs:
   update-translations:
     uses: lulzbot3d/CuraLE_Workflows/.github/workflows/update-translation.yml@main
     with:
-        branch: ${{ inputs.branch }}
+      branch: ${{ inputs.branch }}
