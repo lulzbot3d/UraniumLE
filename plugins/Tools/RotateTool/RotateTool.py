@@ -60,7 +60,9 @@ class RotateTool(Tool):
         self._iterations = 0
         self._total_iterations = 0
         self._rotating = False
-        self.setExposedProperties("ToolHint", "RotationSnap", "RotationSnapAngle", "SelectFaceSupported", "SelectFaceToLayFlatMode", "RotationX", "RotationY", "RotationZ")
+        self.setExposedProperties("ToolHint", "RotationSnap", "RotationSnapAngle",
+                                  "SelectFaceSupported", "SelectFaceToLayFlatMode",
+                                  "X", "Y", "Z", "RotationX", "RotationY", "RotationZ")
         self._saved_node_positions = []
 
         self._active_widget = None  # type: Optional[RotateToolHandle.ExtraWidgets]
