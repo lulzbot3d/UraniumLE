@@ -1,7 +1,7 @@
 version: "5.10.0-alpha.0"
 
 requirements:
-  - "pyarcus/5.4.1@lulzbot/stable"
+  - "pyarcus/5.10.0@lulzbot/stable"
 
 pip_requirements_core:
   any_os:
