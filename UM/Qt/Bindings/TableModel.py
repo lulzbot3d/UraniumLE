@@ -3,7 +3,7 @@
 
 from typing import List, Dict, Any
 
-from PyQt6.QtCore import QAbstractTableModel, QModelIndex, pyqtSlot, pyqtProperty
+from PyQt6.QtCore import QAbstractTableModel, QModelIndex, pyqtSlot, pyqtProperty, pyqtSignal
 
 
 class TableModel(QAbstractTableModel):
@@ -36,18 +36,22 @@ class TableModel(QAbstractTableModel):
 
         return value or ""
 
+    rowCountChanged = pyqtSignal()
     def rowCount(self, parent: QModelIndex = ...) -> int:
         return len(self._rows)
 
     def columnCount(self, parent: QModelIndex = ...) -> int:
         return len(self._rows[0]) if self._rows else 0\
 
-    @pyqtProperty("QVariantList")
+    rowsChanged = pyqtSignal()
+    @pyqtProperty("QVariantList", notify = rowsChanged)
     def rows(self):
         return self._rows
 
     @rows.setter
     def rows(self, rows: List[Dict[str, Any]]):
+        if len(rows) != len(self._rows):
+            self.rowCountChanged.emit()
         self._rows = rows
 
     @pyqtProperty("QVariantList")

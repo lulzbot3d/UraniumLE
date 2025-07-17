@@ -75,7 +75,6 @@ PreferencesPage
             anchors.fill: parent
             anchors.margins: UM.Theme.getSize("default_margin").height
             anchors.topMargin: UM.Theme.getSize("narrow_margin").height
-            model: []
             currentIndex: activeIndex
             boundsBehavior: Flickable.StopAtBounds
             onCurrentIndexChanged:
@@ -191,7 +190,7 @@ PreferencesPage
     {
         Connections
         {
-            target: objectList.model
+            target: objectList.model != undefined ? objectList.model : null
 
             function onItemsChanged()
             {
