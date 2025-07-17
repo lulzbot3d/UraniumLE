@@ -11,10 +11,7 @@ ManagementPage {
 
     title: catalog.i18nc("@title:tab", "Printers");
     property int numInstances: model.count
-    model: UM.MachineInstancesModel
-    {
-        onDataChanged: numInstances = model.count
-    }
+    model: ListModel {}
 
     onAddObject: model.requestAddMachine();
     onRemoveObject: confirmDialog.open();
