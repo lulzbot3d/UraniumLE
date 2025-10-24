@@ -1,7 +1,7 @@
 # Copyright (c) 2022 Ultimaker B.V.
 # Uranium is released under the terms of the LGPLv3 or higher.
 
-from typing import Optional, Tuple, List, Union
+from typing import Optional, Tuple, List, Union, Callable
 
 import numpy
 import math
@@ -10,6 +10,7 @@ import scipy.spatial
 
 from UM.Logger import Logger
 from UM.Math import NumPyUtil
+from UM.Math.AxisAlignedBox2D import AxisAlignedBox2D
 
 class Polygon:
     """A class representing an immutable arbitrary 2-dimensional polygon."""
@@ -75,6 +76,9 @@ class Polygon:
 
         coordinates = (("[" + str(point[0]) + "," + str(point[1]) + "]") for point in self._points)
         return "[" + ", ".join(coordinates) + "]"
+
+    def __getitem__(self, item):
+        return self._points[item]
 
     def isValid(self) -> bool:
         return bool(self._points is not None and len(self._points) >= 3)
@@ -197,16 +201,34 @@ class Polygon:
             return Polygon()
 
         clipper = pyclipper.Pyclipper()
-        clipper.AddPath(self._clipperPoints(), pyclipper.PT_SUBJECT, closed=True)
-        clipper.AddPath(other._clipperPoints(), pyclipper.PT_CLIP, closed=True)
-
-        points = clipper.Execute(pyclipper.CT_INTERSECTION, pyclipper.PFT_NONZERO, pyclipper.PFT_NONZERO)
+        try:
+            clipper.AddPath(self._clipperPoints(), pyclipper.PT_SUBJECT, closed=True)
+            clipper.AddPath(other._clipperPoints(), pyclipper.PT_CLIP, closed=True)
+            points = clipper.Execute(pyclipper.CT_INTERSECTION, pyclipper.PFT_NONZERO, pyclipper.PFT_NONZERO)
+        except pyclipper.ClipperException:
+            return Polygon()
         if len(points) == 0:
             return Polygon()
         points = points[0]  # Intersection between convex hulls should result in a single (convex) simple polygon. Take just the one polygon.
         if points[0] == points[-1]:  # Represent closed polygons without closing vertex.
             points.pop()
         return self._fromClipperPoints(numpy.array(points))
+
+    @staticmethod
+    def union(polygons: list["Polygon"]) -> list["Polygon"]:
+        clipper = pyclipper.Pyclipper()
+        result = []
+        try:
+            for polygon in polygons:
+                clipper.AddPath(polygon._clipperPoints(), pyclipper.PT_SUBJECT, closed=True)
+            points = clipper.Execute(pyclipper.CT_UNION, pyclipper.PFT_NONZERO, pyclipper.PFT_NONZERO)
+
+            result = [Polygon._fromClipperPoints(numpy.array(contour)) for contour in points]
+
+        except pyclipper.ClipperException:
+            pass
+
+        return result
 
     #  Computes the convex hull of the union of the convex hulls of this and another polygon.
     #
@@ -316,6 +338,34 @@ class Polygon:
             if self._isRightTurn(self._points[i], self._points[(i + 1) % len(self._points)], point) == -1: #Outside this halfplane!
                 return False
         return True
+
+    def getBoundingBox(self) -> AxisAlignedBox2D:
+        if not self.isValid():
+            return None
+
+        min_x = numpy.min(self._points[:, 0])
+        min_y = numpy.min(self._points[:, 1])
+        max_x = numpy.max(self._points[:, 0])
+        max_y = numpy.max(self._points[:, 1])
+        return AxisAlignedBox2D(numpy.array([min_x, min_y]), numpy.array([max_x, max_y]))
+
+    @staticmethod
+    def getGlobalBoundingBox(polygons: List["Polygon"]) -> Optional[AxisAlignedBox2D]:
+        if not polygons:
+            return None
+
+        all_points = numpy.concatenate([polygon.getPoints() for polygon in polygons if polygon.isValid()])
+        if all_points.size == 0:
+            return None
+
+        min_x = numpy.min(all_points[:, 0])
+        min_y = numpy.min(all_points[:, 1])
+        max_x = numpy.max(all_points[:, 0])
+        max_y = numpy.max(all_points[:, 1])
+        return AxisAlignedBox2D(numpy.array([min_x, min_y]), numpy.array([max_x, max_y]))
+
+    def toType(self, new_type: type) -> None:
+        self._points = new_type(self._points)
 
     def _isRightTurn(self, p: numpy.ndarray, q: numpy.ndarray, r: numpy.ndarray) -> float:
         sum1 = q[0] * r[1] + p[0] * q[1] + r[0] * p[1]

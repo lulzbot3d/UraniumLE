@@ -79,4 +79,4 @@ class Renderer:
 
     def getRenderPasses(self) -> SortedListWithKey:
         """Get the list of all render passes that should be rendered."""
-        return self._render_passes
+        return SortedListWithKey([render_pass for render_pass in self._render_passes if render_pass.isEnabled()], key = lambda k: k.getPriority())

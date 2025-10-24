@@ -4,7 +4,8 @@
 import enum
 import math
 import random
-from typing import TYPE_CHECKING
+import numpy
+from typing import List, TYPE_CHECKING
 
 from UM.Resources import Resources
 from UM.Application import Application
@@ -21,6 +22,7 @@ from UM.View.GL.OpenGL import OpenGL
 
 if TYPE_CHECKING:
     from UM.Scene.SceneNode import SceneNode
+    from PyQt6.QtGui import QImage
 
 class SelectionPass(RenderPass):
     """A RenderPass subclass responsible for rendering selectable objects to a texture.
@@ -34,8 +36,8 @@ class SelectionPass(RenderPass):
         OBJECTS = "objects"
         FACES = "faces"
 
-    def __init__(self, width, height):
-        super().__init__("selection", width, height, -999)
+    def __init__(self, width, height, mode: SelectionMode = SelectionMode.OBJECTS):
+        super().__init__("selection" if mode == SelectionPass.SelectionMode.OBJECTS else "selection_faces", width, height, -999)
 
         self._shader = OpenGL.getInstance().createShaderProgram(Resources.getPath(Resources.Shaders, "selection.shader"))
         self._face_shader = OpenGL.getInstance().createShaderProgram(Resources.getPath(Resources.Shaders, "select_face.shader"))
@@ -63,10 +65,10 @@ class SelectionPass(RenderPass):
         Application.getInstance().getController().activeToolChanged.connect(self._onActiveToolChanged)
         self._onActiveToolChanged()
 
-        self._mode = SelectionPass.SelectionMode.OBJECTS
-        Selection.selectedFaceChanged.connect(self._onSelectedFaceChanged)
+        self._mode = mode
 
         self._output = None
+        self._ignore_unselected_objects = False
 
     def _onActiveToolChanged(self):
         self._toolhandle_selection_map = self._default_toolhandle_selection_map.copy()
@@ -82,8 +84,8 @@ class SelectionPass(RenderPass):
             self._toolhandle_selection_map[color] = name
             self._toolhandle_selection_map[self._dropAlpha(color)] = name
 
-    def _onSelectedFaceChanged(self):
-        self._mode = SelectionPass.SelectionMode.FACES if Selection.getFaceSelectMode() else SelectionPass.SelectionMode.OBJECTS
+    def setIgnoreUnselectedObjects(self, ignore_unselected_objects):
+        self._ignore_unselected_objects = ignore_unselected_objects
 
     def render(self):
         """Perform the actual rendering."""
@@ -103,7 +105,7 @@ class SelectionPass(RenderPass):
                 tool_handle.addItem(node.getWorldTransformation(copy = False), mesh = node.getSelectionMesh())
                 continue
 
-            if node.isSelectable() and node.getMeshData():
+            if node.isSelectable() and node.getMeshData() and (not self._ignore_unselected_objects or Selection.isSelected(node)):
                 selectable_objects = True
                 batch.addItem(transformation = node.getWorldTransformation(copy = False), mesh = node.getMeshData(), uniforms = { "selection_color": self._getNodeColor(node)}, normal_transformation=node.getCachedNormalMatrix())
 
@@ -202,7 +204,7 @@ class SelectionPass(RenderPass):
         else:
             return None
 
-    def getFaceIdAtPosition(self, x, y):
+    def getFaceIdAtPosition(self, x, y) -> int:
         """Get an unique identifier to the face of the polygon at a certain pixel-coordinate."""
         output = self.getOutput()
 
@@ -214,14 +216,38 @@ class SelectionPass(RenderPass):
         if px < 0 or px > (output.width() - 1) or py < 0 or py > (output.height() - 1):
             return -1
 
-        face_color = Color.fromARGB(output.pixel(px, py))
-        if int(face_color.a * 255) == 0:
+        return self._getFaceId(output.pixel(px, py))
+
+    def getFacesIdsUnderMask(self, mask: "QImage", x: int, y: int) -> List[int]:
+        output = self.getOutput()
+        output_ptr = output.constBits()
+        output_ptr.setsize(output.sizeInBytes())
+        output_array = numpy.frombuffer(output_ptr, dtype=numpy.uint32).reshape((output.height(), output.width()))
+        output_array = output_array[y:y + mask.height(), x:x + mask.width()]
+
+        mask_ptr = mask.constBits()
+        mask_ptr.setsize(mask.sizeInBytes())
+        mask_array = numpy.frombuffer(mask_ptr, dtype=numpy.uint8).reshape((mask.height(), mask.width(), mask.bytesPerLine() // mask.width()))
+        mask_array = mask_array[..., 0] # Keep only the first color channel, we assume it is filled with white
+        mask_array = mask_array > 0
+
+        pixels_under_mask = output_array[mask_array != 0]
+        unique_pixels = numpy.unique(pixels_under_mask)
+
+        faces_ids = [self._getFaceId(pixel) for pixel in unique_pixels]
+        return [face_id for face_id in faces_ids if face_id >= 0]
+
+    @staticmethod
+    def _getFaceId(pixel: int) -> int:
+        color = Color.fromARGB(pixel)
+
+        if int(color.a * 255) == 0:
             return -1
 
         return (
-            ((int(face_color.b * 255.) << 16) & 0xff0000) |
-            ((int(face_color.g * 255.) << 8) & 0x00ff00) |
-            (int(face_color.r * 255.) & 0x0000ff)
+            ((int(color.b * 255.) << 16) & 0xff0000) |
+            ((int(color.g * 255.) << 8) & 0x00ff00) |
+            (int(color.r * 255.) & 0x0000ff)
         )
 
     def _getNodeColor(self, node):
